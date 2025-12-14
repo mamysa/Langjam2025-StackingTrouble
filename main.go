@@ -17,6 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(tokens)
 
 	parser, err := parser.NewParser(tokens)
 	if err != nil {
@@ -24,6 +25,10 @@ func main() {
 	}
 
 	ast, err := parser.Parse()
+
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Printf("%+v\n", ast)
 }

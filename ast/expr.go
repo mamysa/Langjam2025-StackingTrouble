@@ -18,6 +18,17 @@ func (e BinaryExpr) String() string {
 
 func (e BinaryExpr) isExpr() {}
 
+type UnaryExpr struct {
+	Op   UnaryOp
+	Expr Expr
+}
+
+func (e UnaryExpr) String() string {
+	return fmt.Sprintf("UnaryExpr(%+v, %+v)", e.Op, e.Expr)
+}
+
+func (e UnaryExpr) isExpr() {}
+
 type Int struct {
 	Integer int
 }
@@ -27,3 +38,13 @@ func (e Int) String() string {
 }
 
 func (e Int) isExpr() {}
+
+type Var struct {
+	Var string
+}
+
+func (e Var) String() string {
+	return fmt.Sprintf("Var(%+v)", e.Var)
+}
+
+func (e Var) isExpr() {}

@@ -50,13 +50,44 @@ func (reader *TokenReader) peekWhitespace() bool {
 	return *c == ' ' || *c == '\n'
 }
 
+func (reader *TokenReader) peekParen() bool {
+	c := reader.peek()
+	if c == nil {
+		return false
+	}
+
+	return *c == '(' || *c == ')'
+}
+
 func (reader *TokenReader) peekOperator() bool {
 	c := reader.peek()
 	if c == nil {
 		return false
 	}
 
-	return *c == '+' || *c == '-' || *c == '*' || *c == '/'
+	return *c == '+' || *c == '-' || *c == '*' || *c == '/' || *c == '='
+}
+
+func (reader *TokenReader) peekAlpha() bool {
+	c := reader.peek()
+	if c == nil {
+		return false
+	}
+
+	return (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') || *c == '_'
+}
+
+func (reader *TokenReader) peekPunctuation() bool {
+	c := reader.peek()
+	if c == nil {
+		return false
+	}
+
+	return *c == ';'
+}
+
+func (reader *TokenReader) peekAlphanumeric() bool {
+	return reader.peekAlpha() || reader.peekDigit()
 }
 
 func (reader *TokenReader) reachedEof() bool {
@@ -123,8 +154,43 @@ func (t *Tokenizer) NextToken() (Token, error) {
 		return nil, nil
 	}
 
+	if t.reader.peekPunctuation() {
+		t.reader.advance()
+		tok := t.reader.getToken()
+		if tok == ";" {
+
+			return Simple{token: Token_Semi}, nil
+		}
+
+		return nil, fmt.Errorf("Unknown punctuation")
+	}
+
+	if t.reader.peekParen() {
+		t.reader.advance()
+		tok := t.reader.getToken()
+		if tok == "(" {
+			return Simple{
+				token: Token_LParen,
+			}, nil
+
+		}
+
+		if tok == ")" {
+			return Simple{
+				token: Token_RParen,
+			}, nil
+		}
+
+		return nil, fmt.Errorf("Unknown token %+v", tok)
+	}
+
 	if t.reader.peekOperator() {
 		return t.ReadOperator(), nil
+	}
+
+	if t.reader.peekAlpha() {
+		ident := t.readIdentifier()
+		return ident, nil
 	}
 
 	if t.reader.peekDigit() {
@@ -156,6 +222,10 @@ func (t *Tokenizer) ReadOperator() Token {
 		return Simple{token: Token_Div}
 	}
 
+	if tok == "=" {
+		return Simple{token: Token_Assign}
+	}
+
 	panic(fmt.Sprintf("Unknown operator %+v", tok))
 }
 
@@ -179,4 +249,16 @@ func (t *Tokenizer) ReadNumber() Token {
 		token: Token_Int,
 		value: tok,
 	}
+}
+
+func (t *Tokenizer) readIdentifier() Token {
+	t.reader.advance()
+
+	for t.reader.peekAlphanumeric() {
+		t.reader.advance()
+	}
+
+	tok := t.reader.getToken()
+
+	return SpecializeIdentifier(tok)
 }
