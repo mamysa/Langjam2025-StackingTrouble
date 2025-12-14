@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compiler/ast"
 	"compiler/parser"
 	"compiler/tokenizer"
 	"fmt"
@@ -24,11 +25,19 @@ func main() {
 		panic(err)
 	}
 
-	ast, err := parser.Parse()
+	a, err := parser.Parse()
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%+v\n", ast)
+	fmt.Printf("%+v\n", a)
+
+	visitor := ast.CodegenVisitor{}
+
+	for _, stmt := range a {
+		stmt.Accept(&visitor)
+	}
+
+	fmt.Println(visitor.Instructions)
 }

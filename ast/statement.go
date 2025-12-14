@@ -3,7 +3,7 @@ package ast
 import "fmt"
 
 type Statement interface {
-	isStatement()
+	Accept(AstVisitor)
 }
 
 type AssignStmt struct {
@@ -11,7 +11,9 @@ type AssignStmt struct {
 	Expr     Expr
 }
 
-func (stmt AssignStmt) isStatement() {}
+func (stmt AssignStmt) Accept(visitor AstVisitor) {
+	visitor.visitAssignStatement(stmt)
+}
 
 func (stmt AssignStmt) String() string {
 	return fmt.Sprintf("AssignStatement(%+v, %+v)", stmt.Variable, stmt.Expr)
@@ -21,7 +23,9 @@ type PrintStmt struct {
 	Expr Expr
 }
 
-func (stmt PrintStmt) isStatement() {}
+func (stmt PrintStmt) Accept(visitor AstVisitor) {
+	visitor.visitPrintStatement(stmt)
+}
 
 func (stmt PrintStmt) String() string {
 	return fmt.Sprintf("PrintStmt(%+v)", stmt.Expr)
