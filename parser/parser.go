@@ -69,7 +69,7 @@ func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) tokenizer.Tok
 // AST := FUNCTION_DEF*
 func (p *Parser) Parse() (ast.Ast, error) {
 
-	functionDefsMap := make(map[string]ast.FunctionDef, 0)
+	functionDefs := make(map[string]ast.FunctionDef, 0)
 
 	for p.hasTokens() {
 		functionDef, err := p.parseFunctionDef()
@@ -77,16 +77,20 @@ func (p *Parser) Parse() (ast.Ast, error) {
 			return ast.Ast{}, err
 		}
 
-		if _, ok := functionDefsMap[functionDef.Name]; ok {
+		if _, ok := functionDefs[functionDef.Name]; ok {
 			return ast.Ast{}, fmt.Errorf("Function %+v redefined", functionDef.Name)
 		}
 
-		functionDefsMap[functionDef.Name] = functionDef
+		functionDefs[functionDef.Name] = functionDef
 	}
 
-	functionDefs := make([]ast.FunctionDef, 0)
-	for _, functionDef := range functionDefsMap {
-		functionDefs = append(functionDefs, functionDef)
+	main, ok := functionDefs["main"]
+	if !ok {
+		return ast.Ast{}, fmt.Errorf("main function missing")
+	}
+
+	if len(main.Params) > 0 {
+		return ast.Ast{}, fmt.Errorf("main function does not accept any parameters")
 	}
 
 	ast := ast.Ast{

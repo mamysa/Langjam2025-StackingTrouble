@@ -45,3 +45,25 @@ func (i ConstInt) String() string {
 }
 
 func (i ConstInt) isInstruction() {}
+
+// Asserts that there there's n entries on the evaluation stack before encountering Stack_Function_Base stack entry.
+
+type AssertArgCount struct {
+	ArgCount int
+}
+
+func (i AssertArgCount) String() string {
+	return fmt.Sprintf("AssertArgCount %d", i.ArgCount)
+}
+
+func (i AssertArgCount) isInstruction() {}
+
+type Label struct {
+	Label string
+}
+
+func (i Label) String() string {
+	return fmt.Sprintf("label %s:", i.Label)
+}
+
+func (i Label) isInstruction() {}

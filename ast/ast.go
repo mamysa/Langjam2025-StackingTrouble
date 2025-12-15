@@ -23,7 +23,7 @@ func (f FunctionDef) String() string {
 func (f FunctionDef) isTopLevelAstNode() {}
 
 type Ast struct {
-	FunctionDefs []FunctionDef
+	FunctionDefs map[string]FunctionDef
 }
 
 func (f Ast) Accept(visitor AstVisitor) {

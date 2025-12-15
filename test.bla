@@ -1,5 +1,5 @@
-def main(a, b) {
-	var1 = 12 * (33 + 112) * 1337;  
+def main() {
+	var1 = 12 * (33 + a) * 1337;  
 	print(var1);
 }
 

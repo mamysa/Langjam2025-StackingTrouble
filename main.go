@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compiler/ast"
 	"compiler/parser"
 	"compiler/tokenizer"
 	"fmt"
@@ -32,12 +33,10 @@ func main() {
 
 	fmt.Printf("%+v\n", a)
 
-	//visitor := ast.CodegenVisitor{}
+	visitor := ast.CodegenVisitor{}
 
-	/*
-		for _, stmt := range a {
-			stmt.Accept(&visitor)
-		}
-	*/
+	a.Accept(&visitor)
+
+	fmt.Printf("%+v\n", visitor)
 
 }

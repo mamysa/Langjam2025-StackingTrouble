@@ -9,7 +9,9 @@ const (
 	Mul
 	Div
 	Neg
-	Print // consume topmost value on the stack and print it
+	PushNone // pushes none object onto the stack
+	Print    // consume topmost value on the stack and print it
+	Ret      // return, pops entry off the callstack
 )
 
 func (o OpCode_NoArgs) String() string {
@@ -28,6 +30,10 @@ func (o OpCode_NoArgs) String() string {
 		return "Neg"
 	case Print:
 		return "Print"
+	case Ret:
+		return "Ret"
+	case PushNone:
+		return "PushNone"
 	}
 
 	panic("Unknown opcode" + string(o))
