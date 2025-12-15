@@ -11,7 +11,7 @@ const (
 	Neg
 	PushNone // pushes none object onto the stack
 	Print    // consume topmost value on the stack and print it
-	Ret      // return, pops entry off the callstack
+	Ret      // return, pops entry off the callstack. Asserts that there's only one value above FUNCTION_STACK_BASE, swaps FUNCTION_STACK_BASE with value above it and pops it off the stack
 )
 
 func (o OpCode_NoArgs) String() string {

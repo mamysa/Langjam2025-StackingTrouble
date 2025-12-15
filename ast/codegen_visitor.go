@@ -3,22 +3,35 @@ package ast
 import "compiler/instruction"
 
 type CodegenVisitor struct {
-	Instructions []instruction.Instruction
+	Instructions []instruction.IrInstruction
+	Program      *instruction.Program
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
-		Instructions: make([]instruction.Instruction, 0),
+		Instructions: make([]instruction.IrInstruction, 0),
 	}
 }
 
-func (visitor *CodegenVisitor) addInstruction(i instruction.Instruction) {
+func (visitor *CodegenVisitor) addInstruction(i instruction.IrInstruction) {
 	visitor.Instructions = append(visitor.Instructions, i)
 }
 
 func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	for _, functionDef := range ast.FunctionDefs {
 		functionDef.Accept(visitor)
+	}
+
+	instructions, labelOffsets := instruction.IrToRealInstruction(visitor.Instructions)
+
+	mainOffset, ok := labelOffsets["main"]
+	if !ok {
+		panic("could not find offset for main")
+	}
+
+	visitor.Program = &instruction.Program{
+		Instructions:            instructions,
+		EntryInstructionAddress: mainOffset,
 	}
 }
 

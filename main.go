@@ -2,10 +2,19 @@ package main
 
 import (
 	"compiler/ast"
+	"compiler/eval"
+	"compiler/instruction"
 	"compiler/parser"
 	"compiler/tokenizer"
 	"fmt"
 )
+
+func printInstructions(instructions []instruction.Instruction) {
+
+	for i, instruction := range instructions {
+		fmt.Printf("%d: %+v\n", i, instruction)
+	}
+}
 
 func main() {
 	tokenizer, err := tokenizer.NewTokenizer("test.bla")
@@ -37,6 +46,9 @@ func main() {
 
 	a.Accept(&visitor)
 
-	fmt.Printf("%+v\n", visitor)
+	printInstructions(visitor.Program.Instructions)
+
+	interpreter := eval.NewInterpreter(visitor.Program)
+	interpreter.Run()
 
 }
