@@ -1,11 +1,13 @@
 package instruction
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func IrToRealInstruction(irInstructions []IrInstruction) ([]Instruction, map[string]int) {
 	labelToOffsetMap := map[string]int{}
 
-	irInstructionsWithLabelsRemoved := make([]Instruction, 0)
+	irInstructionsWithLabelsRemoved := make([]IrInstruction, 0)
 
 	i := 0
 	for i < len(irInstructions) {
@@ -23,9 +25,7 @@ func IrToRealInstruction(irInstructions []IrInstruction) ([]Instruction, map[str
 				panic("double label")
 			}
 
-			assertRealNextInstr := nextInstruction.(Instruction)
-
-			irInstructionsWithLabelsRemoved = append(irInstructionsWithLabelsRemoved, assertRealNextInstr)
+			irInstructionsWithLabelsRemoved = append(irInstructionsWithLabelsRemoved, nextInstruction)
 
 			if _, ok := labelToOffsetMap[label.Label]; ok {
 				panic(fmt.Errorf("label %+v is present in the map", label.Label))
@@ -37,15 +37,34 @@ func IrToRealInstruction(irInstructions []IrInstruction) ([]Instruction, map[str
 			continue
 		}
 
-		assertRealInstr := instruction.(Instruction)
-
 		// otherwise just copy the instruction over
-		irInstructionsWithLabelsRemoved = append(irInstructionsWithLabelsRemoved, assertRealInstr)
+		irInstructionsWithLabelsRemoved = append(irInstructionsWithLabelsRemoved, instruction)
 		i = i + 1
 
 	}
 
+	// step 2: now that we have a map of label-to-offsets, replace all IrCall instances with Call with appropriate offset.
+
+	realInstructions := make([]Instruction, 0)
+
+	for _, irInstruction := range irInstructionsWithLabelsRemoved {
+		if ircall, ok := irInstruction.(IrCall); ok {
+			offset, ok := labelToOffsetMap[ircall.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", ircall.Label))
+			}
+
+			realInstructions = append(realInstructions, Call{
+				Offset: offset,
+			})
+			continue
+		}
+
+		realInstruction := irInstruction.(Instruction)
+		realInstructions = append(realInstructions, realInstruction)
+
+	}
 	fmt.Println(labelToOffsetMap)
 
-	return irInstructionsWithLabelsRemoved, labelToOffsetMap
+	return realInstructions, labelToOffsetMap
 }

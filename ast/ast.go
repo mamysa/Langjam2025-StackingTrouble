@@ -17,7 +17,7 @@ func (f FunctionDef) Accept(visitor AstVisitor) {
 }
 
 func (f FunctionDef) String() string {
-	return fmt.Sprintf("FunctionDef(params:%+v, statements:%+v)", f.Params, f.StmtList)
+	return fmt.Sprintf("FunctionDef(name: %+v, params:%+v, statements:%+v)", f.Name, f.Params, f.StmtList)
 }
 
 func (f FunctionDef) isTopLevelAstNode() {}

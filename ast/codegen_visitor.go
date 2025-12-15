@@ -120,3 +120,18 @@ func (visitor *CodegenVisitor) visitVar(expr Var) {
 		Arg: expr.Var,
 	})
 }
+
+func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
+	// TODO handle indirect calls.
+	for _, argument := range expr.Args {
+		argument.Accept(visitor)
+	}
+
+	visitor.addInstruction(instruction.ConstInt{
+		Arg: len(expr.Args),
+	})
+
+	visitor.addInstruction(instruction.IrCall{
+		Label: expr.Name,
+	})
+}

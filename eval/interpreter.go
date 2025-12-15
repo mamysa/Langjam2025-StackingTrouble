@@ -65,6 +65,10 @@ func (interpreter *Interpreter) Run() {
 		if constInt, ok := insn.(instruction.ConstInt); ok {
 			interpreter.constInt(constInt)
 		}
+
+		if call, ok := insn.(instruction.Call); ok {
+			interpreter.call(call)
+		}
 	}
 
 	if !interpreter.callStack.isEmpty() {
@@ -104,6 +108,12 @@ func (interpreter *Interpreter) loadVar(insn instruction.LoadVar) {
 
 	interpreter.evaluationStack.pushValue(local)
 	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) call(insn instruction.Call) {
+	nextInstructionOffset := interpreter.programCounter + 1
+	interpreter.callStack.pushStackFrame(nextInstructionOffset)
+	interpreter.programCounter = InstructionOffset(insn.Offset)
 }
 
 func (interpreter *Interpreter) add() {

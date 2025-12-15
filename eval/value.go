@@ -65,6 +65,6 @@ func (value None) IsNone() bool {
 	return true
 }
 
-func (value IntValue) None() string {
+func (value None) String() string {
 	return "None"
 }

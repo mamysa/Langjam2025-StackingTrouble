@@ -1,3 +1,9 @@
 def main() {
-	print(1+2+3);
+b = 1 + 4;
+c = blah(1+4, b);
+print(c);
+}
+
+def blah(a, b) {
+	print(a + b);
 }

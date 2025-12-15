@@ -78,3 +78,20 @@ func (i Label) String() string {
 }
 
 func (i Label) isIrInstruction() {}
+
+type IrCall struct {
+	Label string
+}
+
+func (i IrCall) isIrInstruction() {}
+
+type Call struct {
+	Offset int
+}
+
+func (i Call) isInstruction() {}
+
+func (i Call) String() string {
+	return fmt.Sprintf("Call %d", i.Offset)
+
+}

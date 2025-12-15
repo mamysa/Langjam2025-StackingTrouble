@@ -9,4 +9,5 @@ type AstVisitor interface {
 	visitUnaryExpression(UnaryExpr)
 	visitInt(Int)
 	visitVar(Var)
+	visitFunctionCall(FunctionCall)
 }

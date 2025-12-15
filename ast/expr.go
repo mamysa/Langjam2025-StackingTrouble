@@ -56,3 +56,16 @@ func (e Var) String() string {
 func (e Var) Accept(visitor AstVisitor) {
 	visitor.visitVar(e)
 }
+
+type FunctionCall struct {
+	Name string
+	Args []Expr
+}
+
+func (e FunctionCall) String() string {
+	return fmt.Sprintf("FunctionCall(name:%+v, args:%+v)", e.Name, e.Args)
+}
+
+func (e FunctionCall) Accept(visitor AstVisitor) {
+	visitor.visitFunctionCall(e)
+}

@@ -320,8 +320,9 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 	return p.expressionAtom()
 }
 
-// EXPR_ATOM := int | identifier
+// EXPR_ATOM := int | identifier |
 // EXPR_ATOM := '(' EXPR ')'
+// EXPR_ATOM := identifier '(' {EXPR ','} * ')'
 func (p *Parser) expressionAtom() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_LParen) {
 		_ = p.expect(tokenizer.Token_LParen)
@@ -340,6 +341,25 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		token, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
 		if !ok {
 			panic("bad")
+		}
+
+		// function call
+		if p.nextTokenIs(tokenizer.Token_LParen) {
+			expressionList := []ast.Expr{}
+			p.expect(tokenizer.Token_LParen)
+			if !p.nextTokenIs(tokenizer.Token_RParen) {
+				e, err := p.expressionList()
+				if err != nil {
+					return nil, err
+				}
+				expressionList = e
+			}
+			p.expect(tokenizer.Token_RParen)
+
+			return ast.FunctionCall{
+				Name: token.Value(),
+				Args: expressionList,
+			}, nil
 		}
 
 		return ast.Var{
@@ -364,4 +384,26 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	return nil, fmt.Errorf("Unable to parse EXPR_ATOM")
+}
+
+// NON-empty expression list
+func (p *Parser) expressionList() ([]ast.Expr, error) {
+	expressions := make([]ast.Expr, 0)
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	expressions = append(expressions, expr)
+
+	for p.nextTokenIs(tokenizer.Token_Comma) {
+		p.expect(tokenizer.Token_Comma)
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		expressions = append(expressions, expr)
+	}
+
+	return expressions, nil
 }
