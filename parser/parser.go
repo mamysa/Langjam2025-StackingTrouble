@@ -66,20 +66,115 @@ func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) tokenizer.Tok
 	panic(fmt.Sprintf("Error: expected token %+v, actual %+v", expectedTokenKinds, nextToken.Kind()))
 }
 
-func (p *Parser) Parse() ([]ast.Statement, error) {
-	statements := make([]ast.Statement, 0)
+// AST := FUNCTION_DEF*
+func (p *Parser) Parse() (ast.Ast, error) {
+
+	functionDefsMap := make(map[string]ast.FunctionDef, 0)
 
 	for p.hasTokens() {
+		functionDef, err := p.parseFunctionDef()
+		if err != nil {
+			return ast.Ast{}, err
+		}
+
+		if _, ok := functionDefsMap[functionDef.Name]; ok {
+			return ast.Ast{}, fmt.Errorf("Function %+v redefined", functionDef.Name)
+		}
+
+		functionDefsMap[functionDef.Name] = functionDef
+	}
+
+	functionDefs := make([]ast.FunctionDef, 0)
+	for _, functionDef := range functionDefsMap {
+		functionDefs = append(functionDefs, functionDef)
+	}
+
+	ast := ast.Ast{
+		FunctionDefs: functionDefs,
+	}
+
+	return ast, nil
+}
+
+// FUNC_DEF :=  'def' IDENT '(' NON_EMPTY_FUNCTION_PARAMETER_LIST? ')' statement_block
+func (p *Parser) parseFunctionDef() (ast.FunctionDef, error) {
+	p.expect(tokenizer.Token_Def)
+
+	name := p.expect(tokenizer.Token_Identifier)
+	typedName := name.(tokenizer.TokenWithData)
+
+	p.expect(tokenizer.Token_LParen)
+
+	parameters := make([]ast.Var, 0)
+
+	if !p.nextTokenIs(tokenizer.Token_RParen) {
+		ps, err := p.parseFunctionParameterList()
+		if err != nil {
+			return ast.FunctionDef{}, err
+		}
+		parameters = ps
+	}
+
+	p.expect(tokenizer.Token_RParen)
+
+	statements, err := p.parseStatementBlock()
+	if err != nil {
+		return ast.FunctionDef{}, err
+	}
+
+	return ast.FunctionDef{
+		Name:     typedName.Value(),
+		Params:   parameters,
+		StmtList: statements,
+	}, nil
+}
+
+// NON_EMPTY_FUNCTION_PARAMETER_LIST = Ident {',' Ident}*
+func (p *Parser) parseFunctionParameterList() ([]ast.Var, error) {
+	parameters := make([]ast.Var, 0)
+
+	paramToken := p.expect(tokenizer.Token_Identifier)
+	typedParamToken := paramToken.(tokenizer.TokenWithData)
+
+	param := ast.Var{
+		Var: typedParamToken.Value(),
+	}
+
+	parameters = append(parameters, param)
+
+	for p.nextTokenIs(tokenizer.Token_Comma) {
+		p.expect(tokenizer.Token_Comma)
+		paramToken := p.expect(tokenizer.Token_Identifier)
+		typedParamToken := paramToken.(tokenizer.TokenWithData)
+
+		param := ast.Var{
+			Var: typedParamToken.Value(),
+		}
+
+		parameters = append(parameters, param)
+
+	}
+
+	return parameters, nil
+}
+
+// STATEMENT_BLOCK = '{' {PRINT_STATEMENT | ASSIGN_STATEMENT}* '}'
+func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
+	statements := make([]ast.Statement, 0)
+	p.expect(tokenizer.Token_LBrace)
+
+	for !p.nextTokenIs(tokenizer.Token_RBrace) {
+
 		if p.nextTokenIs(tokenizer.Token_Print) {
 			stmt, err := p.statementPrint()
 			if err != nil {
 				return nil, err
 			}
-
 			statements = append(statements, stmt)
 			continue
 		}
 
+		// otherwise assign statement
 		stmt, err := p.statementAssign()
 		if err != nil {
 			return nil, err
@@ -88,6 +183,7 @@ func (p *Parser) Parse() ([]ast.Statement, error) {
 		statements = append(statements, stmt)
 	}
 
+	p.expect(tokenizer.Token_RBrace)
 	return statements, nil
 }
 

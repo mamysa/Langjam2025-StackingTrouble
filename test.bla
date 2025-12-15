@@ -1,2 +1,9 @@
-var1 = 12 + (33 * 112) + 1337;
-print(var1);
+def main(a, b) {
+	var1 = 12 * (33 + 112) * 1337;  
+	print(var1);
+}
+
+def blah() {
+x = y + 1;
+}
+

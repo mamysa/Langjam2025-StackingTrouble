@@ -16,6 +16,14 @@ func (visitor *CodegenVisitor) addInstruction(i instruction.Instruction) {
 	visitor.Instructions = append(visitor.Instructions, i)
 }
 
+func (visitor *CodegenVisitor) visitAst(ast Ast) {
+
+}
+
+func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
+
+}
+
 func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 	stmt.Expr.Accept(visitor)
 

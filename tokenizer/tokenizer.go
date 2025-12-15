@@ -47,7 +47,7 @@ func (reader *TokenReader) peekWhitespace() bool {
 		return false
 	}
 
-	return *c == ' ' || *c == '\n'
+	return *c == ' ' || *c == '\n' || *c == '\t'
 }
 
 func (reader *TokenReader) peekParen() bool {
@@ -56,7 +56,7 @@ func (reader *TokenReader) peekParen() bool {
 		return false
 	}
 
-	return *c == '(' || *c == ')'
+	return *c == '(' || *c == ')' || *c == '{' || *c == '}'
 }
 
 func (reader *TokenReader) peekOperator() bool {
@@ -83,7 +83,7 @@ func (reader *TokenReader) peekPunctuation() bool {
 		return false
 	}
 
-	return *c == ';'
+	return *c == ';' || *c == ','
 }
 
 func (reader *TokenReader) peekAlphanumeric() bool {
@@ -158,8 +158,10 @@ func (t *Tokenizer) NextToken() (Token, error) {
 		t.reader.advance()
 		tok := t.reader.getToken()
 		if tok == ";" {
-
 			return Simple{token: Token_Semi}, nil
+		}
+		if tok == "," {
+			return Simple{token: Token_Comma}, nil
 		}
 
 		return nil, fmt.Errorf("Unknown punctuation")
@@ -168,20 +170,13 @@ func (t *Tokenizer) NextToken() (Token, error) {
 	if t.reader.peekParen() {
 		t.reader.advance()
 		tok := t.reader.getToken()
-		if tok == "(" {
-			return Simple{
-				token: Token_LParen,
-			}, nil
 
+		brace := IdentifyBrace(tok)
+		if brace == nil {
+			return nil, fmt.Errorf("Unknown token %+v", tok)
 		}
 
-		if tok == ")" {
-			return Simple{
-				token: Token_RParen,
-			}, nil
-		}
-
-		return nil, fmt.Errorf("Unknown token %+v", tok)
+		return brace, nil
 	}
 
 	if t.reader.peekOperator() {
@@ -208,25 +203,12 @@ func (t *Tokenizer) ReadOperator() Token {
 	}
 
 	tok := t.reader.getToken()
-	if tok == "+" {
-		return Simple{token: Token_Plus}
-	}
-	if tok == "-" {
-		return Simple{token: Token_Minus}
+	operator := IdentifyOperator(tok)
+	if operator == nil {
+		panic(fmt.Sprintf("Unknown operator %+v", tok))
 	}
 
-	if tok == "*" {
-		return Simple{token: Token_Mul}
-	}
-	if tok == "/" {
-		return Simple{token: Token_Div}
-	}
-
-	if tok == "=" {
-		return Simple{token: Token_Assign}
-	}
-
-	panic(fmt.Sprintf("Unknown operator %+v", tok))
+	return operator
 }
 
 func (t *Tokenizer) ReadNumber() Token {

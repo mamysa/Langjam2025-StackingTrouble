@@ -12,16 +12,36 @@ const (
 	Token_Div    TokenKind = "/"
 	Token_Assign TokenKind = "="
 	Token_LParen TokenKind = "("
-	Token_RParen TokenKind = "("
+	Token_RParen TokenKind = ")"
+	Token_LBrace TokenKind = "{"
+	Token_RBrace TokenKind = "}"
 
 	Token_Identifier TokenKind = "Ident"
 	Token_Semi       TokenKind = ";"
+	Token_Comma      TokenKind = ","
 
 	Token_Print TokenKind = "print"
+	Token_Def   TokenKind = "def"
 )
 
 var specialIdentifiers = map[string]TokenKind{
 	"print": Token_Print,
+	"def":   Token_Def,
+}
+
+var operators = map[string]TokenKind{
+	"+": Token_Plus,
+	"-": Token_Minus,
+	"*": Token_Mul,
+	"/": Token_Div,
+	"=": Token_Assign,
+}
+
+var braces = map[string]TokenKind{
+	"(": Token_LParen,
+	")": Token_RParen,
+	"{": Token_LBrace,
+	"}": Token_RBrace,
 }
 
 func SpecializeIdentifier(identifier string) Token {
@@ -35,6 +55,26 @@ func SpecializeIdentifier(identifier string) Token {
 		token: Token_Identifier,
 		value: identifier,
 	}
+}
+
+func IdentifyOperator(operator string) Token {
+	if tok, ok := operators[operator]; ok {
+		return &Simple{
+			token: tok,
+		}
+	}
+
+	return nil
+}
+
+func IdentifyBrace(operator string) Token {
+	if tok, ok := braces[operator]; ok {
+		return &Simple{
+			token: tok,
+		}
+	}
+
+	return nil
 }
 
 type Token interface {

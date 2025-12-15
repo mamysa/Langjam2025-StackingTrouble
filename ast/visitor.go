@@ -1,6 +1,8 @@
 package ast
 
 type AstVisitor interface {
+	visitAst(Ast)
+	visitFunctionDef(FunctionDef)
 	visitPrintStatement(PrintStmt)
 	visitAssignStatement(AssignStmt)
 	visitBinaryExpression(BinaryExpr)
