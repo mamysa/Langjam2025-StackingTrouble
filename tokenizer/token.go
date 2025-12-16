@@ -6,6 +6,7 @@ type TokenKind string
 
 const (
 	Token_Int    TokenKind = "Int"
+	Token_Lt     TokenKind = "<"
 	Token_Plus   TokenKind = "+"
 	Token_Minus  TokenKind = "-"
 	Token_Mul    TokenKind = "*"
@@ -46,6 +47,7 @@ var operators = map[string]TokenKind{
 	"/": Token_Div,
 	"=": Token_Assign,
 	"&": Token_FuncAddr,
+	"<": Token_Lt,
 }
 
 var braces = map[string]TokenKind{

@@ -4,6 +4,7 @@ type OpCode_NoArgs int
 
 const (
 	NoOp OpCode_NoArgs = iota
+	Lt                 // less than
 	Add
 	Sub
 	Mul
@@ -19,6 +20,8 @@ func (o OpCode_NoArgs) String() string {
 	switch o {
 	case NoOp:
 		return "NoOp"
+	case Lt:
+		return "Lt"
 	case Add:
 		return "Add"
 	case Sub:

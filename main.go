@@ -10,7 +10,6 @@ import (
 )
 
 func printInstructions(instructions []instruction.Instruction) {
-
 	for i, instruction := range instructions {
 		fmt.Printf("%d: %+v\n", i, instruction)
 	}

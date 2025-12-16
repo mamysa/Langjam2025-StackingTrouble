@@ -33,10 +33,12 @@ func (interpreter *Interpreter) Run() {
 
 		insn := interpreter.program.GetInstruction(int(interpreter.programCounter))
 
-		//fmt.Printf("%d, %+v\n", interpreter.programCounter, insn)
+		//fmt.Printf("%d, %+v %+v\n", interpreter.programCounter, insn, interpreter.evaluationStack)
 
 		if simple, ok := insn.(instruction.InstructionNoOperands); ok {
 			switch simple.OpCode {
+			case instruction.Lt:
+				interpreter.lt()
 			case instruction.Add:
 				interpreter.add()
 			case instruction.Ret:
@@ -143,13 +145,25 @@ func (interpreter *Interpreter) add() {
 	v1 := interpreter.evaluationStack.pop()
 	v2 := interpreter.evaluationStack.pop()
 
-	if v1.IsNone() || v2.IsNone() {
+	if !(v1.IsInt() && v2.IsInt()) {
 		panic(fmt.Errorf("add: %+v or %+v is None"))
 	}
 
 	result := v1.Int() + v2.Int()
 	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
 
+func (interpreter *Interpreter) lt() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsInt() && v2.IsInt()) {
+		panic(fmt.Errorf("lt: %+v or %+v is None"))
+	}
+
+	result := v1.Int() < v2.Int()
+	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
 

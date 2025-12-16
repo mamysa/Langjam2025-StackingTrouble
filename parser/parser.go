@@ -331,7 +331,43 @@ func (p *Parser) statementPrint() (ast.Statement, error) {
 }
 
 func (p *Parser) expression() (ast.Expr, error) {
-	return p.expressionAdditive()
+	return p.expressionComparison()
+}
+
+// EXPR_COMPARISON = expr_add {`<` expr_add}?
+
+func (p *Parser) expressionComparison() (ast.Expr, error) {
+	lhs, err := p.expressionAdditive()
+	if err != nil {
+		return nil, err
+	}
+
+	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_Lt}
+	if p.nextTokenIs(expectedTokens...) {
+		token := p.expect(tokenizer.Token_Lt)
+
+		var op ast.BinOp
+		switch token.Kind() {
+		case tokenizer.Token_Lt:
+			op = ast.BinOp_Lt
+
+		default:
+			panic("unknown comparison token")
+		}
+
+		rhs, err := p.expressionAdditive()
+		if err != nil {
+			return nil, err
+		}
+
+		return ast.BinaryExpr{
+			Op:  op,
+			Lhs: lhs,
+			Rhs: rhs,
+		}, nil
+	}
+
+	return lhs, nil
 
 }
 

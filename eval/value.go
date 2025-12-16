@@ -6,6 +6,7 @@ type ValueKind int
 
 const (
 	Value_None ValueKind = iota
+	Value_Bool
 	Value_Int
 	Value_FunctionAddress
 )
@@ -68,7 +69,7 @@ func (value None) Int() int {
 }
 
 func (value None) IsInt() bool {
-	return true
+	return false
 }
 
 func (value None) IsNone() bool {
@@ -119,4 +120,42 @@ func (value FunctionAddress) String() string {
 
 func (value FunctionAddress) FunctionAddress() int {
 	return value.Offset
+}
+
+type BoolValue struct {
+	value bool
+}
+
+func NewBool(b bool) BoolValue {
+	return BoolValue{
+		value: b,
+	}
+}
+
+func (value BoolValue) Int() int {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value BoolValue) IsInt() bool {
+	return false
+}
+
+func (value BoolValue) IsNone() bool {
+	return false
+}
+
+func (value BoolValue) Truthy() bool {
+	return value.value
+}
+
+func (value BoolValue) String() string {
+	if value.value {
+		return "True"
+	}
+
+	return "False"
+}
+
+func (value BoolValue) FunctionAddress() int {
+	panic(fmt.Errorf("Invalid conversion"))
 }

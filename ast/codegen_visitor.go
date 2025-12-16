@@ -214,6 +214,10 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Mul})
 	case BinOp_Div:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Div})
+	case BinOp_Lt:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Lt})
+	default:
+		panic(fmt.Errorf("Unknown operator %+v", expr.Op))
 	}
 }
 

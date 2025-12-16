@@ -19,6 +19,11 @@ func (stack *EvaluationStack) pushNone() {
 	stack.stack[stack.top] = NewNone()
 }
 
+func (stack *EvaluationStack) pushBool(b bool) {
+	stack.top += 1
+	stack.stack[stack.top] = NewBool(b)
+}
+
 func (stack *EvaluationStack) pushInt(i int) {
 	stack.top += 1
 	stack.stack[stack.top] = NewInt(i)
@@ -39,7 +44,7 @@ func (stack *EvaluationStack) pushValue(value Value) {
 
 func (stack *EvaluationStack) pop() Value {
 	if stack.top < 0 {
-		panic("Stack is empty, unable to pop")
+		panic("Stack is empty, unable to pop xx")
 	}
 
 	value := stack.stack[stack.top]
