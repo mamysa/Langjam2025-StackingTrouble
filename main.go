@@ -45,7 +45,6 @@ func main() {
 	visitor := ast.CodegenVisitor{}
 
 	a.Accept(&visitor)
-
 	printInstructions(visitor.Program.Instructions)
 
 	interpreter := eval.NewInterpreter(visitor.Program)

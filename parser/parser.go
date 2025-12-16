@@ -169,6 +169,15 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 
 	for !p.nextTokenIs(tokenizer.Token_RBrace) {
 
+		if p.nextTokenIs(tokenizer.Token_If) {
+			stmt, err := p.statementIf()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, stmt)
+			continue
+		}
+
 		if p.nextTokenIs(tokenizer.Token_Print) {
 			stmt, err := p.statementPrint()
 			if err != nil {
@@ -198,6 +207,39 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 
 	p.expect(tokenizer.Token_RBrace)
 	return statements, nil
+}
+
+// STATEMENT_IF: `if` `(` EXPRESSION `)`  STATEMENT_BLOCK  { `else` STATEMENT_BLOCK }?
+func (p *Parser) statementIf() (ast.Statement, error) {
+	p.expect(tokenizer.Token_If)
+
+	cond, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	ifStatementBlock, err := p.parseStatementBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	elseStatementBlock := []ast.Statement{}
+
+	if p.nextTokenIs(tokenizer.Token_Else) {
+		p.expect(tokenizer.Token_Else)
+
+		b, err := p.parseStatementBlock()
+		if err != nil {
+			return nil, err
+		}
+		elseStatementBlock = b
+	}
+
+	return ast.IfStmt{
+		Cond:       cond,
+		IfBranch:   ifStatementBlock,
+		ElseBranch: elseStatementBlock,
+	}, nil
 }
 
 // STATEMENT_RETURN := 'return' {EXPR}?

@@ -53,3 +53,17 @@ func (stmt ReturnWithExprStmt) Accept(visitor AstVisitor) {
 func (stmt ReturnWithExprStmt) String() string {
 	return fmt.Sprintf("Return(%+v)", stmt.Expr)
 }
+
+type IfStmt struct {
+	Cond       Expr
+	IfBranch   []Statement
+	ElseBranch []Statement
+}
+
+func (stmt IfStmt) String() string {
+	return fmt.Sprintf("If(cond: %+v, ifBranch: %+v, elseBranch: %+v)", stmt.Cond, stmt.IfBranch, stmt.ElseBranch)
+}
+
+func (stmt IfStmt) Accept(visitor AstVisitor) {
+	visitor.visitIfStatement(stmt)
+}

@@ -26,3 +26,8 @@ myfunc(n);  <-- should be CallVirtual BUT because myfunc is defined, Call <Offse
 }
 ```
 dont actually work.
+
+TODO: should really split "real" instructions from IR instructions (that use textual labels instead of actual offsets).
+
+
+Implemented if statements

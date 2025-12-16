@@ -24,12 +24,17 @@ const (
 	Token_Def      TokenKind = "def"
 	Token_Return   TokenKind = "return"
 	Token_FuncAddr TokenKind = "function-addr"
+
+	Token_If   TokenKind = "if"
+	Token_Else TokenKind = "else"
 )
 
 var specialIdentifiers = map[string]TokenKind{
 	"print":  Token_Print,
 	"def":    Token_Def,
 	"return": Token_Return,
+	"if":     Token_If,
+	"else":   Token_Else,
 }
 
 var operators = map[string]TokenKind{

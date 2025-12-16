@@ -2,6 +2,7 @@ package ast
 
 import (
 	"compiler/instruction"
+	"compiler/util"
 	"fmt"
 )
 
@@ -9,11 +10,13 @@ type CodegenVisitor struct {
 	Instructions []instruction.IrInstruction
 	Program      *instruction.Program
 	Ast          Ast
+	symGen       util.SymGen
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
 		Instructions: make([]instruction.IrInstruction, 0),
+		symGen:       util.NewSymGen(),
 	}
 }
 
@@ -26,6 +29,8 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	for _, functionDef := range ast.FunctionDefs {
 		functionDef.Accept(visitor)
 	}
+
+	//printIrInstructions(visitor.Instructions)
 
 	instructions, labelOffsets := instruction.IrToRealInstruction(visitor.Instructions)
 
@@ -118,6 +123,51 @@ func (visitor *CodegenVisitor) visitReturnWithExpr(stmt ReturnWithExprStmt) {
 	})
 }
 
+func (visitor *CodegenVisitor) visitIfStatement(stmt IfStmt) {
+	ifBranchLabel := visitor.symGen.Next()
+	elseBranchLabel := visitor.symGen.Next()
+	endIfLabel := visitor.symGen.Next()
+
+	hasElseBranch := len(stmt.ElseBranch) > 0
+
+	// generate code for condition
+	stmt.Cond.Accept(visitor)
+
+	visitor.addInstruction(instruction.IrBrIf{
+		Label: ifBranchLabel,
+	})
+
+	if hasElseBranch {
+		visitor.addInstruction(instruction.IrBr{Label: elseBranchLabel})
+	} else {
+		visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+	}
+
+	visitor.addInstruction(instruction.Label{
+		Label: ifBranchLabel,
+	})
+
+	for _, ifBranchStmt := range stmt.IfBranch {
+		ifBranchStmt.Accept(visitor)
+	}
+
+	visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+
+	if hasElseBranch {
+		visitor.addInstruction(instruction.Label{
+			Label: elseBranchLabel,
+		})
+		for _, elseBranchStmt := range stmt.ElseBranch {
+			elseBranchStmt.Accept(visitor)
+		}
+		visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+	}
+
+	visitor.addInstruction(instruction.Label{
+		Label: endIfLabel,
+	})
+}
+
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 	expr.Lhs.Accept(visitor)
 	expr.Rhs.Accept(visitor)
@@ -190,4 +240,11 @@ func (visitor *CodegenVisitor) visitAddressOfFunction(expr AddressOfFunction) {
 	visitor.addInstruction(instruction.PushIrFunctionAddr{
 		Label: f.Name,
 	})
+}
+
+func printIrInstructions(instructions []instruction.IrInstruction) {
+
+	for i, instruction := range instructions {
+		fmt.Printf("%d: %+v\n", i, instruction)
+	}
 }

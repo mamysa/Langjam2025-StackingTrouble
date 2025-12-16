@@ -1,17 +1,14 @@
 def main() {
-b = 1 + 4;
+	if 1 {
+	print(1);
+		if 0 {
+		print(1337);
 
-myfunc = &blah;
-c = myfunc(1+4, b);
-print(myfunc);
-print(c);
-}
+		} else {
+		print(1338);
 
-def blah(a, b) {
-return a+b;
-}
+		}
+	} 
+	print(999);
 
-def myfunc(a,b) {
-	print(0);
-}
-
+	}

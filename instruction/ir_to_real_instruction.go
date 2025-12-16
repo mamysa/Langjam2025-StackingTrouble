@@ -73,6 +73,32 @@ func IrToRealInstruction(irInstructions []IrInstruction) ([]Instruction, map[str
 			continue
 		}
 
+		if irBrIf, ok := irInstruction.(IrBrIf); ok {
+			offset, ok := labelToOffsetMap[irBrIf.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", irBrIf.Label))
+			}
+
+			realInstructions = append(realInstructions, BrIf{
+				Offset: offset,
+			})
+
+			continue
+		}
+
+		if irBr, ok := irInstruction.(IrBr); ok {
+			offset, ok := labelToOffsetMap[irBr.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", irBr.Label))
+			}
+
+			realInstructions = append(realInstructions, Br{
+				Offset: offset,
+			})
+
+			continue
+		}
+
 		realInstruction := irInstruction.(Instruction)
 		realInstructions = append(realInstructions, realInstruction)
 

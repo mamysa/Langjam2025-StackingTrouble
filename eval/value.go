@@ -16,6 +16,7 @@ type Value interface {
 	IsNone() bool
 	Int() int
 	FunctionAddress() int
+	Truthy() bool
 }
 
 type IntValue struct {
@@ -44,6 +45,10 @@ func (value IntValue) FunctionAddress() int {
 	panic("Invalid conversion")
 }
 
+func (value IntValue) Truthy() bool {
+	return value.value > 0
+}
+
 func (value IntValue) String() string {
 	return fmt.Sprintf("%d", value.value)
 }
@@ -68,6 +73,10 @@ func (value None) IsInt() bool {
 
 func (value None) IsNone() bool {
 	return true
+}
+
+func (value None) Truthy() bool {
+	return false
 }
 
 func (value None) String() string {
@@ -98,6 +107,10 @@ func (value FunctionAddress) IsInt() bool {
 
 func (value FunctionAddress) IsNone() bool {
 	return false
+}
+
+func (value FunctionAddress) Truthy() bool {
+	panic("FunctionAddress cannot be used in boolean context")
 }
 
 func (value FunctionAddress) String() string {

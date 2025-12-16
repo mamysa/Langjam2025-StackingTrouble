@@ -110,3 +110,43 @@ func (i PushFunctionAddr) String() string {
 }
 
 func (i PushFunctionAddr) isInstruction() {}
+
+type IrBrIf struct {
+	Label string
+}
+
+func (i IrBrIf) String() string {
+	return fmt.Sprintf("IrBrIf %+v", i.Label)
+}
+
+func (i IrBrIf) isIrInstruction() {}
+
+type IrBr struct {
+	Label string
+}
+
+func (i IrBr) String() string {
+	return fmt.Sprintf("IrBr %+v", i.Label)
+}
+
+func (i IrBr) isIrInstruction() {}
+
+type BrIf struct {
+	Offset int
+}
+
+func (i BrIf) isInstruction() {}
+
+func (i BrIf) String() string {
+	return fmt.Sprintf("BrIf %+v", i.Offset)
+}
+
+type Br struct {
+	Offset int
+}
+
+func (i Br) isInstruction() {}
+
+func (i Br) String() string {
+	return fmt.Sprintf("Br %+v", i.Offset)
+}

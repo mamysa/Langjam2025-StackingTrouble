@@ -75,6 +75,14 @@ func (interpreter *Interpreter) Run() {
 		if pushFunctionAddr, ok := insn.(instruction.PushFunctionAddr); ok {
 			interpreter.pushFunctionAddr(pushFunctionAddr)
 		}
+
+		if brIf, ok := insn.(instruction.BrIf); ok {
+			interpreter.brIf(brIf)
+		}
+
+		if br, ok := insn.(instruction.Br); ok {
+			interpreter.br(br)
+		}
 	}
 
 	if !interpreter.callStack.isEmpty() {
@@ -164,4 +172,18 @@ func (interpreter *Interpreter) pushNone() {
 func (interpreter *Interpreter) pushFunctionAddr(insn instruction.PushFunctionAddr) {
 	interpreter.evaluationStack.pushFunctionAddress(insn.Offset)
 	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) brIf(insn instruction.BrIf) {
+	v := interpreter.evaluationStack.pop()
+	if v.Truthy() {
+		interpreter.programCounter = InstructionOffset(insn.Offset)
+		return
+	}
+
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) br(insn instruction.Br) {
+	interpreter.programCounter = InstructionOffset(insn.Offset)
 }
