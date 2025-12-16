@@ -25,8 +25,9 @@ const (
 	Token_Return   TokenKind = "return"
 	Token_FuncAddr TokenKind = "function-addr"
 
-	Token_If   TokenKind = "if"
-	Token_Else TokenKind = "else"
+	Token_If    TokenKind = "if"
+	Token_Else  TokenKind = "else"
+	Token_While TokenKind = "while"
 )
 
 var specialIdentifiers = map[string]TokenKind{
@@ -35,6 +36,7 @@ var specialIdentifiers = map[string]TokenKind{
 	"return": Token_Return,
 	"if":     Token_If,
 	"else":   Token_Else,
+	"while":  Token_While,
 }
 
 var operators = map[string]TokenKind{

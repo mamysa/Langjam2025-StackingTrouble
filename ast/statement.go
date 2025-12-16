@@ -67,3 +67,16 @@ func (stmt IfStmt) String() string {
 func (stmt IfStmt) Accept(visitor AstVisitor) {
 	visitor.visitIfStatement(stmt)
 }
+
+type WhileStmt struct {
+	Cond Expr
+	Body []Statement
+}
+
+func (stmt WhileStmt) String() string {
+	return fmt.Sprintf("While(cond: %+v, body: %+v)", stmt.Cond, stmt.Body)
+}
+
+func (stmt WhileStmt) Accept(visitor AstVisitor) {
+	visitor.visitWhileStatement(stmt)
+}

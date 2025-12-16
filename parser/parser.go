@@ -178,6 +178,15 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 			continue
 		}
 
+		if p.nextTokenIs(tokenizer.Token_While) {
+			stmt, err := p.statementWhile()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, stmt)
+			continue
+		}
+
 		if p.nextTokenIs(tokenizer.Token_Print) {
 			stmt, err := p.statementPrint()
 			if err != nil {
@@ -209,7 +218,27 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 	return statements, nil
 }
 
-// STATEMENT_IF: `if` `(` EXPRESSION `)`  STATEMENT_BLOCK  { `else` STATEMENT_BLOCK }?
+// STATEMENT_WHILE `while` EXPRESSION STATEMENT_BLOCK
+func (p *Parser) statementWhile() (ast.Statement, error) {
+	p.expect(tokenizer.Token_While)
+
+	cond, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	whileBodyBlock, err := p.parseStatementBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.WhileStmt{
+		Cond: cond,
+		Body: whileBodyBlock,
+	}, nil
+}
+
+// STATEMENT_IF: `if`  EXPRESSION   STATEMENT_BLOCK  { `else` STATEMENT_BLOCK }?
 func (p *Parser) statementIf() (ast.Statement, error) {
 	p.expect(tokenizer.Token_If)
 

@@ -8,6 +8,7 @@ type AstVisitor interface {
 	visitReturn(ReturnStmt)
 	visitReturnWithExpr(ReturnWithExprStmt)
 	visitIfStatement(IfStmt)
+	visitWhileStatement(WhileStmt)
 	visitBinaryExpression(BinaryExpr)
 	visitUnaryExpression(UnaryExpr)
 	visitInt(Int)

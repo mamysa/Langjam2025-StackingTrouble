@@ -31,6 +31,7 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	}
 
 	//printIrInstructions(visitor.Instructions)
+	//panic("")
 
 	instructions, labelOffsets := instruction.IrToRealInstruction(visitor.Instructions)
 
@@ -166,6 +167,38 @@ func (visitor *CodegenVisitor) visitIfStatement(stmt IfStmt) {
 	visitor.addInstruction(instruction.Label{
 		Label: endIfLabel,
 	})
+}
+
+func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
+	loopHeaderLabel := visitor.symGen.Next()
+	loopBodyLabel := visitor.symGen.Next()
+	loopEndLabel := visitor.symGen.Next()
+
+	visitor.addInstruction(instruction.Label{
+		Label: loopHeaderLabel,
+	})
+
+	stmt.Cond.Accept(visitor)
+	visitor.addInstruction(instruction.IrBrIf{Label: loopBodyLabel})
+	visitor.addInstruction(instruction.IrBr{Label: loopEndLabel})
+
+	// loop body: label + instructions + branch to loop header
+	visitor.addInstruction(instruction.Label{
+		Label: loopBodyLabel,
+	})
+
+	for _, bodyStmt := range stmt.Body {
+		bodyStmt.Accept(visitor)
+	}
+
+	visitor.addInstruction(instruction.IrBr{
+		Label: loopHeaderLabel,
+	})
+
+	visitor.addInstruction(instruction.Label{
+		Label: loopEndLabel,
+	})
+
 }
 
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
