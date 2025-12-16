@@ -6,18 +6,11 @@ type Instruction interface {
 	isInstruction()
 }
 
-// Instruction set that includes labels.
-// "Real" instructions encode labels as indices in the instruction list.
-type IrInstruction interface {
-	isIrInstruction()
-}
-
 type InstructionNoOperands struct {
 	OpCode OpCode_NoArgs
 }
 
-func (i InstructionNoOperands) isIrInstruction() {}
-func (i InstructionNoOperands) isInstruction()   {}
+func (i InstructionNoOperands) isInstruction() {}
 
 func (i InstructionNoOperands) String() string {
 	return i.OpCode.String()
@@ -31,8 +24,7 @@ func (i LoadVar) String() string {
 	return fmt.Sprintf("LoadVar %s", i.Arg)
 }
 
-func (i LoadVar) isInstruction()   {}
-func (i LoadVar) isIrInstruction() {}
+func (i LoadVar) isInstruction() {}
 
 type StoreVar struct {
 	Arg string
@@ -42,8 +34,7 @@ func (i StoreVar) String() string {
 	return fmt.Sprintf("StoreVar %s", i.Arg)
 }
 
-func (i StoreVar) isInstruction()   {}
-func (i StoreVar) isIrInstruction() {}
+func (i StoreVar) isInstruction() {}
 
 type ConstInt struct {
 	Arg int
@@ -53,8 +44,7 @@ func (i ConstInt) String() string {
 	return fmt.Sprintf("ConstInt %d", i.Arg)
 }
 
-func (i ConstInt) isInstruction()   {}
-func (i ConstInt) isIrInstruction() {}
+func (i ConstInt) isInstruction() {}
 
 // Asserts that there there's n entries on the evaluation stack before encountering Stack_Function_Base stack entry.
 
@@ -66,87 +56,95 @@ func (i AssertArgCount) String() string {
 	return fmt.Sprintf("AssertArgCount %d", i.ArgCount)
 }
 
-func (i AssertArgCount) isInstruction()   {}
-func (i AssertArgCount) isIrInstruction() {}
+func (i AssertArgCount) isInstruction() {}
 
 type Label struct {
-	Label string
+	Label  string
+	Offset int
+}
+
+func NewLabel(label string) Label {
+	return Label{
+		Label:  label,
+		Offset: -1,
+	}
+
 }
 
 func (i Label) String() string {
-	return fmt.Sprintf("label %s:", i.Label)
+	return fmt.Sprintf("label %d (%s):", i.Offset, i.Label)
 }
 
-func (i Label) isIrInstruction() {}
-
-type IrCall struct {
-	Label string
-}
-
-func (i IrCall) isIrInstruction() {}
+func (i Label) isInstruction() {}
 
 type Call struct {
 	Offset int
+	Label  string
+}
+
+func NewCall(label string) Call {
+	return Call{
+		Offset: -1,
+		Label:  label,
+	}
 }
 
 func (i Call) isInstruction() {}
 
 func (i Call) String() string {
-	return fmt.Sprintf("Call %d", i.Offset)
+	return fmt.Sprintf("Call %d (%s)", i.Offset, i.Label)
 }
-
-type PushIrFunctionAddr struct {
-	Label string
-}
-
-func (i PushIrFunctionAddr) isIrInstruction() {}
 
 type PushFunctionAddr struct {
 	Offset int
+	Label  string
+}
+
+func NewPushFunctionAddr(label string) PushFunctionAddr {
+	return PushFunctionAddr{
+		Offset: -1,
+		Label:  label,
+	}
 }
 
 func (i PushFunctionAddr) String() string {
-	return fmt.Sprintf("PushFunctionAddress %+v", i.Offset)
+	return fmt.Sprintf("PushFunctionAddress %+v (%s)", i.Offset, i.Label)
 }
 
 func (i PushFunctionAddr) isInstruction() {}
 
-type IrBrIf struct {
-	Label string
-}
-
-func (i IrBrIf) String() string {
-	return fmt.Sprintf("IrBrIf %+v", i.Label)
-}
-
-func (i IrBrIf) isIrInstruction() {}
-
-type IrBr struct {
-	Label string
-}
-
-func (i IrBr) String() string {
-	return fmt.Sprintf("IrBr %+v", i.Label)
-}
-
-func (i IrBr) isIrInstruction() {}
-
 type BrIf struct {
+	Label  string
 	Offset int
+}
+
+func NewBrIf(label string) BrIf {
+	return BrIf{
+		Label:  label,
+		Offset: -1,
+	}
 }
 
 func (i BrIf) isInstruction() {}
 
 func (i BrIf) String() string {
-	return fmt.Sprintf("BrIf %+v", i.Offset)
+	return fmt.Sprintf("BrIf %+v (%s)", i.Offset, i.Label)
 }
 
 type Br struct {
+	Label  string
 	Offset int
+}
+
+func NewBr(label string) Br {
+	return Br{
+		Label:  label,
+		Offset: -1,
+	}
 }
 
 func (i Br) isInstruction() {}
 
 func (i Br) String() string {
-	return fmt.Sprintf("Br %+v", i.Offset)
+	return fmt.Sprintf("Br %+v (%s)", i.Offset, i.Label)
 }

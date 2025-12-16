@@ -48,5 +48,4 @@ func main() {
 
 	interpreter := eval.NewInterpreter(visitor.Program)
 	interpreter.Run()
-
 }

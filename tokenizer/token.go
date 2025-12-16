@@ -6,6 +6,8 @@ type TokenKind string
 
 const (
 	Token_Int    TokenKind = "Int"
+	Token_Or     TokenKind = "or"
+	Token_And    TokenKind = "or"
 	Token_Lt     TokenKind = "<"
 	Token_Plus   TokenKind = "+"
 	Token_Minus  TokenKind = "-"
@@ -38,6 +40,8 @@ var specialIdentifiers = map[string]TokenKind{
 	"if":     Token_If,
 	"else":   Token_Else,
 	"while":  Token_While,
+	"or":     Token_Or,
+	"and":    Token_And,
 }
 
 var operators = map[string]TokenKind{

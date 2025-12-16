@@ -331,11 +331,94 @@ func (p *Parser) statementPrint() (ast.Statement, error) {
 }
 
 func (p *Parser) expression() (ast.Expr, error) {
-	return p.expressionComparison()
+	return p.expressionTernary()
+}
+
+// expression_ternary =  expression_disjunction {'if' expression_disjunction 'else' expression_disjunction}?
+func (p *Parser) expressionTernary() (ast.Expr, error) {
+	expr, err := p.expressionDisjunction()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.nextTokenIs(tokenizer.Token_If) {
+		p.expect(tokenizer.Token_If)
+
+		cond, err := p.expressionDisjunction()
+		if err != nil {
+			return nil, err
+		}
+
+		p.expect(tokenizer.Token_Else)
+
+		elseExpr, err := p.expressionDisjunction()
+		if err != nil {
+			return nil, err
+		}
+
+		return ast.TernaryExpr{
+			Cond:     cond,
+			ThenExpr: expr,
+			ElseExpr: elseExpr,
+		}, nil
+	}
+
+	return expr, nil
+}
+
+// EXPR_DISJUNCTION = expr_conjunction {`or` expr_conjunction} *
+func (p *Parser) expressionDisjunction() (ast.Expr, error) {
+	lhs, err := p.expressionConjunction()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.nextTokenIs(tokenizer.Token_Or) {
+		p.expect(tokenizer.Token_Or)
+
+		rhs, err := p.expressionConjunction()
+		if err != nil {
+			return nil, err
+		}
+
+		lhs = ast.BinaryExpr{
+			Op:  ast.BinOp_Or,
+			Lhs: lhs,
+			Rhs: rhs,
+		}
+	}
+
+	return lhs, nil
+
+}
+
+// EXPR_CONJUNCTION = expr_not {`or` expr_not} * // for now we go directly to exressionComparison
+func (p *Parser) expressionConjunction() (ast.Expr, error) {
+
+	lhs, err := p.expressionComparison()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.nextTokenIs(tokenizer.Token_And) {
+		p.expect(tokenizer.Token_And)
+
+		rhs, err := p.expressionComparison()
+		if err != nil {
+			return nil, err
+		}
+
+		lhs = ast.BinaryExpr{
+			Op:  ast.BinOp_And,
+			Lhs: lhs,
+			Rhs: rhs,
+		}
+	}
+
+	return lhs, nil
 }
 
 // EXPR_COMPARISON = expr_add {`<` expr_add}?
-
 func (p *Parser) expressionComparison() (ast.Expr, error) {
 	lhs, err := p.expressionAdditive()
 	if err != nil {
@@ -480,7 +563,7 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_LParen) {
 		_ = p.expect(tokenizer.Token_LParen)
 
-		expr, err := p.expressionAdditive()
+		expr, err := p.expression()
 		if err != nil {
 			return nil, err
 		}

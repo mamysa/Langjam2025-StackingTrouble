@@ -81,3 +81,17 @@ func (e AddressOfFunction) String() string {
 func (e AddressOfFunction) Accept(visitor AstVisitor) {
 	visitor.visitAddressOfFunction(e)
 }
+
+type TernaryExpr struct {
+	Cond     Expr
+	ThenExpr Expr
+	ElseExpr Expr
+}
+
+func (e TernaryExpr) String() string {
+	return fmt.Sprintf("Ternary(cond:%+v, thenExpr:%+v, elseExpr:%+v)", e.Cond, e.ThenExpr, e.ElseExpr)
+}
+
+func (e TernaryExpr) Accept(visitor AstVisitor) {
+	visitor.visitTernaryExpression(e)
+}

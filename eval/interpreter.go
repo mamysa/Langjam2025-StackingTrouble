@@ -85,6 +85,9 @@ func (interpreter *Interpreter) Run() {
 		if br, ok := insn.(instruction.Br); ok {
 			interpreter.br(br)
 		}
+		if label, ok := insn.(instruction.Label); ok {
+			interpreter.label(label)
+		}
 	}
 
 	if !interpreter.callStack.isEmpty() {
@@ -200,4 +203,8 @@ func (interpreter *Interpreter) brIf(insn instruction.BrIf) {
 
 func (interpreter *Interpreter) br(insn instruction.Br) {
 	interpreter.programCounter = InstructionOffset(insn.Offset)
+}
+
+func (interpreter *Interpreter) label(insn instruction.Label) {
+	interpreter.programCounter++
 }

@@ -10,6 +10,8 @@ const (
 	BinOp_Mul BinOp = "*"
 	BinOp_Div BinOp = "/"
 	BinOp_Lt  BinOp = "<"
+	BinOp_Or  BinOp = "or"
+	BinOp_And BinOp = "and"
 
 	UnaryOp_Neg UnaryOp = "-"
 )

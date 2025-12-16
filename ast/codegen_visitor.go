@@ -7,7 +7,7 @@ import (
 )
 
 type CodegenVisitor struct {
-	Instructions []instruction.IrInstruction
+	Instructions []instruction.Instruction
 	Program      *instruction.Program
 	Ast          Ast
 	symGen       util.SymGen
@@ -15,13 +15,79 @@ type CodegenVisitor struct {
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
-		Instructions: make([]instruction.IrInstruction, 0),
+		Instructions: make([]instruction.Instruction, 0),
 		symGen:       util.NewSymGen(),
 	}
 }
 
-func (visitor *CodegenVisitor) addInstruction(i instruction.IrInstruction) {
+func (visitor *CodegenVisitor) addInstruction(i instruction.Instruction) {
 	visitor.Instructions = append(visitor.Instructions, i)
+}
+
+// enumerate all instructions, insert index of each Label instruction into the map.
+func (visitor *CodegenVisitor) generateLabelOffsetMap() map[string]int {
+	labelToOffsetMap := map[string]int{}
+
+	for i, insn := range visitor.Instructions {
+		label, ok := insn.(instruction.Label)
+		if ok {
+			if _, ok := labelToOffsetMap[label.Label]; ok {
+				panic(fmt.Errorf("label %+v is present in the map", label.Label))
+			}
+
+			labelToOffsetMap[label.Label] = i
+			label.Offset = i
+
+			visitor.Instructions[i] = label
+		}
+	}
+
+	return labelToOffsetMap
+}
+
+func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
+	for insnIndex, insn := range visitor.Instructions {
+		if i, ok := insn.(instruction.Call); ok {
+			offset, ok := labelToOffsetMap[i.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
+			}
+
+			i.Offset = offset
+			visitor.Instructions[insnIndex] = i
+
+		}
+
+		if i, ok := insn.(instruction.PushFunctionAddr); ok {
+			offset, ok := labelToOffsetMap[i.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
+			}
+
+			i.Offset = offset
+			visitor.Instructions[insnIndex] = i
+		}
+
+		if i, ok := insn.(instruction.BrIf); ok {
+			offset, ok := labelToOffsetMap[i.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
+			}
+
+			i.Offset = offset
+			visitor.Instructions[insnIndex] = i
+		}
+
+		if i, ok := insn.(instruction.Br); ok {
+			offset, ok := labelToOffsetMap[i.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
+			}
+
+			i.Offset = offset
+			visitor.Instructions[insnIndex] = i
+		}
+	}
 }
 
 func (visitor *CodegenVisitor) visitAst(ast Ast) {
@@ -30,10 +96,8 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 		functionDef.Accept(visitor)
 	}
 
-	//printIrInstructions(visitor.Instructions)
-	//panic("")
-
-	instructions, labelOffsets := instruction.IrToRealInstruction(visitor.Instructions)
+	labelOffsets := visitor.generateLabelOffsetMap()
+	visitor.resolveOffsets(labelOffsets)
 
 	mainOffset, ok := labelOffsets["main"]
 	if !ok {
@@ -41,15 +105,13 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	}
 
 	visitor.Program = &instruction.Program{
-		Instructions:            instructions,
+		Instructions:            visitor.Instructions,
 		EntryInstructionAddress: mainOffset,
 	}
 }
 
 func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
-	visitor.addInstruction(instruction.Label{
-		Label: def.Name,
-	})
+	visitor.addInstruction(instruction.NewLabel(def.Name))
 
 	visitor.addInstruction(instruction.AssertArgCount{
 		ArgCount: len(def.Params),
@@ -134,39 +196,31 @@ func (visitor *CodegenVisitor) visitIfStatement(stmt IfStmt) {
 	// generate code for condition
 	stmt.Cond.Accept(visitor)
 
-	visitor.addInstruction(instruction.IrBrIf{
-		Label: ifBranchLabel,
-	})
+	visitor.addInstruction(instruction.NewBrIf(ifBranchLabel))
 
 	if hasElseBranch {
-		visitor.addInstruction(instruction.IrBr{Label: elseBranchLabel})
+		visitor.addInstruction(instruction.NewBr(elseBranchLabel))
 	} else {
-		visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+		visitor.addInstruction(instruction.NewBr(endIfLabel))
 	}
 
-	visitor.addInstruction(instruction.Label{
-		Label: ifBranchLabel,
-	})
+	visitor.addInstruction(instruction.NewLabel(ifBranchLabel))
 
 	for _, ifBranchStmt := range stmt.IfBranch {
 		ifBranchStmt.Accept(visitor)
 	}
 
-	visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+	visitor.addInstruction(instruction.NewBr(endIfLabel))
 
 	if hasElseBranch {
-		visitor.addInstruction(instruction.Label{
-			Label: elseBranchLabel,
-		})
+		visitor.addInstruction(instruction.NewLabel(elseBranchLabel))
 		for _, elseBranchStmt := range stmt.ElseBranch {
 			elseBranchStmt.Accept(visitor)
 		}
-		visitor.addInstruction(instruction.IrBr{Label: endIfLabel})
+		visitor.addInstruction(instruction.NewBr(endIfLabel))
 	}
 
-	visitor.addInstruction(instruction.Label{
-		Label: endIfLabel,
-	})
+	visitor.addInstruction(instruction.NewLabel(endIfLabel))
 }
 
 func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
@@ -174,31 +228,22 @@ func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
 	loopBodyLabel := visitor.symGen.Next()
 	loopEndLabel := visitor.symGen.Next()
 
-	visitor.addInstruction(instruction.Label{
-		Label: loopHeaderLabel,
-	})
+	visitor.addInstruction(instruction.NewLabel(loopHeaderLabel))
 
 	stmt.Cond.Accept(visitor)
-	visitor.addInstruction(instruction.IrBrIf{Label: loopBodyLabel})
-	visitor.addInstruction(instruction.IrBr{Label: loopEndLabel})
+	visitor.addInstruction(instruction.NewBrIf(loopBodyLabel))
+	visitor.addInstruction(instruction.NewBr(loopEndLabel))
 
 	// loop body: label + instructions + branch to loop header
-	visitor.addInstruction(instruction.Label{
-		Label: loopBodyLabel,
-	})
+	visitor.addInstruction(instruction.NewLabel(loopBodyLabel))
 
 	for _, bodyStmt := range stmt.Body {
 		bodyStmt.Accept(visitor)
 	}
 
-	visitor.addInstruction(instruction.IrBr{
-		Label: loopHeaderLabel,
-	})
+	visitor.addInstruction(instruction.NewBr(loopHeaderLabel))
 
-	visitor.addInstruction(instruction.Label{
-		Label: loopEndLabel,
-	})
-
+	visitor.addInstruction(instruction.NewLabel(loopEndLabel))
 }
 
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
@@ -253,9 +298,7 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 	})
 
 	if _, ok := visitor.Ast.FunctionDefs[expr.Name]; ok {
-		visitor.addInstruction(instruction.IrCall{
-			Label: expr.Name,
-		})
+		visitor.addInstruction(instruction.NewCall(expr.Name))
 		return
 	}
 
@@ -274,14 +317,36 @@ func (visitor *CodegenVisitor) visitAddressOfFunction(expr AddressOfFunction) {
 		panic(fmt.Errorf("Pointer to unknown function %+v", expr.Name))
 	}
 
-	visitor.addInstruction(instruction.PushIrFunctionAddr{
-		Label: f.Name,
-	})
+	visitor.addInstruction(instruction.NewPushFunctionAddr(f.Name))
 }
 
-func printIrInstructions(instructions []instruction.IrInstruction) {
+func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
+	ifBranchLabel := visitor.symGen.Next()
+	elseBranchLabel := visitor.symGen.Next()
+	endIfLabel := visitor.symGen.Next()
 
-	for i, instruction := range instructions {
-		fmt.Printf("%d: %+v\n", i, instruction)
-	}
+	// generate code for condition
+	expr.Cond.Accept(visitor)
+	visitor.addInstruction(instruction.NewBrIf(ifBranchLabel))
+	visitor.addInstruction(instruction.NewBr(elseBranchLabel))
+	// emit code for then branch
+
+	visitor.addInstruction(instruction.NewLabel(ifBranchLabel))
+	expr.ThenExpr.Accept(visitor)
+	visitor.addInstruction(instruction.NewBr(endIfLabel))
+
+	// emit code for else branch
+
+	visitor.addInstruction(instruction.NewLabel(elseBranchLabel))
+	expr.ElseExpr.Accept(visitor)
+
+	// slight optimization - we are jumping to the next instruction anyways here.
+	/*
+		visitor.addInstruction(instruction.IrBr{
+			Label: endIfLabel,
+		})
+	*/
+
+	// finally add endif label
+	visitor.addInstruction(instruction.NewLabel(endIfLabel))
 }
