@@ -12,4 +12,5 @@ type AstVisitor interface {
 	visitInt(Int)
 	visitVar(Var)
 	visitFunctionCall(FunctionCall)
+	visitAddressOfFunction(AddressOfFunction)
 }

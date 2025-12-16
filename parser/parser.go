@@ -355,7 +355,21 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // EXPR_ATOM := int | identifier |
 // EXPR_ATOM := '(' EXPR ')'
 // EXPR_ATOM := identifier '(' {EXPR ','} * ')'
+// EXPR_ATOM = '&' identifier
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_FuncAddr) {
+		p.expect(tokenizer.Token_FuncAddr)
+
+		tok, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+		if !ok {
+			panic("bad")
+		}
+
+		return ast.AddressOfFunction{
+			Name: tok.Value(),
+		}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_LParen) {
 		_ = p.expect(tokenizer.Token_LParen)
 

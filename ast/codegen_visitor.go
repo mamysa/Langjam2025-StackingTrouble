@@ -2,11 +2,13 @@ package ast
 
 import (
 	"compiler/instruction"
+	"fmt"
 )
 
 type CodegenVisitor struct {
 	Instructions []instruction.IrInstruction
 	Program      *instruction.Program
+	Ast          Ast
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
@@ -20,6 +22,7 @@ func (visitor *CodegenVisitor) addInstruction(i instruction.IrInstruction) {
 }
 
 func (visitor *CodegenVisitor) visitAst(ast Ast) {
+	visitor.Ast = ast
 	for _, functionDef := range ast.FunctionDefs {
 		functionDef.Accept(visitor)
 	}
@@ -162,7 +165,29 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 		Arg: len(expr.Args),
 	})
 
-	visitor.addInstruction(instruction.IrCall{
-		Label: expr.Name,
+	if _, ok := visitor.Ast.FunctionDefs[expr.Name]; ok {
+		visitor.addInstruction(instruction.IrCall{
+			Label: expr.Name,
+		})
+		return
+	}
+
+	visitor.addInstruction(instruction.LoadVar{
+		Arg: expr.Name,
+	})
+
+	visitor.addInstruction(instruction.InstructionNoOperands{
+		OpCode: instruction.CallVirtual,
+	})
+}
+
+func (visitor *CodegenVisitor) visitAddressOfFunction(expr AddressOfFunction) {
+	f, ok := visitor.Ast.FunctionDefs[expr.Name]
+	if !ok {
+		panic(fmt.Errorf("Pointer to unknown function %+v", expr.Name))
+	}
+
+	visitor.addInstruction(instruction.PushIrFunctionAddr{
+		Label: f.Name,
 	})
 }

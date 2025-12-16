@@ -1,9 +1,17 @@
 def main() {
 b = 1 + 4;
-c = blah(1+4, b);
+
+myfunc = &blah;
+c = myfunc(1+4, b);
+print(myfunc);
 print(c);
 }
 
 def blah(a, b) {
 return a+b;
 }
+
+def myfunc(a,b) {
+	print(0);
+}
+

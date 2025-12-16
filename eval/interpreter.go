@@ -45,6 +45,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.print()
 			case instruction.PushNone:
 				interpreter.pushNone()
+			case instruction.CallVirtual:
+				interpreter.callVirtual()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -68,6 +70,10 @@ func (interpreter *Interpreter) Run() {
 
 		if call, ok := insn.(instruction.Call); ok {
 			interpreter.call(call)
+		}
+
+		if pushFunctionAddr, ok := insn.(instruction.PushFunctionAddr); ok {
+			interpreter.pushFunctionAddr(pushFunctionAddr)
 		}
 	}
 
@@ -116,6 +122,15 @@ func (interpreter *Interpreter) call(insn instruction.Call) {
 	interpreter.programCounter = InstructionOffset(insn.Offset)
 }
 
+func (interpreter *Interpreter) callVirtual() {
+	value := interpreter.evaluationStack.pop()
+	addr := value.FunctionAddress()
+
+	nextInstructionOffset := interpreter.programCounter + 1
+	interpreter.callStack.pushStackFrame(nextInstructionOffset)
+	interpreter.programCounter = InstructionOffset(addr)
+}
+
 func (interpreter *Interpreter) add() {
 	v1 := interpreter.evaluationStack.pop()
 	v2 := interpreter.evaluationStack.pop()
@@ -143,5 +158,10 @@ func (interpreter *Interpreter) ret() {
 
 func (interpreter *Interpreter) pushNone() {
 	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) pushFunctionAddr(insn instruction.PushFunctionAddr) {
+	interpreter.evaluationStack.pushFunctionAddress(insn.Offset)
 	interpreter.programCounter++
 }

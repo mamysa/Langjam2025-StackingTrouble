@@ -24,6 +24,11 @@ func (stack *EvaluationStack) pushInt(i int) {
 	stack.stack[stack.top] = NewInt(i)
 }
 
+func (stack *EvaluationStack) pushFunctionAddress(i int) {
+	stack.top += 1
+	stack.stack[stack.top] = NewFunctionAddress(i)
+}
+
 func (stack *EvaluationStack) pushValue(value Value) {
 	if value == nil {
 		panic("Pushing nil value onto evaluation stack")

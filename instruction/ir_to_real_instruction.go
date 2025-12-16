@@ -60,6 +60,19 @@ func IrToRealInstruction(irInstructions []IrInstruction) ([]Instruction, map[str
 			continue
 		}
 
+		if pushIrFunctionAddr, ok := irInstruction.(PushIrFunctionAddr); ok {
+			offset, ok := labelToOffsetMap[pushIrFunctionAddr.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", pushIrFunctionAddr.Label))
+			}
+
+			realInstructions = append(realInstructions, PushFunctionAddr{
+				Offset: offset,
+			})
+
+			continue
+		}
+
 		realInstruction := irInstruction.(Instruction)
 		realInstructions = append(realInstructions, realInstruction)
 

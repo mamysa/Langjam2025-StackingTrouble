@@ -20,9 +20,10 @@ const (
 	Token_Semi       TokenKind = ";"
 	Token_Comma      TokenKind = ","
 
-	Token_Print  TokenKind = "print"
-	Token_Def    TokenKind = "def"
-	Token_Return TokenKind = "return"
+	Token_Print    TokenKind = "print"
+	Token_Def      TokenKind = "def"
+	Token_Return   TokenKind = "return"
+	Token_FuncAddr TokenKind = "function-addr"
 )
 
 var specialIdentifiers = map[string]TokenKind{
@@ -37,6 +38,7 @@ var operators = map[string]TokenKind{
 	"*": Token_Mul,
 	"/": Token_Div,
 	"=": Token_Assign,
+	"&": Token_FuncAddr,
 }
 
 var braces = map[string]TokenKind{

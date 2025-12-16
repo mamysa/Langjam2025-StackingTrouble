@@ -69,3 +69,15 @@ func (e FunctionCall) String() string {
 func (e FunctionCall) Accept(visitor AstVisitor) {
 	visitor.visitFunctionCall(e)
 }
+
+type AddressOfFunction struct {
+	Name string
+}
+
+func (e AddressOfFunction) String() string {
+	return fmt.Sprintf("AddressOfFunction(name:%+v)", e.Name)
+}
+
+func (e AddressOfFunction) Accept(visitor AstVisitor) {
+	visitor.visitAddressOfFunction(e)
+}

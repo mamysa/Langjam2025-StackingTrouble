@@ -93,5 +93,20 @@ func (i Call) isInstruction() {}
 
 func (i Call) String() string {
 	return fmt.Sprintf("Call %d", i.Offset)
-
 }
+
+type PushIrFunctionAddr struct {
+	Label string
+}
+
+func (i PushIrFunctionAddr) isIrInstruction() {}
+
+type PushFunctionAddr struct {
+	Offset int
+}
+
+func (i PushFunctionAddr) String() string {
+	return fmt.Sprintf("PushFunctionAddress %+v", i.Offset)
+}
+
+func (i PushFunctionAddr) isInstruction() {}
