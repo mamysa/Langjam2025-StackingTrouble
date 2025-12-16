@@ -20,13 +20,15 @@ const (
 	Token_Semi       TokenKind = ";"
 	Token_Comma      TokenKind = ","
 
-	Token_Print TokenKind = "print"
-	Token_Def   TokenKind = "def"
+	Token_Print  TokenKind = "print"
+	Token_Def    TokenKind = "def"
+	Token_Return TokenKind = "return"
 )
 
 var specialIdentifiers = map[string]TokenKind{
-	"print": Token_Print,
-	"def":   Token_Def,
+	"print":  Token_Print,
+	"def":    Token_Def,
+	"return": Token_Return,
 }
 
 var operators = map[string]TokenKind{

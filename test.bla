@@ -5,5 +5,5 @@ print(c);
 }
 
 def blah(a, b) {
-	print(a + b);
+return a+b;
 }

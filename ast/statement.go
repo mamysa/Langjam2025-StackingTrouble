@@ -30,3 +30,26 @@ func (stmt PrintStmt) Accept(visitor AstVisitor) {
 func (stmt PrintStmt) String() string {
 	return fmt.Sprintf("PrintStmt(%+v)", stmt.Expr)
 }
+
+type ReturnStmt struct {
+}
+
+func (stmt ReturnStmt) Accept(visitor AstVisitor) {
+	visitor.visitReturn(stmt)
+}
+
+func (stmt ReturnStmt) String() string {
+	return "Return()"
+}
+
+type ReturnWithExprStmt struct {
+	Expr Expr
+}
+
+func (stmt ReturnWithExprStmt) Accept(visitor AstVisitor) {
+	visitor.visitReturnWithExpr(stmt)
+}
+
+func (stmt ReturnWithExprStmt) String() string {
+	return fmt.Sprintf("Return(%+v)", stmt.Expr)
+}

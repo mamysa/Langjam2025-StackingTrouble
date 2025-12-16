@@ -162,7 +162,7 @@ func (p *Parser) parseFunctionParameterList() ([]ast.Var, error) {
 	return parameters, nil
 }
 
-// STATEMENT_BLOCK = '{' {PRINT_STATEMENT | ASSIGN_STATEMENT}* '}'
+// STATEMENT_BLOCK = '{' {PRINT_STATEMENT | ASSIGN_STATEMENT | RETURN {EXPR}?}* '}'
 func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 	statements := make([]ast.Statement, 0)
 	p.expect(tokenizer.Token_LBrace)
@@ -171,6 +171,15 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 
 		if p.nextTokenIs(tokenizer.Token_Print) {
 			stmt, err := p.statementPrint()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, stmt)
+			continue
+		}
+
+		if p.nextTokenIs(tokenizer.Token_Return) {
+			stmt, err := p.statementReturn()
 			if err != nil {
 				return nil, err
 			}
@@ -189,6 +198,29 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 
 	p.expect(tokenizer.Token_RBrace)
 	return statements, nil
+}
+
+// STATEMENT_RETURN := 'return' {EXPR}?
+func (p *Parser) statementReturn() (ast.Statement, error) {
+	p.expect(tokenizer.Token_Return)
+
+	if p.nextTokenIs(tokenizer.Token_Semi) {
+		p.expect(tokenizer.Token_Semi)
+
+		return ast.ReturnStmt{}, nil
+	}
+
+	// otherwise we have an expression
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	p.expect(tokenizer.Token_Semi)
+
+	return ast.ReturnWithExprStmt{
+		Expr: expr,
+	}, nil
 }
 
 func (p *Parser) statementAssign() (ast.Statement, error) {

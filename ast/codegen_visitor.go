@@ -1,6 +1,8 @@
 package ast
 
-import "compiler/instruction"
+import (
+	"compiler/instruction"
+)
 
 type CodegenVisitor struct {
 	Instructions []instruction.IrInstruction
@@ -57,20 +59,33 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 		})
 	}
 
-	for _, statement := range def.StmtList {
+	shouldAddReturn := true
+	for i, statement := range def.StmtList {
 		statement.Accept(visitor)
+
+		if i == len(def.StmtList)-1 {
+			if _, ok := statement.(ReturnStmt); ok {
+				shouldAddReturn = false
+			}
+			if _, ok := statement.(ReturnWithExprStmt); ok {
+				shouldAddReturn = false
+			}
+
+		}
 	}
 
 	// TODO these should be returned conditionally depending on the last statement being either
 	// return or return-with-value
 	// If there's no return statement then we add these. All functions should return something (e.g. None).
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.PushNone,
-	})
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.Ret,
-	})
 
+	if shouldAddReturn {
+		visitor.addInstruction(instruction.InstructionNoOperands{
+			OpCode: instruction.PushNone,
+		})
+		visitor.addInstruction(instruction.InstructionNoOperands{
+			OpCode: instruction.Ret,
+		})
+	}
 }
 
 func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
@@ -82,6 +97,22 @@ func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 func (visitor *CodegenVisitor) visitAssignStatement(stmt AssignStmt) {
 	stmt.Expr.Accept(visitor)
 	visitor.addInstruction(instruction.StoreVar{Arg: stmt.Variable})
+}
+
+func (visitor *CodegenVisitor) visitReturn(stmt ReturnStmt) {
+	visitor.addInstruction(instruction.InstructionNoOperands{
+		OpCode: instruction.PushNone,
+	})
+	visitor.addInstruction(instruction.InstructionNoOperands{
+		OpCode: instruction.Ret,
+	})
+}
+
+func (visitor *CodegenVisitor) visitReturnWithExpr(stmt ReturnWithExprStmt) {
+	stmt.Expr.Accept(visitor)
+	visitor.addInstruction(instruction.InstructionNoOperands{
+		OpCode: instruction.Ret,
+	})
 }
 
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
