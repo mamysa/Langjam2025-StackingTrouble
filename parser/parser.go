@@ -474,12 +474,15 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 		return nil, err
 	}
 
-	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_Lt}
+	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt}
 	if p.nextTokenIs(expectedTokens...) {
-		token := p.expect(tokenizer.Token_Lt)
-
+		token := p.expect(expectedTokens...)
 		var op ast.BinOp
 		switch token.Kind() {
+		case tokenizer.Token_EqEq:
+			op = ast.BinOp_EqEq
+		case tokenizer.Token_NotEq:
+			op = ast.BinOp_NotEq
 		case tokenizer.Token_Lt:
 			op = ast.BinOp_Lt
 
@@ -598,6 +601,11 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // expr_atom = '[' ']'     (new-array-expr)
 // expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_None) {
+		p.expect(tokenizer.Token_None)
+		return ast.None{}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_True) {
 		p.expect(tokenizer.Token_True)
 		return ast.Bool{

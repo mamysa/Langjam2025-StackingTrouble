@@ -10,6 +10,8 @@ const (
 	Token_Or       TokenKind = "or"
 	Token_And      TokenKind = "and"
 	Token_Lt       TokenKind = "<"
+	Token_EqEq     TokenKind = "=="
+	Token_NotEq    TokenKind = "!="
 	Token_Plus     TokenKind = "+"
 	Token_Minus    TokenKind = "-"
 	Token_Mul      TokenKind = "*"
@@ -40,6 +42,8 @@ const (
 
 	Token_True  TokenKind = "True"
 	Token_False TokenKind = "False"
+
+	Token_None TokenKind = "None"
 )
 
 var specialIdentifiers = map[string]TokenKind{
@@ -55,16 +59,19 @@ var specialIdentifiers = map[string]TokenKind{
 	"assert": Token_Assert,
 	"True":   Token_True,
 	"False":  Token_False,
+	"None":   Token_None,
 }
 
 var operators = map[string]TokenKind{
-	"+": Token_Plus,
-	"-": Token_Minus,
-	"*": Token_Mul,
-	"/": Token_Div,
-	"=": Token_Assign,
-	"&": Token_FuncAddr,
-	"<": Token_Lt,
+	"+":  Token_Plus,
+	"-":  Token_Minus,
+	"*":  Token_Mul,
+	"/":  Token_Div,
+	"=":  Token_Assign,
+	"&":  Token_FuncAddr,
+	"<":  Token_Lt,
+	"==": Token_EqEq,
+	"!=": Token_NotEq,
 }
 
 var braces = map[string]TokenKind{

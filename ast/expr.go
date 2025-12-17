@@ -81,6 +81,16 @@ func (e Var) Accept(visitor AstVisitor) {
 	visitor.visitVar(e)
 }
 
+type None struct{}
+
+func (e None) String() string {
+	return "None()"
+}
+
+func (e None) Accept(visitor AstVisitor) {
+	visitor.visitNone(e)
+}
+
 type FunctionCall struct {
 	Expr Expr
 	Args []Expr

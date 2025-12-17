@@ -3,8 +3,10 @@ package instruction
 type OpCode_NoArgs int
 
 const (
-	NoOp OpCode_NoArgs = iota
-	Lt                 // less than
+	NoOp  OpCode_NoArgs = iota
+	Eq                  // equality operator
+	NotEq               // not-equality operator
+	Lt                  // less than
 	Add
 	Sub
 	Mul

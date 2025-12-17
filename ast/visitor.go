@@ -16,6 +16,7 @@ type AstVisitor interface {
 	visitFloat(Float)
 	visitBool(Bool)
 	visitVar(Var)
+	visitNone(None)
 	visitFunctionCall(FunctionCall)
 	visitAddressOfFunction(AddressOfFunction)
 	visitTernaryExpression(TernaryExpr)

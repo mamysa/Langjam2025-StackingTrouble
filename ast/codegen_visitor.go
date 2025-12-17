@@ -316,6 +316,10 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Div})
 	case BinOp_Lt:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Lt})
+	case BinOp_EqEq:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Eq})
+	case BinOp_NotEq:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NotEq})
 	default:
 		panic(fmt.Errorf("Unknown operator %+v", expr.Op))
 	}
@@ -354,6 +358,10 @@ func (visitor *CodegenVisitor) visitVar(expr Var) {
 	visitor.addInstruction(instruction.LoadVar{
 		Arg: expr.Var,
 	})
+}
+
+func (visitor *CodegenVisitor) visitNone(expr None) {
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushNone})
 }
 
 func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {

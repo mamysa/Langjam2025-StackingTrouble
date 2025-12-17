@@ -38,10 +38,22 @@ func (interpreter *Interpreter) Run() {
 
 		if simple, ok := insn.(instruction.InstructionNoOperands); ok {
 			switch simple.OpCode {
+			case instruction.Eq:
+				interpreter.eq()
+			case instruction.NotEq:
+				interpreter.notEq()
 			case instruction.Lt:
 				interpreter.lt()
 			case instruction.Add:
 				interpreter.add()
+			case instruction.Sub:
+				interpreter.sub()
+			case instruction.Mul:
+				interpreter.mul()
+			case instruction.Div:
+				interpreter.div()
+			case instruction.Neg:
+				interpreter.neg()
 			case instruction.Ret:
 				interpreter.ret()
 			case instruction.Print:
@@ -207,6 +219,144 @@ func (interpreter *Interpreter) add() {
 
 	result := v1.Int() + v2.Int()
 	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) sub() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("sub: incompatible subtraction of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() - v2.Float()
+		interpreter.evaluationStack.pushFloat(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() - v2.Int()
+	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) mul() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("mul: incompatible multiplication of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() * v2.Float()
+		interpreter.evaluationStack.pushFloat(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() * v2.Int()
+	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) div() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("div: incompatible division of %+v and %+v", v1, v2))
+	}
+
+	result := v1.Float() / v2.Float()
+	interpreter.evaluationStack.pushFloat(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) neg() {
+	v := interpreter.evaluationStack.pop()
+
+	if !v.IsNumeric() {
+		panic(fmt.Errorf("neg: incompatible negation of %+v", v))
+	}
+
+	if v.IsFloat() {
+		result := -v.Float()
+		interpreter.evaluationStack.pushFloat(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := -v.Int()
+	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) eq() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	// ok this is really stupid. Should be refactored somehow.
+	if v1.IsNone() || v2.IsNone() {
+		if v1.IsNone() && v2.IsNone() {
+			interpreter.evaluationStack.pushBool(true)
+			interpreter.programCounter++
+			return
+		}
+
+		interpreter.evaluationStack.pushBool(false)
+		interpreter.programCounter++
+		return
+	}
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() == v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() == v2.Int()
+	interpreter.evaluationStack.pushBool(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) notEq() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	// ok this is really stupid. Should be optimized somehow.
+	if v1.IsNone() || v2.IsNone() {
+		if v1.IsNone() && v2.IsNone() {
+			interpreter.evaluationStack.pushBool(false)
+			interpreter.programCounter++
+			return
+		}
+
+		interpreter.evaluationStack.pushBool(true)
+		interpreter.programCounter++
+		return
+	}
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("noteq: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() != v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() != v2.Int()
+	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
 
