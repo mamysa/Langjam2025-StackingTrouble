@@ -17,4 +17,5 @@ type AstVisitor interface {
 	visitAddressOfFunction(AddressOfFunction)
 	visitTernaryExpression(TernaryExpr)
 	visitNewListExpression(NewListExpr)
+	visitLenExpression(LenExpr)
 }

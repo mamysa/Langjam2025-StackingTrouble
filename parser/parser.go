@@ -547,7 +547,20 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // EXPR_ATOM := identifier '(' {EXPR ','} * ')'
 // EXPR_ATOM = '&' identifier
 // expr_atom = '[' ']'     (new-array-expr)
+// expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_Len) {
+		p.expect(tokenizer.Token_Len)
+		p.expect(tokenizer.Token_LParen)
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		p.expect(tokenizer.Token_RParen)
+
+		return ast.LenExpr{Expr: expr}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_LBracket) {
 		p.expect(tokenizer.Token_LBracket)
 		p.expect(tokenizer.Token_RBracket)

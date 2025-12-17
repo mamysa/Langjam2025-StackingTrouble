@@ -105,3 +105,15 @@ func (e NewListExpr) String() string {
 func (e NewListExpr) Accept(visitor AstVisitor) {
 	visitor.visitNewListExpression(e)
 }
+
+type LenExpr struct {
+	Expr Expr
+}
+
+func (e LenExpr) String() string {
+	return fmt.Sprintf("Len(%+v)", e.Expr)
+}
+
+func (e LenExpr) Accept(visitor AstVisitor) {
+	visitor.visitLenExpression(e)
+}

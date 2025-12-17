@@ -404,3 +404,8 @@ func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
 func (visitor *CodegenVisitor) visitNewListExpression(expr NewListExpr) {
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewList})
 }
+
+func (visitor *CodegenVisitor) visitLenExpression(expr LenExpr) {
+	expr.Expr.Accept(visitor)
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Len})
+}

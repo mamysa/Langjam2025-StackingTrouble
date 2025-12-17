@@ -55,6 +55,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.pop()
 			case instruction.NewList:
 				interpreter.newList()
+			case instruction.Len:
+				interpreter.len()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -257,5 +259,17 @@ func (interpreter *Interpreter) pop() {
 
 func (interpreter *Interpreter) newList() {
 	interpreter.evaluationStack.pushValue(NewList())
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) len() {
+	value := interpreter.evaluationStack.pop()
+	if !value.IsList() {
+		panic("Len operator applied to non-list")
+	}
+
+	list := value.(ListValue)
+
+	interpreter.evaluationStack.pushInt(list.array.Length)
 	interpreter.programCounter++
 }
