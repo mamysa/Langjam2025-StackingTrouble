@@ -14,9 +14,12 @@ const (
 // represents value on the stack.
 type Value interface {
 	IsList() bool
+	IsNumeric() bool
 	IsInt() bool
+	IsFloat() bool
 	IsNone() bool
 	Int() int
+	Float() float64
 	FunctionAddress() int
 	Truthy() bool
 	Copy() Value
@@ -36,8 +39,20 @@ func (value IntValue) Int() int {
 	return value.value
 }
 
+func (value IntValue) Float() float64 {
+	return float64(value.value)
+}
+
+func (value IntValue) IsNumeric() bool {
+	return true
+}
+
 func (value IntValue) IsInt() bool {
 	return true
+}
+
+func (value IntValue) IsFloat() bool {
+	return false
 }
 
 func (value IntValue) IsNone() bool {
@@ -64,6 +79,60 @@ func (value IntValue) String() string {
 	return fmt.Sprintf("%d", value.value)
 }
 
+type FloatValue struct {
+	value float64
+}
+
+func NewFloatValue(value float64) FloatValue {
+	return FloatValue{
+		value: value,
+	}
+}
+
+func (value FloatValue) Int() int {
+	panic("invalid conversion")
+}
+
+func (value FloatValue) Float() float64 {
+	return value.value
+}
+
+func (value FloatValue) IsNumeric() bool {
+	return true
+}
+
+func (value FloatValue) IsInt() bool {
+	return false
+}
+
+func (value FloatValue) IsFloat() bool {
+	return true
+}
+
+func (value FloatValue) IsNone() bool {
+	return false
+}
+
+func (value FloatValue) FunctionAddress() int {
+	panic("Invalid conversion")
+}
+
+func (value FloatValue) Truthy() bool {
+	return false
+}
+
+func (value FloatValue) IsList() bool {
+	return false
+}
+
+func (value FloatValue) Copy() Value {
+	return NewFloatValue(value.value)
+}
+
+func (value FloatValue) String() string {
+	return fmt.Sprintf("%+v", value.value)
+}
+
 type None struct {
 	Kind ValueKind
 }
@@ -78,7 +147,19 @@ func (value None) Int() int {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
+func (value None) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value None) IsNumeric() bool {
+	return false
+}
+
 func (value None) IsInt() bool {
+	return false
+}
+
+func (value None) IsFloat() bool {
 	return false
 }
 
@@ -120,7 +201,19 @@ func (value FunctionAddress) Int() int {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
+func (value FunctionAddress) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value FunctionAddress) IsNumeric() bool {
+	return false
+}
+
 func (value FunctionAddress) IsInt() bool {
+	return false
+}
+
+func (value FunctionAddress) IsFloat() bool {
 	return false
 }
 
@@ -162,7 +255,19 @@ func (value BoolValue) Int() int {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
+func (value BoolValue) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
 func (value BoolValue) IsInt() bool {
+	return false
+}
+
+func (value BoolValue) IsFloat() bool {
+	return false
+}
+
+func (value BoolValue) IsNumeric() bool {
 	return false
 }
 
@@ -216,7 +321,19 @@ func (value ListValue) Int() int {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
+func (value ListValue) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value ListValue) IsNumeric() bool {
+	return true
+}
+
 func (value ListValue) IsInt() bool {
+	return false
+}
+
+func (value ListValue) IsFloat() bool {
 	return false
 }
 

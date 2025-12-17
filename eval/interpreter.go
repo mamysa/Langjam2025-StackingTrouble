@@ -89,6 +89,10 @@ func (interpreter *Interpreter) Run() {
 			interpreter.constInt(constInt)
 		}
 
+		if constFloat, ok := insn.(instruction.ConstFloat); ok {
+			interpreter.constFloat(constFloat)
+		}
+
 		if call, ok := insn.(instruction.Call); ok {
 			interpreter.call(call)
 		}
@@ -141,6 +145,11 @@ func (interpreter *Interpreter) constInt(insn instruction.ConstInt) {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) constFloat(insn instruction.ConstFloat) {
+	interpreter.evaluationStack.pushFloat(insn.Arg)
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) storeVar(insn instruction.StoreVar) {
 	value := interpreter.evaluationStack.pop()
 	interpreter.callStack.putLocal(insn.Arg, value)
@@ -185,8 +194,15 @@ func (interpreter *Interpreter) add() {
 		return
 	}
 
-	if !(v1.IsInt() && v2.IsInt()) {
-		panic(fmt.Errorf("add: %+v or %+v is None", v1, v2))
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("add: incompatible addition of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() + v2.Float()
+		interpreter.evaluationStack.pushFloat(result)
+		interpreter.programCounter++
+		return
 	}
 
 	result := v1.Int() + v2.Int()
@@ -198,8 +214,15 @@ func (interpreter *Interpreter) lt() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
 
-	if !(v1.IsInt() && v2.IsInt()) {
-		panic(fmt.Errorf("lt: %+v or %+v is None"))
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() < v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
 	}
 
 	result := v1.Int() < v2.Int()

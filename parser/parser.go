@@ -681,6 +681,23 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		}, nil
 	}
 
+	if p.nextTokenIs(tokenizer.Token_Float) {
+		token, ok := p.expect(tokenizer.Token_Float).(tokenizer.TokenWithData)
+		if !ok {
+			panic("bad")
+		}
+
+		parsedFloat, err := strconv.ParseFloat(token.Value(), 64)
+		if err != nil {
+			return nil, err
+		}
+
+		return ast.Float{
+			Float: parsedFloat,
+		}, nil
+
+	}
+
 	return nil, fmt.Errorf("Unable to parse EXPR_ATOM")
 }
 

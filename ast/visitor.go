@@ -13,6 +13,7 @@ type AstVisitor interface {
 	visitBinaryExpression(BinaryExpr)
 	visitUnaryExpression(UnaryExpr)
 	visitInt(Int)
+	visitFloat(Float)
 	visitBool(Bool)
 	visitVar(Var)
 	visitFunctionCall(FunctionCall)

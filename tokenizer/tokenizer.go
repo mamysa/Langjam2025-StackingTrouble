@@ -220,12 +220,21 @@ func (t *Tokenizer) ReadNumber() Token {
 
 	tok := t.reader.getToken()
 
-	/*
-		integer, err := strconv.Atoi(tok)
-		if err != nil {
-			panic(fmt.Sprintf("Error converting token %+v to integer", tok))
+	if *t.reader.peek() == '.' {
+		t.reader.advance()
+
+		for t.reader.peekDigit() {
+			t.reader.advance()
 		}
-	*/
+
+		fractionalPart := t.reader.getToken()
+		floatingPointNum := fmt.Sprintf("%s%s", tok, fractionalPart)
+
+		return TokenWithData{
+			token: Token_Float,
+			value: floatingPointNum,
+		}
+	}
 
 	return TokenWithData{
 		token: Token_Int,

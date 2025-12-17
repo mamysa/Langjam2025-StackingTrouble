@@ -29,6 +29,11 @@ func (stack *EvaluationStack) pushInt(i int) {
 	stack.stack[stack.top] = NewInt(i)
 }
 
+func (stack *EvaluationStack) pushFloat(f float64) {
+	stack.top += 1
+	stack.stack[stack.top] = NewFloatValue(f)
+}
+
 func (stack *EvaluationStack) pushFunctionAddress(i int) {
 	stack.top += 1
 	stack.stack[stack.top] = NewFunctionAddress(i)

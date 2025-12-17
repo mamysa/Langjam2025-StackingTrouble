@@ -46,6 +46,18 @@ func (i ConstInt) String() string {
 
 func (i ConstInt) isInstruction() {}
 
+// const float
+
+type ConstFloat struct {
+	Arg float64
+}
+
+func (i ConstFloat) String() string {
+	return fmt.Sprintf("ConstFloat %+v", i.Arg)
+}
+
+func (i ConstFloat) isInstruction() {}
+
 // Asserts that there there's n entries on the evaluation stack before encountering Stack_Function_Base stack entry.
 
 type AssertArgCount struct {

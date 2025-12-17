@@ -336,6 +336,12 @@ func (visitor *CodegenVisitor) visitInt(expr Int) {
 	})
 }
 
+func (visitor *CodegenVisitor) visitFloat(expr Float) {
+	visitor.addInstruction(instruction.ConstFloat{
+		Arg: expr.Float,
+	})
+}
+
 func (visitor *CodegenVisitor) visitBool(expr Bool) {
 	if expr.Value {
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushTrue})

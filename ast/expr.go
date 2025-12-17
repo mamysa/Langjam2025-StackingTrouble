@@ -45,6 +45,18 @@ func (e Int) Accept(visitor AstVisitor) {
 	visitor.visitInt(e)
 }
 
+type Float struct {
+	Float float64
+}
+
+func (e Float) String() string {
+	return fmt.Sprintf("Float(%+v)", e.Float)
+}
+
+func (e Float) Accept(visitor AstVisitor) {
+	visitor.visitFloat(e)
+}
+
 type Bool struct {
 	Value bool
 }
