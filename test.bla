@@ -1,5 +1,30 @@
 def main() {
-	b = ternary();
+	b = booleanAnd();
+}
+
+def booleanAnd() {
+	x =  boolean_test_expr_1_true() and boolean_test_expr_2_nevercalled() and boolean_test_expr_2_nevercalled();
+	print(x);
+}
+
+def booleanOr() {
+	x =  boolean_test_expr_1_true() or boolean_test_expr_2_nevercalled();
+	print(x);
+	x =  boolean_test_expr_2_nevercalled() or boolean_test_expr_1_true();
+	print(x);
+	x =  boolean_test_expr_2_nevercalled() or boolean_test_expr_2_nevercalled() or boolean_test_expr_2_nevercalled();
+	print(x);
+}
+
+
+def boolean_test_expr_1_true() {
+	print(900);
+	return 124;
+}
+
+def boolean_test_expr_2_nevercalled() {
+	print(0);
+	return 0 ;
 }
 
 def ternary() {

@@ -78,6 +78,16 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 			visitor.Instructions[insnIndex] = i
 		}
 
+		if i, ok := insn.(instruction.BrIfNot); ok {
+			offset, ok := labelToOffsetMap[i.Label]
+			if !ok {
+				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
+			}
+
+			i.Offset = offset
+			visitor.Instructions[insnIndex] = i
+		}
+
 		if i, ok := insn.(instruction.Br); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
@@ -247,6 +257,46 @@ func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
 }
 
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
+	if expr.Op == BinOp_Or {
+		// a or b -> if a then a else b
+		ifBodyStart := visitor.symGen.Next()
+		ifBodyEnd := visitor.symGen.Next()
+
+		expr.Lhs.Accept(visitor)                                                           // pushes LHS on the stack
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Dup}) // Duplicates topmost operand
+		visitor.addInstruction(instruction.NewBrIfNot(ifBodyStart))                        // consumes topmost operand keeping original LHS for returning
+		visitor.addInstruction(instruction.NewBr(ifBodyEnd))                               // it was LHS that is good.
+
+		// if body
+		visitor.addInstruction(instruction.NewLabel(ifBodyStart))
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop}) // pop previous truthy value
+		expr.Rhs.Accept(visitor)                                                           // pushes RHS on the stack
+		// omit pushing br ifBodyEnd
+
+		visitor.addInstruction(instruction.NewLabel(ifBodyEnd))
+		return
+	}
+
+	if expr.Op == BinOp_And {
+		// a and b -> if a then b else a
+		ifBodyStart := visitor.symGen.Next()
+		ifBodyEnd := visitor.symGen.Next()
+
+		expr.Lhs.Accept(visitor)                                                           // pushes LHS on the stack
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Dup}) // Duplicates topmost operand
+		visitor.addInstruction(instruction.NewBrIf(ifBodyStart))                           // LHS is true, eval RHS
+		visitor.addInstruction(instruction.NewBr(ifBodyEnd))                               // LHS is false, do not evaluate RHS
+
+		// if body
+		visitor.addInstruction(instruction.NewLabel(ifBodyStart))
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop}) // pop previous truthy value
+		expr.Rhs.Accept(visitor)                                                           // pushes RHS on the stack
+		// omit pushing br ifBodyEnd
+
+		visitor.addInstruction(instruction.NewLabel(ifBodyEnd))
+		return
+	}
+
 	expr.Lhs.Accept(visitor)
 	expr.Rhs.Accept(visitor)
 
@@ -349,4 +399,8 @@ func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
 
 	// finally add endif label
 	visitor.addInstruction(instruction.NewLabel(endIfLabel))
+}
+
+func (visitor *CodegenVisitor) visitNewListExpression(expr NewListExpr) {
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewList})
 }

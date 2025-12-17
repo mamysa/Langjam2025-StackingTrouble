@@ -52,3 +52,11 @@ func (stack *EvaluationStack) pop() Value {
 	stack.top -= 1
 	return value
 }
+
+func (stack *EvaluationStack) peek() Value {
+	if stack.top < 0 {
+		panic("Stack is empty, unable to pop")
+	}
+
+	return stack.stack[stack.top]
+}

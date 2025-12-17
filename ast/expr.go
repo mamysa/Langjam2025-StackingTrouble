@@ -95,3 +95,13 @@ func (e TernaryExpr) String() string {
 func (e TernaryExpr) Accept(visitor AstVisitor) {
 	visitor.visitTernaryExpression(e)
 }
+
+type NewListExpr struct{}
+
+func (e NewListExpr) String() string {
+	return "NewArray()"
+}
+
+func (e NewListExpr) Accept(visitor AstVisitor) {
+	visitor.visitNewListExpression(e)
+}

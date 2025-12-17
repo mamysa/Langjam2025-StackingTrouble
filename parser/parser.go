@@ -546,7 +546,14 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // EXPR_ATOM := '(' EXPR ')'
 // EXPR_ATOM := identifier '(' {EXPR ','} * ')'
 // EXPR_ATOM = '&' identifier
+// expr_atom = '[' ']'     (new-array-expr)
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_LBracket) {
+		p.expect(tokenizer.Token_LBracket)
+		p.expect(tokenizer.Token_RBracket)
+		return ast.NewListExpr{}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_FuncAddr) {
 		p.expect(tokenizer.Token_FuncAddr)
 
@@ -579,7 +586,7 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 			panic("bad")
 		}
 
-		// function call
+		// function call - trailer
 		if p.nextTokenIs(tokenizer.Token_LParen) {
 			expressionList := []ast.Expr{}
 			p.expect(tokenizer.Token_LParen)

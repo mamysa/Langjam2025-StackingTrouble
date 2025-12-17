@@ -16,7 +16,7 @@ func printInstructions(instructions []instruction.Instruction) {
 }
 
 func main() {
-	tokenizer, err := tokenizer.NewTokenizer("test.bla")
+	tokenizer, err := tokenizer.NewTokenizer("test2.bla")
 	if err != nil {
 		panic(err)
 	}

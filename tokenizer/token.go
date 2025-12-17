@@ -5,19 +5,21 @@ import "fmt"
 type TokenKind string
 
 const (
-	Token_Int    TokenKind = "Int"
-	Token_Or     TokenKind = "or"
-	Token_And    TokenKind = "or"
-	Token_Lt     TokenKind = "<"
-	Token_Plus   TokenKind = "+"
-	Token_Minus  TokenKind = "-"
-	Token_Mul    TokenKind = "*"
-	Token_Div    TokenKind = "/"
-	Token_Assign TokenKind = "="
-	Token_LParen TokenKind = "("
-	Token_RParen TokenKind = ")"
-	Token_LBrace TokenKind = "{"
-	Token_RBrace TokenKind = "}"
+	Token_Int      TokenKind = "Int"
+	Token_Or       TokenKind = "or"
+	Token_And      TokenKind = "and"
+	Token_Lt       TokenKind = "<"
+	Token_Plus     TokenKind = "+"
+	Token_Minus    TokenKind = "-"
+	Token_Mul      TokenKind = "*"
+	Token_Div      TokenKind = "/"
+	Token_Assign   TokenKind = "="
+	Token_LParen   TokenKind = "("
+	Token_RParen   TokenKind = ")"
+	Token_LBrace   TokenKind = "{"
+	Token_RBrace   TokenKind = "}"
+	Token_LBracket TokenKind = "["
+	Token_RBracket TokenKind = "]"
 
 	Token_Identifier TokenKind = "Ident"
 	Token_Semi       TokenKind = ";"
@@ -59,6 +61,8 @@ var braces = map[string]TokenKind{
 	")": Token_RParen,
 	"{": Token_LBrace,
 	"}": Token_RBrace,
+	"[": Token_LBracket,
+	"]": Token_RBracket,
 }
 
 func SpecializeIdentifier(identifier string) Token {

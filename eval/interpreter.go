@@ -49,6 +49,12 @@ func (interpreter *Interpreter) Run() {
 				interpreter.pushNone()
 			case instruction.CallVirtual:
 				interpreter.callVirtual()
+			case instruction.Dup:
+				interpreter.dup()
+			case instruction.Pop:
+				interpreter.pop()
+			case instruction.NewList:
+				interpreter.newList()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -82,6 +88,10 @@ func (interpreter *Interpreter) Run() {
 			interpreter.brIf(brIf)
 		}
 
+		if brIfNot, ok := insn.(instruction.BrIfNot); ok {
+			interpreter.brIfNot(brIfNot)
+		}
+
 		if br, ok := insn.(instruction.Br); ok {
 			interpreter.br(br)
 		}
@@ -92,7 +102,12 @@ func (interpreter *Interpreter) Run() {
 
 	if !interpreter.callStack.isEmpty() {
 		panic("callstack not empty")
+	}
 
+	// by the end evaluation stack should only contain none
+	value := interpreter.evaluationStack.peek()
+	if !value.IsNone() {
+		panic("evaluation stack")
 	}
 }
 
@@ -145,11 +160,20 @@ func (interpreter *Interpreter) callVirtual() {
 }
 
 func (interpreter *Interpreter) add() {
-	v1 := interpreter.evaluationStack.pop()
 	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	//  copy the list and append
+	if v1.IsList() {
+		originalList := v1.(ListValue)
+		newList := originalList.AddValue(v2)
+		interpreter.evaluationStack.pushValue(newList)
+		interpreter.programCounter++
+		return
+	}
 
 	if !(v1.IsInt() && v2.IsInt()) {
-		panic(fmt.Errorf("add: %+v or %+v is None"))
+		panic(fmt.Errorf("add: %+v or %+v is None", v1, v2))
 	}
 
 	result := v1.Int() + v2.Int()
@@ -201,10 +225,37 @@ func (interpreter *Interpreter) brIf(insn instruction.BrIf) {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) brIfNot(insn instruction.BrIfNot) {
+	v := interpreter.evaluationStack.pop()
+	if !v.Truthy() {
+		interpreter.programCounter = InstructionOffset(insn.Offset)
+		return
+	}
+
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) br(insn instruction.Br) {
 	interpreter.programCounter = InstructionOffset(insn.Offset)
 }
 
 func (interpreter *Interpreter) label(insn instruction.Label) {
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) dup() {
+	value := interpreter.evaluationStack.peek()
+	copiedValue := value.Copy()
+	interpreter.evaluationStack.pushValue(copiedValue)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) pop() {
+	interpreter.evaluationStack.pop()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) newList() {
+	interpreter.evaluationStack.pushValue(NewList())
 	interpreter.programCounter++
 }

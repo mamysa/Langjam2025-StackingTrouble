@@ -113,6 +113,24 @@ func (i PushFunctionAddr) String() string {
 
 func (i PushFunctionAddr) isInstruction() {}
 
+type BrIfNot struct {
+	Label  string
+	Offset int
+}
+
+func NewBrIfNot(label string) BrIfNot {
+	return BrIfNot{
+		Label:  label,
+		Offset: -1,
+	}
+}
+
+func (i BrIfNot) isInstruction() {}
+
+func (i BrIfNot) String() string {
+	return fmt.Sprintf("BrIfNot %+v (%s)", i.Offset, i.Label)
+}
+
 type BrIf struct {
 	Label  string
 	Offset int

@@ -56,7 +56,7 @@ func (reader *TokenReader) peekParen() bool {
 		return false
 	}
 
-	return *c == '(' || *c == ')' || *c == '{' || *c == '}'
+	return *c == '(' || *c == ')' || *c == '{' || *c == '}' || *c == '[' || *c == ']'
 }
 
 func (reader *TokenReader) peekOperator() bool {

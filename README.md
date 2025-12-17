@@ -32,3 +32,9 @@ Implemented if statements
 Implemented while loops
 Implemented ternary expressions.
 Got rid of IrInstruction business. Was very annoying to deal with.
+
+
+Day 4: 
+Complete boolean and/or operations with short-circuiting.
+a or b -> if a then a else b 
+a and b -> if a then b else a
