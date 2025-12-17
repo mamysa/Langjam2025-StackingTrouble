@@ -19,6 +19,18 @@ func (stmt AssignStmt) String() string {
 	return fmt.Sprintf("AssignStatement(%+v, %+v)", stmt.AssignmentExpr, stmt.Expr)
 }
 
+type AssertStmt struct {
+	Expr Expr
+}
+
+func (stmt AssertStmt) Accept(visitor AstVisitor) {
+	visitor.visitAssert(stmt)
+}
+
+func (stmt AssertStmt) String() string {
+	return fmt.Sprintf("Assert(%+v)", stmt.Expr)
+}
+
 type PrintStmt struct {
 	Expr Expr
 }

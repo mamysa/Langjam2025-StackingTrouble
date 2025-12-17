@@ -45,6 +45,18 @@ func (e Int) Accept(visitor AstVisitor) {
 	visitor.visitInt(e)
 }
 
+type Bool struct {
+	Value bool
+}
+
+func (e Bool) String() string {
+	return fmt.Sprintf("Bool(%+v)", e.Value)
+}
+
+func (e Bool) Accept(visitor AstVisitor) {
+	visitor.visitBool(e)
+}
+
 type Var struct {
 	Var string
 }

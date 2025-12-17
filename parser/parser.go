@@ -178,6 +178,16 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 			continue
 		}
 
+		if p.nextTokenIs(tokenizer.Token_Assert) {
+			fmt.Printf("ASSERT STATEMENT ")
+			stmt, err := p.statementAssert()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, stmt)
+			continue
+		}
+
 		if p.nextTokenIs(tokenizer.Token_While) {
 			stmt, err := p.statementWhile()
 			if err != nil {
@@ -216,6 +226,24 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 
 	p.expect(tokenizer.Token_RBrace)
 	return statements, nil
+}
+
+// statement_assert = `assert` `(` expression `)`
+func (p *Parser) statementAssert() (ast.Statement, error) {
+	p.expect(tokenizer.Token_Assert)
+	p.expect(tokenizer.Token_LParen)
+
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	p.expect(tokenizer.Token_RParen)
+	p.expect(tokenizer.Token_Semi)
+
+	return ast.AssertStmt{
+		Expr: expr,
+	}, nil
 }
 
 // STATEMENT_WHILE `while` EXPRESSION STATEMENT_BLOCK
@@ -570,6 +598,20 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // expr_atom = '[' ']'     (new-array-expr)
 // expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_True) {
+		p.expect(tokenizer.Token_True)
+		return ast.Bool{
+			Value: true,
+		}, nil
+	}
+
+	if p.nextTokenIs(tokenizer.Token_False) {
+		p.expect(tokenizer.Token_False)
+		return ast.Bool{
+			Value: false,
+		}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_Len) {
 		p.expect(tokenizer.Token_Len)
 		p.expect(tokenizer.Token_LParen)

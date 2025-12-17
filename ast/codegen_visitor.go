@@ -169,6 +169,11 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 	}
 }
 
+func (visitor *CodegenVisitor) visitAssert(stmt AssertStmt) {
+	stmt.Expr.Accept(visitor)
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Assert})
+}
+
 func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 	stmt.Expr.Accept(visitor)
 
@@ -329,6 +334,14 @@ func (visitor *CodegenVisitor) visitInt(expr Int) {
 	visitor.addInstruction(instruction.ConstInt{
 		Arg: expr.Integer,
 	})
+}
+
+func (visitor *CodegenVisitor) visitBool(expr Bool) {
+	if expr.Value {
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushTrue})
+	} else {
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushFalse})
+	}
 }
 
 func (visitor *CodegenVisitor) visitVar(expr Var) {

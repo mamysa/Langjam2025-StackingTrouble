@@ -20,6 +20,9 @@ const (
 	Len         // returns length of value on top of the stack. Value must be a list
 	SubscriptGet
 	SubscriptSet
+	Assert
+	PushTrue  // pushes True boolean onto the stack
+	PushFalse // pushes False boolean onto the stack
 )
 
 func (o OpCode_NoArgs) String() string {
@@ -58,6 +61,12 @@ func (o OpCode_NoArgs) String() string {
 		return "SubscriptGet"
 	case SubscriptSet:
 		return "SubscriptGet"
+	case Assert:
+		return "Assert"
+	case PushTrue:
+		return "PushTrue"
+	case PushFalse:
+		return "PushFalse"
 	}
 
 	panic("Unknown opcode" + string(o))

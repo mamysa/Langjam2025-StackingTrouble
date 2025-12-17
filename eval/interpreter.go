@@ -3,6 +3,7 @@ package eval
 import (
 	"compiler/instruction"
 	"fmt"
+	"os"
 )
 
 type Interpreter struct {
@@ -61,6 +62,12 @@ func (interpreter *Interpreter) Run() {
 				interpreter.subscriptGet()
 			case instruction.SubscriptSet:
 				interpreter.subscriptSet()
+			case instruction.Assert:
+				interpreter.assert()
+			case instruction.PushTrue:
+				interpreter.pushTrue()
+			case instruction.PushFalse:
+				interpreter.pushFalse()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -324,4 +331,24 @@ func (interpreter *Interpreter) subscriptSet() {
 	}
 
 	panic("subscript operator on non-list")
+}
+
+func (interpreter *Interpreter) assert() {
+	value := interpreter.evaluationStack.pop()
+	if !value.Truthy() {
+		fmt.Printf("Assertion failed, PC=%d", interpreter.programCounter)
+		os.Exit(1)
+	}
+
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) pushTrue() {
+	interpreter.evaluationStack.pushBool(true)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) pushFalse() {
+	interpreter.evaluationStack.pushBool(false)
+	interpreter.programCounter++
 }

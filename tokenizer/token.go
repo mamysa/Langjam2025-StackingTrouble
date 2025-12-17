@@ -34,7 +34,11 @@ const (
 	Token_Else  TokenKind = "else"
 	Token_While TokenKind = "while"
 
-	Token_Len TokenKind = "len"
+	Token_Len    TokenKind = "len"
+	Token_Assert TokenKind = "assert"
+
+	Token_True  TokenKind = "True"
+	Token_False TokenKind = "False"
 )
 
 var specialIdentifiers = map[string]TokenKind{
@@ -47,6 +51,9 @@ var specialIdentifiers = map[string]TokenKind{
 	"or":     Token_Or,
 	"and":    Token_And,
 	"len":    Token_Len,
+	"assert": Token_Assert,
+	"True":   Token_True,
+	"False":  Token_False,
 }
 
 var operators = map[string]TokenKind{
