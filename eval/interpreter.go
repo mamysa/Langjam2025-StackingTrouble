@@ -59,6 +59,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.len()
 			case instruction.SubscriptGet:
 				interpreter.subscriptGet()
+			case instruction.SubscriptSet:
+				interpreter.subscriptSet()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -298,5 +300,28 @@ func (interpreter *Interpreter) subscriptGet() {
 	}
 
 	panic("subscript operator on non-list")
+}
 
+// pops three entries off the stack, TS, TS1, TS2, where TS in subscript, TS1 is target list, TS2 is value to be stored in the list.
+// crash if TS1 is not a list or if subscript is not int.
+func (interpreter *Interpreter) subscriptSet() {
+	subscript := interpreter.evaluationStack.pop()
+	target := interpreter.evaluationStack.pop()
+	value := interpreter.evaluationStack.pop()
+
+	if target.IsList() {
+		if !subscript.IsInt() {
+			panic("non-integer subscript to list")
+		}
+
+		index := subscript.Int()
+		target.(ListValue).SetValue(index, value)
+
+		interpreter.evaluationStack.pushValue(value)
+		interpreter.programCounter++
+
+		return
+	}
+
+	panic("subscript operator on non-list")
 }

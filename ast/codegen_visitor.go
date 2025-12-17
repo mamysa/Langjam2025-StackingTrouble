@@ -177,7 +177,7 @@ func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 
 func (visitor *CodegenVisitor) visitAssignStatement(stmt AssignStmt) {
 	stmt.Expr.Accept(visitor)
-	visitor.addInstruction(instruction.StoreVar{Arg: stmt.Variable})
+	stmt.AssignmentExpr.Accept(visitor)
 }
 
 func (visitor *CodegenVisitor) visitReturn(stmt ReturnStmt) {
@@ -417,4 +417,15 @@ func (visitor *CodegenVisitor) visitSubscriptGetExpression(expr SubscriptGet) {
 	expr.Expr.Accept(visitor)
 	expr.Subscript.Accept(visitor)
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptGet})
+}
+
+func (visitor *CodegenVisitor) visitAssignVarExpression(expr AssignVar) {
+	visitor.addInstruction(instruction.StoreVar{Arg: expr.Var})
+}
+
+func (visitor *CodegenVisitor) visitSubscriptSetExpression(expr SubscriptSet) {
+	// value we want to store is on top of the stack already
+	expr.Expr.Accept(visitor)
+	expr.Subscript.Accept(visitor)
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptSet})
 }

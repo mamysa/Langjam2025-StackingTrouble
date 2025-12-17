@@ -7,8 +7,8 @@ type Statement interface {
 }
 
 type AssignStmt struct {
-	Variable string
-	Expr     Expr
+	AssignmentExpr AssignmentExpr
+	Expr           Expr
 }
 
 func (stmt AssignStmt) Accept(visitor AstVisitor) {
@@ -16,7 +16,7 @@ func (stmt AssignStmt) Accept(visitor AstVisitor) {
 }
 
 func (stmt AssignStmt) String() string {
-	return fmt.Sprintf("AssignStatement(%+v, %+v)", stmt.Variable, stmt.Expr)
+	return fmt.Sprintf("AssignStatement(%+v, %+v)", stmt.AssignmentExpr, stmt.Expr)
 }
 
 type PrintStmt struct {

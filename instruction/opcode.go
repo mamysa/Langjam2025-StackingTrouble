@@ -19,6 +19,7 @@ const (
 	NewList     // pushes new empty list onto the stack
 	Len         // returns length of value on top of the stack. Value must be a list
 	SubscriptGet
+	SubscriptSet
 )
 
 func (o OpCode_NoArgs) String() string {
@@ -53,6 +54,10 @@ func (o OpCode_NoArgs) String() string {
 		return "NewList"
 	case Len:
 		return "Len"
+	case SubscriptGet:
+		return "SubscriptGet"
+	case SubscriptSet:
+		return "SubscriptGet"
 	}
 
 	panic("Unknown opcode" + string(o))

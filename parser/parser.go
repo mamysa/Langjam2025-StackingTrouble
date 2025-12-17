@@ -295,12 +295,33 @@ func (p *Parser) statementReturn() (ast.Statement, error) {
 }
 
 func (p *Parser) statementAssign() (ast.Statement, error) {
-	tok := p.expect(tokenizer.Token_Identifier)
+	// assignment expression
+	aexpr, err := p.expressionLhsIdentTrailer()
+	if err != nil {
+		return nil, err
+	}
 
-	tokIdent, _ := tok.(tokenizer.TokenWithData)
-	identValue := tokIdent.Value()
+	// TODO void function call
 
 	p.expect(tokenizer.Token_Assign)
+
+	//definitely assignment expression
+	var assignmentExpr ast.AssignmentExpr
+
+	if e, ok := aexpr.(ast.Var); ok {
+		assignmentExpr = ast.AssignVar{Var: e.Var}
+	}
+
+	if e, ok := aexpr.(ast.SubscriptGet); ok {
+		assignmentExpr = ast.SubscriptSet{
+			Expr:      e.Expr,
+			Subscript: e.Subscript,
+		}
+	}
+
+	if assignmentExpr == nil {
+		return nil, fmt.Errorf("Unable to match AssignmentExpr for %+v", aexpr)
+	}
 
 	expr, err := p.expression()
 	if err != nil {
@@ -310,8 +331,8 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 	p.expect(tokenizer.Token_Semi)
 
 	return ast.AssignStmt{
-		Variable: identValue,
-		Expr:     expr,
+		AssignmentExpr: assignmentExpr,
+		Expr:           expr,
 	}, nil
 }
 
@@ -621,11 +642,35 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	return nil, fmt.Errorf("Unable to parse EXPR_ATOM")
 }
 
-// (1. function_call) rhs_ident_trailer  := identifier { '('  expression_list `)` }?
-// (1. list_subscript) rhs_ident_trailer  := identifier { '['  expression`]` }?
+// expression_lhs_ident_trailer =   rhs_ident_trailer_list_subscript
+// left side of assignment doesnt allow function calls
+func (p *Parser) expressionLhsIdentTrailer() (ast.Expr, error) {
+	token, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+	if !ok {
+		panic("bad")
+	}
 
+	var expr ast.Expr = ast.Var{
+		Var: token.Value(),
+	}
+
+	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LBracket}
+	for p.nextTokenIs(trailerBeginTokens...) {
+		if p.nextTokenIs(tokenizer.Token_LBracket) {
+			e, err := p.identifierTrailerListSubscript(expr)
+			if err != nil {
+				return nil, err
+			}
+			expr = e
+		}
+	}
+
+	return expr, nil
+}
+
+// expression_rhs_ident_trailer =  rhs_ident_trailer_function_call | rhs_ident_trailer_list_subscript
+// right side of assignment allows function calls
 func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
-
 	// consume ident
 	token, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
 	if !ok {
@@ -640,38 +685,55 @@ func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
 	for p.nextTokenIs(trailerBeginTokens...) {
 		// (1) function call
 		if p.nextTokenIs(tokenizer.Token_LParen) {
-			p.expect(tokenizer.Token_LParen)
-			expressionList := []ast.Expr{}
-			if !p.nextTokenIs(tokenizer.Token_RParen) {
-				e, err := p.expressionList()
-				if err != nil {
-					return nil, err
-				}
-				expressionList = e
+			e, err := p.identifierTrailerFunctionCall(expr)
+			if err != nil {
+				return nil, err
 			}
-			p.expect(tokenizer.Token_RParen)
-
-			expr = ast.FunctionCall{Expr: expr, Args: expressionList}
+			expr = e
 		}
 
 		// array subscript
 		if p.nextTokenIs(tokenizer.Token_LBracket) {
-			p.expect(tokenizer.Token_LBracket)
-			subscriptExpr, err := p.expression()
+			e, err := p.identifierTrailerListSubscript(expr)
 			if err != nil {
 				return nil, err
 			}
-			p.expect(tokenizer.Token_RBracket)
-
-			expr = ast.SubscriptGet{
-				Expr:      expr,
-				Subscript: subscriptExpr,
-			}
+			expr = e
 		}
 	}
 
 	return expr, nil
+}
 
+// rhs_ident_trailer_function_call  := identifier { '('  expression_list `)` }?
+func (p *Parser) identifierTrailerFunctionCall(expr ast.Expr) (ast.Expr, error) {
+	p.expect(tokenizer.Token_LParen)
+	expressionList := []ast.Expr{}
+	if !p.nextTokenIs(tokenizer.Token_RParen) {
+		e, err := p.expressionList()
+		if err != nil {
+			return nil, err
+		}
+		expressionList = e
+	}
+	p.expect(tokenizer.Token_RParen)
+
+	return ast.FunctionCall{Expr: expr, Args: expressionList}, nil
+}
+
+// rhs_ident_trailer_list_subscript  := identifier { '['  expression`]` }?
+func (p *Parser) identifierTrailerListSubscript(expr ast.Expr) (ast.Expr, error) {
+	p.expect(tokenizer.Token_LBracket)
+	subscriptExpr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	p.expect(tokenizer.Token_RBracket)
+
+	return ast.SubscriptGet{
+		Expr:      expr,
+		Subscript: subscriptExpr,
+	}, nil
 }
 
 // NON-empty expression list

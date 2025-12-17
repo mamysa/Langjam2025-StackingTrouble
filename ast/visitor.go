@@ -19,4 +19,6 @@ type AstVisitor interface {
 	visitNewListExpression(NewListExpr)
 	visitLenExpression(LenExpr)
 	visitSubscriptGetExpression(SubscriptGet)
+	visitAssignVarExpression(AssignVar)
+	visitSubscriptSetExpression(SubscriptSet)
 }

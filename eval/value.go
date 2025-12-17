@@ -276,6 +276,14 @@ func (list ListValue) GetValue(index int) Value {
 	return list.array.Array[index]
 }
 
+func (list ListValue) SetValue(index int, value Value) {
+	if !(index >= 0 && index < list.array.Length) {
+		panic("Out of bounds list access")
+	}
+
+	list.array.Array[index] = value
+}
+
 func (value ListValue) String() string {
 	if value.array.Length == 0 {
 		return "[]"
