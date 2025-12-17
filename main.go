@@ -7,6 +7,13 @@ import (
 	"compiler/parser"
 	"compiler/tokenizer"
 	"fmt"
+	"os"
+)
+
+const (
+	DebugTokens   string = "DEBUG=tokens"
+	DebugAst             = "DEBUG=ast"
+	DebugBytecode        = "DEBUG=bytecode"
 )
 
 func printInstructions(instructions []instruction.Instruction) {
@@ -16,17 +23,32 @@ func printInstructions(instructions []instruction.Instruction) {
 }
 
 func main() {
-	tokenizer, err := tokenizer.NewTokenizer("test2.bla")
+	args := os.Args
+	if len(args) == 1 {
+		panic("Provide file.")
+	}
+
+	filename := args[1]
+	// can be either DEBUG=tokens / DEBUG=ast / DEBUG=bytecode
+	debugArg := ""
+	if len(args) > 2 {
+		debugArg = args[2]
+	}
+
+	tokenizer, err := tokenizer.NewTokenizer(filename)
 	if err != nil {
 		panic(err)
 	}
 
 	tokens, err := tokenizer.Tokenize()
-
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(tokens)
+
+	if debugArg == DebugTokens {
+		fmt.Println(tokens)
+		os.Exit(1)
+	}
 
 	parser, err := parser.NewParser(tokens)
 	if err != nil {
@@ -34,17 +56,23 @@ func main() {
 	}
 
 	a, err := parser.Parse()
-
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%+v\n", a)
+	if debugArg == DebugAst {
+		fmt.Printf("%+v\n", a)
+		os.Exit(1)
+	}
 
 	visitor := ast.CodegenVisitor{}
 
 	a.Accept(&visitor)
-	printInstructions(visitor.Program.Instructions)
+
+	if debugArg == DebugBytecode {
+		printInstructions(visitor.Program.Instructions)
+		os.Exit(1)
+	}
 
 	interpreter := eval.NewInterpreter(visitor.Program)
 	interpreter.Run()

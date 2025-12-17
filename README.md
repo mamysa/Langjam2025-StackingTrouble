@@ -38,3 +38,7 @@ Day 4:
 Complete boolean and/or operations with short-circuiting.
 a or b -> if a then a else b 
 a and b -> if a then b else a
+
+Implement ListValue type, ability to initialize lists, append items to list, array subscript syntax (on both sides of the assignment expression). Implement Len operator. Implement FloatValue (with casting int to float when appropriate). Ready for proper testing now. (probably will use python script that simply calls the go compiler with appropriate program).
+
+
