@@ -594,33 +594,12 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Identifier) {
-		token, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
-		if !ok {
-			panic("bad")
+		expr, err := p.expressionRhsIdentTrailer()
+		if err != nil {
+			return nil, err
 		}
 
-		// function call - trailer
-		if p.nextTokenIs(tokenizer.Token_LParen) {
-			expressionList := []ast.Expr{}
-			p.expect(tokenizer.Token_LParen)
-			if !p.nextTokenIs(tokenizer.Token_RParen) {
-				e, err := p.expressionList()
-				if err != nil {
-					return nil, err
-				}
-				expressionList = e
-			}
-			p.expect(tokenizer.Token_RParen)
-
-			return ast.FunctionCall{
-				Name: token.Value(),
-				Args: expressionList,
-			}, nil
-		}
-
-		return ast.Var{
-			Var: token.Value(),
-		}, nil
+		return expr, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Int) {
@@ -640,6 +619,59 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	return nil, fmt.Errorf("Unable to parse EXPR_ATOM")
+}
+
+// (1. function_call) rhs_ident_trailer  := identifier { '('  expression_list `)` }?
+// (1. list_subscript) rhs_ident_trailer  := identifier { '['  expression`]` }?
+
+func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
+
+	// consume ident
+	token, ok := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+	if !ok {
+		panic("bad")
+	}
+
+	var expr ast.Expr = ast.Var{
+		Var: token.Value(),
+	}
+
+	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LParen, tokenizer.Token_LBracket}
+	for p.nextTokenIs(trailerBeginTokens...) {
+		// (1) function call
+		if p.nextTokenIs(tokenizer.Token_LParen) {
+			p.expect(tokenizer.Token_LParen)
+			expressionList := []ast.Expr{}
+			if !p.nextTokenIs(tokenizer.Token_RParen) {
+				e, err := p.expressionList()
+				if err != nil {
+					return nil, err
+				}
+				expressionList = e
+			}
+			p.expect(tokenizer.Token_RParen)
+
+			expr = ast.FunctionCall{Expr: expr, Args: expressionList}
+		}
+
+		// array subscript
+		if p.nextTokenIs(tokenizer.Token_LBracket) {
+			p.expect(tokenizer.Token_LBracket)
+			subscriptExpr, err := p.expression()
+			if err != nil {
+				return nil, err
+			}
+			p.expect(tokenizer.Token_RBracket)
+
+			expr = ast.SubscriptGet{
+				Expr:      expr,
+				Subscript: subscriptExpr,
+			}
+		}
+	}
+
+	return expr, nil
+
 }
 
 // NON-empty expression list

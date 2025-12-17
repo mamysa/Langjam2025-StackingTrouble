@@ -268,6 +268,14 @@ func (list ListValue) AddValue(value Value) ListValue {
 	}
 }
 
+func (list ListValue) GetValue(index int) Value {
+	if !(index >= 0 && index < list.array.Length) {
+		panic("Out of bounds list access")
+	}
+
+	return list.array.Array[index]
+}
+
 func (value ListValue) String() string {
 	if value.array.Length == 0 {
 		return "[]"

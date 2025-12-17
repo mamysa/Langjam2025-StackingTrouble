@@ -58,12 +58,12 @@ func (e Var) Accept(visitor AstVisitor) {
 }
 
 type FunctionCall struct {
-	Name string
+	Expr Expr
 	Args []Expr
 }
 
 func (e FunctionCall) String() string {
-	return fmt.Sprintf("FunctionCall(name:%+v, args:%+v)", e.Name, e.Args)
+	return fmt.Sprintf("FunctionCall(name:%+v, args:%+v)", e.Expr, e.Args)
 }
 
 func (e FunctionCall) Accept(visitor AstVisitor) {
@@ -116,4 +116,17 @@ func (e LenExpr) String() string {
 
 func (e LenExpr) Accept(visitor AstVisitor) {
 	visitor.visitLenExpression(e)
+}
+
+type SubscriptGet struct {
+	Expr      Expr
+	Subscript Expr
+}
+
+func (e SubscriptGet) String() string {
+	return fmt.Sprintf("SubscriptGet(expr: %+v, subscript:%+v)", e.Expr, e.Subscript)
+}
+
+func (e SubscriptGet) Accept(visitor AstVisitor) {
+	visitor.visitSubscriptGetExpression(e)
 }

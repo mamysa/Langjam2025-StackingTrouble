@@ -18,6 +18,7 @@ const (
 	Pop         // pops value off the stack
 	NewList     // pushes new empty list onto the stack
 	Len         // returns length of value on top of the stack. Value must be a list
+	SubscriptGet
 )
 
 func (o OpCode_NoArgs) String() string {

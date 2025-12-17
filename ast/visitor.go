@@ -18,4 +18,5 @@ type AstVisitor interface {
 	visitTernaryExpression(TernaryExpr)
 	visitNewListExpression(NewListExpr)
 	visitLenExpression(LenExpr)
+	visitSubscriptGetExpression(SubscriptGet)
 }

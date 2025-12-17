@@ -347,15 +347,18 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 		Arg: len(expr.Args),
 	})
 
-	if _, ok := visitor.Ast.FunctionDefs[expr.Name]; ok {
-		visitor.addInstruction(instruction.NewCall(expr.Name))
-		return
+	if variable, ok := expr.Expr.(Var); ok {
+		// check if given variable is present in function defs and do direct call instead.
+		if _, ok := visitor.Ast.FunctionDefs[variable.Var]; ok {
+			visitor.addInstruction(instruction.NewCall(variable.Var))
+			return
+		}
+
+		// todo switch on native functions
 	}
 
-	visitor.addInstruction(instruction.LoadVar{
-		Arg: expr.Name,
-	})
-
+	//  otherwise interpret variable is as a function pointer and try calling that
+	expr.Expr.Accept(visitor)
 	visitor.addInstruction(instruction.InstructionNoOperands{
 		OpCode: instruction.CallVirtual,
 	})
@@ -408,4 +411,10 @@ func (visitor *CodegenVisitor) visitNewListExpression(expr NewListExpr) {
 func (visitor *CodegenVisitor) visitLenExpression(expr LenExpr) {
 	expr.Expr.Accept(visitor)
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Len})
+}
+
+func (visitor *CodegenVisitor) visitSubscriptGetExpression(expr SubscriptGet) {
+	expr.Expr.Accept(visitor)
+	expr.Subscript.Accept(visitor)
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptGet})
 }

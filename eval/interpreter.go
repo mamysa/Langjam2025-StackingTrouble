@@ -57,6 +57,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.newList()
 			case instruction.Len:
 				interpreter.len()
+			case instruction.SubscriptGet:
+				interpreter.subscriptGet()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -272,4 +274,29 @@ func (interpreter *Interpreter) len() {
 
 	interpreter.evaluationStack.pushInt(list.array.Length)
 	interpreter.programCounter++
+}
+
+// pops two entries off the stack, topmost being subscript and bottommost being the target.
+// if target is list && subscript isInt, do array access at index.
+// otherwise crash
+func (interpreter *Interpreter) subscriptGet() {
+	subscript := interpreter.evaluationStack.pop()
+	target := interpreter.evaluationStack.pop()
+
+	if target.IsList() {
+		if !subscript.IsInt() {
+			panic("non-integer subscript to list")
+		}
+
+		index := subscript.Int()
+		value := target.(ListValue).GetValue(index)
+
+		interpreter.evaluationStack.pushValue(value)
+		interpreter.programCounter++
+
+		return
+	}
+
+	panic("subscript operator on non-list")
+
 }
