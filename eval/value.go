@@ -14,6 +14,7 @@ const (
 // represents value on the stack.
 type Value interface {
 	IsList() bool
+	IsObject() bool
 	IsNumeric() bool
 	IsInt() bool
 	IsBool() bool
@@ -75,6 +76,10 @@ func (value IntValue) IsList() bool {
 	return false
 }
 
+func (value IntValue) IsObject() bool {
+	return false
+}
+
 func (value IntValue) Copy() Value {
 	return NewInt(value.value)
 }
@@ -133,6 +138,10 @@ func (value FloatValue) IsList() bool {
 	return false
 }
 
+func (value FloatValue) IsObject() bool {
+	return false
+}
+
 func (value FloatValue) Copy() Value {
 	return NewFloatValue(value.value)
 }
@@ -184,6 +193,10 @@ func (value None) Truthy() bool {
 }
 
 func (value None) IsList() bool {
+	return false
+}
+
+func (value None) IsObject() bool {
 	return false
 }
 
@@ -245,6 +258,10 @@ func (value FunctionAddress) IsList() bool {
 	return false
 }
 
+func (value FunctionAddress) IsObject() bool {
+	return false
+}
+
 func (value FunctionAddress) Copy() Value {
 	return NewFunctionAddress(value.Offset)
 }
@@ -300,6 +317,10 @@ func (value BoolValue) Truthy() bool {
 }
 
 func (value BoolValue) IsList() bool {
+	return false
+}
+
+func (value BoolValue) IsObject() bool {
 	return false
 }
 
@@ -373,6 +394,10 @@ func (value ListValue) IsList() bool {
 	return true
 }
 
+func (value ListValue) IsObject() bool {
+	return false
+}
+
 // Shallow copy?
 func (value ListValue) Copy() Value {
 	arrayCopy := []Value{}
@@ -443,4 +468,98 @@ func (value ListValue) String() string {
 
 func (value ListValue) FunctionAddress() int {
 	panic(fmt.Errorf("Invalid conversion"))
+}
+
+type ObjectValue struct {
+	Object *object
+}
+
+type object struct {
+	object map[string]Value
+}
+
+func NewObjectValue() ObjectValue {
+	return ObjectValue{
+		Object: &object{
+			object: map[string]Value{},
+		},
+	}
+}
+
+func (value ObjectValue) Int() int {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value ObjectValue) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value ObjectValue) IsNumeric() bool {
+	return false
+}
+
+func (value ObjectValue) IsInt() bool {
+	return false
+}
+
+func (value ObjectValue) IsBool() bool {
+	return false
+}
+
+func (value ObjectValue) IsFloat() bool {
+	return false
+}
+
+func (value ObjectValue) IsNone() bool {
+	return false
+}
+
+func (value ObjectValue) Truthy() bool {
+	return false
+}
+
+func (value ObjectValue) IsList() bool {
+	return false
+}
+
+func (value ObjectValue) IsObject() bool {
+	return true
+}
+
+func (value ObjectValue) Copy() Value {
+	// copy reference
+	return ObjectValue{Object: value.Object}
+}
+
+func (value ObjectValue) String() string {
+	hasPrevious := false
+	kvps := ""
+	for key, value := range value.Object.object {
+		kvp := fmt.Sprintf("%s: %+v", key, value)
+		if hasPrevious {
+			kvp = ", " + kvp
+		}
+
+		kvps = kvps + kvp
+		hasPrevious = true
+	}
+
+	return fmt.Sprintf("Object(%s)", kvps)
+}
+
+func (value ObjectValue) FunctionAddress() int {
+	panic("Invalid conversion")
+}
+
+func (list ObjectValue) GetValue(key string) Value {
+	value, ok := list.Object.object[key]
+	if !ok {
+		panic(fmt.Errorf("Field %+v not present in the object", key))
+	}
+
+	return value
+}
+
+func (list ObjectValue) SetValue(key string, value Value) {
+	list.Object.object[key] = value
 }

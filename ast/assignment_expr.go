@@ -30,3 +30,16 @@ func (e SubscriptSet) String() string {
 func (e SubscriptSet) Accept(visitor AstVisitor) {
 	visitor.visitSubscriptSetExpression(e)
 }
+
+type ObjectFieldSet struct {
+	Expr  Expr
+	Field string
+}
+
+func (e ObjectFieldSet) String() string {
+	return fmt.Sprintf("ObjectFieldSet(expr: %+v, field:%+v)", e.Expr, e.Field)
+}
+
+func (e ObjectFieldSet) Accept(visitor AstVisitor) {
+	visitor.visitObjectFieldSetExpression(e)
+}

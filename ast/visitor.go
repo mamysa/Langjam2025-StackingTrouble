@@ -21,8 +21,11 @@ type AstVisitor interface {
 	visitAddressOfFunction(AddressOfFunction)
 	visitTernaryExpression(TernaryExpr)
 	visitNewListExpression(NewListExpr)
+	visitNewObjectExpression(NewObjectExpr)
 	visitLenExpression(LenExpr)
 	visitSubscriptGetExpression(SubscriptGet)
+	visitObjectFieldGetExpression(ObjectFieldGet)
 	visitAssignVarExpression(AssignVar)
+	visitObjectFieldSetExpression(ObjectFieldSet)
 	visitSubscriptSetExpression(SubscriptSet)
 }

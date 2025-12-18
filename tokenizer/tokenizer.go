@@ -83,7 +83,7 @@ func (reader *TokenReader) peekPunctuation() bool {
 		return false
 	}
 
-	return *c == ';' || *c == ','
+	return *c == ';' || *c == ',' || *c == '.'
 }
 
 func (reader *TokenReader) peekAlphanumeric() bool {
@@ -162,6 +162,9 @@ func (t *Tokenizer) NextToken() (Token, error) {
 		}
 		if tok == "," {
 			return Simple{token: Token_Comma}, nil
+		}
+		if tok == "." {
+			return Simple{token: Token_Dot}, nil
 		}
 
 		return nil, fmt.Errorf("Unknown punctuation")

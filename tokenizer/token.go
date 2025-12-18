@@ -29,6 +29,7 @@ const (
 	Token_Identifier TokenKind = "Ident"
 	Token_Semi       TokenKind = ";"
 	Token_Comma      TokenKind = ","
+	Token_Dot        TokenKind = "."
 
 	Token_Print    TokenKind = "print"
 	Token_Def      TokenKind = "def"

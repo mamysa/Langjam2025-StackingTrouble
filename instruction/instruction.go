@@ -178,3 +178,23 @@ func (i Br) isInstruction() {}
 func (i Br) String() string {
 	return fmt.Sprintf("Br %+v (%s)", i.Offset, i.Label)
 }
+
+type ObjectFieldGet struct {
+	Field string
+}
+
+func (i ObjectFieldGet) isInstruction() {}
+
+func (i ObjectFieldGet) String() string {
+	return fmt.Sprintf("ObjectFieldGet FIELD=%s", i.Field)
+}
+
+type ObjectFieldSet struct {
+	Field string
+}
+
+func (i ObjectFieldSet) isInstruction() {}
+
+func (i ObjectFieldSet) String() string {
+	return fmt.Sprintf("ObjectFieldSet FIELD=%s", i.Field)
+}

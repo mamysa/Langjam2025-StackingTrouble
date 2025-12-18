@@ -19,6 +19,7 @@ const (
 	Dup         // duplicates value on top of the stack
 	Pop         // pops value off the stack
 	NewList     // pushes new empty list onto the stack
+	NewObject   // pushes new empty object onto the stack
 	Len         // returns length of value on top of the stack. Value must be a list
 	SubscriptGet
 	SubscriptSet
@@ -58,6 +59,8 @@ func (o OpCode_NoArgs) String() string {
 		return "Pop"
 	case NewList:
 		return "NewList"
+	case NewObject:
+		return "NewObject"
 	case Len:
 		return "Len"
 	case SubscriptGet:

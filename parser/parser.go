@@ -346,6 +346,13 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 		}
 	}
 
+	if e, ok := aexpr.(ast.ObjectFieldGet); ok {
+		assignmentExpr = ast.ObjectFieldSet{
+			Expr:  e.Expr,
+			Field: e.Field,
+		}
+	}
+
 	if assignmentExpr == nil {
 		return nil, fmt.Errorf("Unable to match AssignmentExpr for %+v", aexpr)
 	}
@@ -614,6 +621,7 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // EXPR_ATOM := identifier '(' {EXPR ','} * ')'
 // EXPR_ATOM = '&' identifier
 // expr_atom = '[' ']'     (new-array-expr)
+// expr_atom = '{' '}'     (new-object-expr)
 // expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_None) {
@@ -651,6 +659,12 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		p.expect(tokenizer.Token_LBracket)
 		p.expect(tokenizer.Token_RBracket)
 		return ast.NewListExpr{}, nil
+	}
+
+	if p.nextTokenIs(tokenizer.Token_LBrace) {
+		p.expect(tokenizer.Token_LBrace)
+		p.expect(tokenizer.Token_RBrace)
+		return ast.NewObjectExpr{}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_FuncAddr) {
@@ -736,10 +750,18 @@ func (p *Parser) expressionLhsIdentTrailer() (ast.Expr, error) {
 		Var: token.Value(),
 	}
 
-	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LBracket}
+	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LBracket, tokenizer.Token_Dot}
 	for p.nextTokenIs(trailerBeginTokens...) {
 		if p.nextTokenIs(tokenizer.Token_LBracket) {
 			e, err := p.identifierTrailerListSubscript(expr)
+			if err != nil {
+				return nil, err
+			}
+			expr = e
+		}
+
+		if p.nextTokenIs(tokenizer.Token_Dot) {
+			e, err := p.identifierTrailerFieldAccess(expr)
 			if err != nil {
 				return nil, err
 			}
@@ -763,7 +785,7 @@ func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
 		Var: token.Value(),
 	}
 
-	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LParen, tokenizer.Token_LBracket}
+	trailerBeginTokens := []tokenizer.TokenKind{tokenizer.Token_LParen, tokenizer.Token_LBracket, tokenizer.Token_Dot}
 	for p.nextTokenIs(trailerBeginTokens...) {
 		// (1) function call
 		if p.nextTokenIs(tokenizer.Token_LParen) {
@@ -777,6 +799,15 @@ func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
 		// array subscript
 		if p.nextTokenIs(tokenizer.Token_LBracket) {
 			e, err := p.identifierTrailerListSubscript(expr)
+			if err != nil {
+				return nil, err
+			}
+			expr = e
+		}
+
+		// object field access
+		if p.nextTokenIs(tokenizer.Token_Dot) {
+			e, err := p.identifierTrailerFieldAccess(expr)
 			if err != nil {
 				return nil, err
 			}
@@ -815,6 +846,17 @@ func (p *Parser) identifierTrailerListSubscript(expr ast.Expr) (ast.Expr, error)
 	return ast.SubscriptGet{
 		Expr:      expr,
 		Subscript: subscriptExpr,
+	}, nil
+}
+
+// rhs_ident_trailer_field_access := identifier {'.' identifier}?
+func (p *Parser) identifierTrailerFieldAccess(expr ast.Expr) (ast.Expr, error) {
+	p.expect(tokenizer.Token_Dot)
+	ident := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+
+	return ast.ObjectFieldGet{
+		Expr:  expr,
+		Field: ident.Value(),
 	}, nil
 }
 

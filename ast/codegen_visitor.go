@@ -439,6 +439,10 @@ func (visitor *CodegenVisitor) visitNewListExpression(expr NewListExpr) {
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewList})
 }
 
+func (visitor *CodegenVisitor) visitNewObjectExpression(expr NewObjectExpr) {
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewObject})
+}
+
 func (visitor *CodegenVisitor) visitLenExpression(expr LenExpr) {
 	expr.Expr.Accept(visitor)
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Len})
@@ -450,6 +454,11 @@ func (visitor *CodegenVisitor) visitSubscriptGetExpression(expr SubscriptGet) {
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptGet})
 }
 
+func (visitor *CodegenVisitor) visitObjectFieldGetExpression(expr ObjectFieldGet) {
+	expr.Expr.Accept(visitor) // target
+	visitor.addInstruction(instruction.ObjectFieldGet{Field: expr.Field})
+}
+
 func (visitor *CodegenVisitor) visitAssignVarExpression(expr AssignVar) {
 	visitor.addInstruction(instruction.StoreVar{Arg: expr.Var})
 }
@@ -459,4 +468,12 @@ func (visitor *CodegenVisitor) visitSubscriptSetExpression(expr SubscriptSet) {
 	expr.Expr.Accept(visitor)
 	expr.Subscript.Accept(visitor)
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptSet})
+}
+
+func (visitor *CodegenVisitor) visitObjectFieldSetExpression(expr ObjectFieldSet) {
+	// value to be stored is on top of the stack
+	expr.Expr.Accept(visitor) // evaluate target of object field set
+	visitor.addInstruction(instruction.ObjectFieldSet{
+		Field: expr.Field,
+	})
 }

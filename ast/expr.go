@@ -140,6 +140,16 @@ func (e NewListExpr) Accept(visitor AstVisitor) {
 	visitor.visitNewListExpression(e)
 }
 
+type NewObjectExpr struct{}
+
+func (e NewObjectExpr) String() string {
+	return "NewObject()"
+}
+
+func (e NewObjectExpr) Accept(visitor AstVisitor) {
+	visitor.visitNewObjectExpression(e)
+}
+
 type LenExpr struct {
 	Expr Expr
 }
@@ -163,4 +173,17 @@ func (e SubscriptGet) String() string {
 
 func (e SubscriptGet) Accept(visitor AstVisitor) {
 	visitor.visitSubscriptGetExpression(e)
+}
+
+type ObjectFieldGet struct {
+	Expr  Expr
+	Field string
+}
+
+func (e ObjectFieldGet) String() string {
+	return fmt.Sprintf("ObjectFieldGet(expr: %+v, field:%+v)", e.Expr, e.Field)
+}
+
+func (e ObjectFieldGet) Accept(visitor AstVisitor) {
+	visitor.visitObjectFieldGetExpression(e)
 }

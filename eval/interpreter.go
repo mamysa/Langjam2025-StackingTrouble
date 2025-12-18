@@ -70,6 +70,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.pop()
 			case instruction.NewList:
 				interpreter.newList()
+			case instruction.NewObject:
+				interpreter.newObject()
 			case instruction.Len:
 				interpreter.len()
 			case instruction.SubscriptGet:
@@ -126,8 +128,17 @@ func (interpreter *Interpreter) Run() {
 		if br, ok := insn.(instruction.Br); ok {
 			interpreter.br(br)
 		}
+
 		if label, ok := insn.(instruction.Label); ok {
 			interpreter.label(label)
+		}
+
+		if fieldGet, ok := insn.(instruction.ObjectFieldGet); ok {
+			interpreter.objectFieldGet(fieldGet)
+		}
+
+		if fieldSet, ok := insn.(instruction.ObjectFieldSet); ok {
+			interpreter.objectFieldSet(fieldSet)
 		}
 	}
 
@@ -488,6 +499,11 @@ func (interpreter *Interpreter) newList() {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) newObject() {
+	interpreter.evaluationStack.pushValue(NewObjectValue())
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) len() {
 	value := interpreter.evaluationStack.pop()
 	if !value.IsList() {
@@ -524,6 +540,18 @@ func (interpreter *Interpreter) subscriptGet() {
 	panic("subscript operator on non-list")
 }
 
+func (interpreter *Interpreter) objectFieldGet(insn instruction.ObjectFieldGet) {
+	target := interpreter.evaluationStack.pop()
+
+	if !target.IsObject() {
+		panic(fmt.Errorf("objectFieldSet: target %+v is not object", target))
+	}
+
+	value := target.(ObjectValue).GetValue(insn.Field)
+	interpreter.evaluationStack.pushValue(value)
+	interpreter.programCounter++
+}
+
 // pops three entries off the stack, TS, TS1, TS2, where TS in subscript, TS1 is target list, TS2 is value to be stored in the list.
 // crash if TS1 is not a list or if subscript is not int.
 func (interpreter *Interpreter) subscriptSet() {
@@ -546,6 +574,18 @@ func (interpreter *Interpreter) subscriptSet() {
 	}
 
 	panic("subscript operator on non-list")
+}
+
+func (interpreter *Interpreter) objectFieldSet(insn instruction.ObjectFieldSet) {
+	target := interpreter.evaluationStack.pop()
+	value := interpreter.evaluationStack.pop()
+
+	if !target.IsObject() {
+		panic(fmt.Errorf("objectFieldSet: target %+v is not object", target))
+	}
+
+	target.(ObjectValue).SetValue(insn.Field, value)
+	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) assert() {

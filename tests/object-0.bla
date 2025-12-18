@@ -1,0 +1,94 @@
+def main() {
+	_ = object_simple();
+	_ = object_nested_access();
+	_ = vector_method();
+	_ = vector_in_list();
+}
+
+def object_simple() {
+	a = {};
+	a.x = 12;
+	a.y = 1338;
+	a.z = None;
+	
+	#? STDOUT 12
+	print(a.x);
+
+	#? STDOUT 1338 
+	print(a.y);
+
+	#? STDOUT None 
+	print(a.z);
+
+	#? STDOUT -12 
+	a.z = -12;
+	print(a.z);
+}
+
+def object_nested_access() {
+	a = {};
+	a.x = 1337;
+
+	b = {};
+	b.field1 = a;
+
+	#? STDOUT 1337
+	print(b.field1.x);
+}
+
+def vector_method() {
+	v1 = vec2_new(1, 2);
+	v2 = vec2_new(3, 10);
+	result = v1.add(v1, v2);
+	#? STDOUT 4 
+	print(result.x);
+	#? STDOUT 12
+	print(result.y);
+}
+
+
+def vector_in_list() {
+	vecs = [];
+
+	v1 = vec2_new(1, 2);
+	v2 = vec2_new(2, 3);
+	v3 = vec2_new(4, 5);
+
+	vecs = vecs + v1 + v2 + v3;
+
+	i = 0;
+	#? STDOUT 1
+	#? STDOUT 1338
+	#? STDOUT 2
+	#? STDOUT 1339
+	#? STDOUT 4
+	#? STDOUT 1341
+	while i < len(vecs) {
+		print(vecs[i].x);
+		vecs[i].x = vecs[i].x + 1337;
+		print(vecs[i].x);
+		i = i + 1;
+	}
+
+	#? STDOUT 3
+	print(len(vecs));
+
+}
+
+
+
+# various methods etc
+def vec2_new(x, y) {
+	vec = {};
+	vec.x = x;
+	vec.y = y;
+	vec.add = &vec2_add;
+	return vec;
+}
+
+def vec2_add(a, b) {
+	c = {};
+	c.x = a.x + b.x;
+	c.y = a.y + b.y;
+	return c;
+}
