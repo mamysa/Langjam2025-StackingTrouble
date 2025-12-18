@@ -148,7 +148,7 @@ func (t *Tokenizer) Tokenize() ([]Token, error) {
 }
 
 func (t *Tokenizer) NextToken() (Token, error) {
-	t.consumeWhitespace()
+	t.consumeWhitespaceOrComment()
 
 	if t.reader.reachedEof() {
 		return nil, nil
@@ -252,4 +252,37 @@ func (t *Tokenizer) readIdentifier() Token {
 	tok := t.reader.getToken()
 
 	return SpecializeIdentifier(tok)
+}
+
+func (t *Tokenizer) consumeWhitespaceOrComment() {
+	t.consumeWhitespace()
+	nextTok := t.reader.peek()
+	for nextTok != nil && *nextTok == '#' {
+		t.skipComment()
+		t.consumeWhitespace()
+		nextTok = t.reader.peek()
+	}
+}
+
+func (t *Tokenizer) skipComment() {
+	t.reader.advance() // consume #
+
+	for true {
+		tok := t.reader.peek()
+		if tok == nil {
+			//reached eof
+			t.reader.getToken()
+			return
+		}
+		if *tok == '\n' {
+			t.reader.advance()
+			m := t.reader.getToken()
+			println(m)
+			break
+		}
+
+		// otherwise we advance
+		t.reader.advance()
+	}
+
 }
