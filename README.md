@@ -42,3 +42,10 @@ a and b -> if a then b else a
 Implement ListValue type, ability to initialize lists, append items to list, array subscript syntax (on both sides of the assignment expression). Implement Len operator. Implement FloatValue (with casting int to float when appropriate). Ready for proper testing now. (probably will use python script that simply calls the go compiler with appropriate program).
 
 
+
+Day 5:
+Implemented poor man's objects + field access. Setup tiny testing framework that executes some sample programs and matches its print statements output to expected output stored in comments (`#? STDOUT expected_value`). This doesn't quite test cases that are supposed to fail though. Something to look into later.
+
+Implement boolean not operator. Begin hooking up Raylib functions (each function is its own instruction in the bytecode). We can open windows now woo.
+
+Implemented ability to call functions without necessarily assigning them (e.g `_ = a()` => `a()`). Implement constant globals as well as a way to read them. So far only INT/Float globals are supported and are converted directly into IntValue/FloatValue objects accordingly.
