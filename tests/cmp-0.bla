@@ -1,0 +1,92 @@
+
+def main() {
+	_ = eq_1();
+	_ = eq_2();
+	_ = eq_None();
+	_ = eq_True();
+	_ = notequal_True();
+
+
+}
+
+#? STDOUT True
+def eq_1() {
+	z = 1 == True;
+	print(z);
+}
+
+#? STDOUT True
+#? STDOUT False 
+def eq_2() {
+	print(True == True);
+	print(False == True);
+}
+
+def eq_None() {
+	#? STDOUT True 
+	print(None == None);
+
+	#? STDOUT False 
+	print(True == None);
+
+	#? STDOUT False 
+	print(False == None);
+
+	#? STDOUT False 
+	print(1 == None);
+
+	#? STDOUT False 
+	print(1.1 == None);
+
+	#? STDOUT False 
+	print([] == None);
+
+	#? STDOUT True 
+	print(True != None);
+
+	#? STDOUT True 
+	print(False != None);
+
+	#? STDOUT True 
+	print([] != None);
+}
+
+def eq_True() {
+	#? STDOUT True 
+	print(1 == True);
+
+	#? STDOUT False
+	print(2 == True);
+
+	#? STDOUT True 
+	print(1.0 == True);
+
+	#? STDOUT False 
+	print(0.999 == True);
+
+	#? STDOUT False 
+	print(1.001 == True);
+
+	#? STDOUT False 
+	print([] == True);
+}
+
+def notequal_True() {
+	#? STDOUT False 
+	print(1 != True);
+
+	#? STDOUT True 
+	print(2 != True);
+
+	#? STDOUT False 
+	print(1.0 != True);
+
+	#? STDOUT True
+	print(0.999 != True);
+
+	#? STDOUT True 
+	print(1.001 != True);
+
+	#? STDOUT True 
+	print([] != True);
+}

@@ -311,6 +311,20 @@ func (interpreter *Interpreter) eq() {
 		return
 	}
 
+	if v1.IsBool() || v2.IsBool() {
+		if v1.IsNone() || v2.IsNone() {
+			interpreter.evaluationStack.pushBool(false)
+			interpreter.programCounter++
+			return
+		}
+
+		value := v1.Truthy() == v2.Truthy()
+		interpreter.evaluationStack.pushBool(value)
+		interpreter.programCounter++
+		return
+
+	}
+
 	if !(v1.IsNumeric() && v2.IsNumeric()) {
 		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
 	}
@@ -330,6 +344,19 @@ func (interpreter *Interpreter) eq() {
 func (interpreter *Interpreter) notEq() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
+
+	if v1.IsBool() || v2.IsBool() {
+		if v1.IsNone() || v2.IsNone() {
+			interpreter.evaluationStack.pushBool(true)
+			interpreter.programCounter++
+			return
+		}
+
+		value := v1.Truthy() != v2.Truthy()
+		interpreter.evaluationStack.pushBool(value)
+		interpreter.programCounter++
+		return
+	}
 
 	// ok this is really stupid. Should be optimized somehow.
 	if v1.IsNone() || v2.IsNone() {

@@ -1,0 +1,45 @@
+
+def main() {
+	_ = arith_add();
+	_ = arith_nested();
+	_ = arith_long_add();
+	_ = arith_mul_precedence();
+	_ = arith_float_conversion();
+}
+
+
+#? STDOUT 9
+#? STDOUT -2
+def arith_add() {
+	x = 4;
+	y = x + 5;
+	z = x - 6;
+	print(y);
+	print(z);
+}
+
+#? STDOUT -5
+def arith_nested() {
+	x = -(3 - (1 + 10) + (3 - (5 - 4)));
+	x = x + 1;
+	print(-x + 2);
+}
+
+#? STDOUT 45
+def arith_long_add() {
+	print(1+2+3+4+5+6+7+8+9);
+}
+
+
+#? STDOUT -22 
+def arith_mul_precedence() {
+	x = (5 + 6) * (1 - 3);
+	print(x);
+}
+
+#? STDOUT 3.4
+def arith_float_conversion(){
+	a = 1;
+	b = 2.4;
+	print(a + b);
+}

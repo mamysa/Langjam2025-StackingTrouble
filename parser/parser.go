@@ -179,7 +179,6 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 		}
 
 		if p.nextTokenIs(tokenizer.Token_Assert) {
-			fmt.Printf("ASSERT STATEMENT ")
 			stmt, err := p.statementAssert()
 			if err != nil {
 				return nil, err

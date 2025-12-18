@@ -276,8 +276,7 @@ func (t *Tokenizer) skipComment() {
 		}
 		if *tok == '\n' {
 			t.reader.advance()
-			m := t.reader.getToken()
-			println(m)
+			t.reader.getToken()
 			break
 		}
 

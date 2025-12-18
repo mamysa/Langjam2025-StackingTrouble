@@ -16,6 +16,7 @@ type Value interface {
 	IsList() bool
 	IsNumeric() bool
 	IsInt() bool
+	IsBool() bool
 	IsFloat() bool
 	IsNone() bool
 	Int() int
@@ -51,6 +52,9 @@ func (value IntValue) IsInt() bool {
 	return true
 }
 
+func (value IntValue) IsBool() bool {
+	return false
+}
 func (value IntValue) IsFloat() bool {
 	return false
 }
@@ -64,7 +68,7 @@ func (value IntValue) FunctionAddress() int {
 }
 
 func (value IntValue) Truthy() bool {
-	return value.value > 0
+	return value.value == 1
 }
 
 func (value IntValue) IsList() bool {
@@ -105,6 +109,10 @@ func (value FloatValue) IsInt() bool {
 	return false
 }
 
+func (value FloatValue) IsBool() bool {
+	return false
+}
+
 func (value FloatValue) IsFloat() bool {
 	return true
 }
@@ -118,7 +126,7 @@ func (value FloatValue) FunctionAddress() int {
 }
 
 func (value FloatValue) Truthy() bool {
-	return false
+	return value.value == 1.0
 }
 
 func (value FloatValue) IsList() bool {
@@ -156,6 +164,10 @@ func (value None) IsNumeric() bool {
 }
 
 func (value None) IsInt() bool {
+	return false
+}
+
+func (value None) IsBool() bool {
 	return false
 }
 
@@ -213,6 +225,10 @@ func (value FunctionAddress) IsInt() bool {
 	return false
 }
 
+func (value FunctionAddress) IsBool() bool {
+	return false
+}
+
 func (value FunctionAddress) IsFloat() bool {
 	return false
 }
@@ -261,6 +277,10 @@ func (value BoolValue) Float() float64 {
 
 func (value BoolValue) IsInt() bool {
 	return false
+}
+
+func (value BoolValue) IsBool() bool {
+	return true
 }
 
 func (value BoolValue) IsFloat() bool {
@@ -333,6 +353,10 @@ func (value ListValue) IsInt() bool {
 	return false
 }
 
+func (value ListValue) IsBool() bool {
+	return false
+}
+
 func (value ListValue) IsFloat() bool {
 	return false
 }
@@ -342,7 +366,7 @@ func (value ListValue) IsNone() bool {
 }
 
 func (value ListValue) Truthy() bool {
-	panic("list as truthy value")
+	return false
 }
 
 func (value ListValue) IsList() bool {
