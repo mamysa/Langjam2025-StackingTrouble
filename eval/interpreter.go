@@ -52,6 +52,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.mul()
 			case instruction.Div:
 				interpreter.div()
+			case instruction.Not:
+				interpreter.not()
 			case instruction.Neg:
 				interpreter.neg()
 			case instruction.Ret:
@@ -291,6 +293,19 @@ func (interpreter *Interpreter) neg() {
 
 	result := -v.Int()
 	interpreter.evaluationStack.pushInt(result)
+	interpreter.programCounter++
+}
+
+// simplify this from what python does, not-operator can only be applied to booleans for now.
+func (interpreter *Interpreter) not() {
+	v := interpreter.evaluationStack.pop()
+
+	if !v.IsBool() {
+		panic("not: not operator on non-boolean value")
+	}
+
+	result := !v.Truthy()
+	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
 

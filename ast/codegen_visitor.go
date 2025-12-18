@@ -331,6 +331,10 @@ func (visitor *CodegenVisitor) visitUnaryExpression(expr UnaryExpr) {
 	switch expr.Op {
 	case UnaryOp_Neg:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Neg})
+	case UnaryOp_Not:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Not})
+	default:
+		panic(fmt.Errorf("Unknown operator %+v", expr.Op))
 	}
 }
 

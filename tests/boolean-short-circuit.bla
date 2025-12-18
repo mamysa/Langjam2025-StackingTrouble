@@ -1,0 +1,57 @@
+def main() {
+	#? STDOUT 1
+	#? STDOUT True
+	a = alwaysTrue_Pass() or alwaysFalse_Pass();
+	print(a);
+
+	#? STDOUT 0
+	#? STDOUT 1
+	#? STDOUT True
+	a = alwaysFalse_Pass() or alwaysTrue_Pass() or alwaysTrue_Pass();
+	print(a);
+
+	#? STDOUT 0
+	#? STDOUT 0
+	#? STDOUT 1
+	#? STDOUT True
+	a = alwaysFalse_Pass() or alwaysFalse_Pass() or alwaysTrue_Pass();
+	print(a);
+
+
+	#? STDOUT 1
+	#? STDOUT 0
+	#? STDOUT False 
+	a = alwaysTrue_Pass() and alwaysFalse_Pass();
+	print(a);
+
+	#? STDOUT 0
+	#? STDOUT False 
+	a = alwaysFalse_Pass() and alwaysFalse_Pass();
+	print(a);
+
+	#? STDOUT 1
+	#? STDOUT 1
+	#? STDOUT 1
+	#? STDOUT True 
+	a = alwaysTrue_Pass() and alwaysTrue_Pass() and alwaysTrue_Pass();
+	print(a);
+
+
+
+	# do some combinations to test precedence
+	#? STDOUT 1
+	#? STDOUT 1
+	#? STDOUT True 
+	a = alwaysTrue_Pass() and alwaysTrue_Pass() or alwaysTrue_Pass() and alwaysTrue_Pass();
+	print(a);
+}
+
+def alwaysTrue_Pass() {
+	print(1);
+	return True;
+}
+
+def alwaysFalse_Pass() {
+	print(0);
+	return False;
+}

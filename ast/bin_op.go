@@ -16,4 +16,5 @@ const (
 	BinOp_And   BinOp = "and"
 
 	UnaryOp_Neg UnaryOp = "-"
+	UnaryOp_Not UnaryOp = "not"
 )

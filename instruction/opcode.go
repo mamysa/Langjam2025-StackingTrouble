@@ -23,6 +23,7 @@ const (
 	SubscriptGet
 	SubscriptSet
 	Assert
+	Not
 	PushTrue  // pushes True boolean onto the stack
 	PushFalse // pushes False boolean onto the stack
 )
@@ -69,6 +70,8 @@ func (o OpCode_NoArgs) String() string {
 		return "PushTrue"
 	case PushFalse:
 		return "PushFalse"
+	case Not:
+		return "Not"
 	}
 
 	panic("Unknown opcode" + string(o))

@@ -437,13 +437,12 @@ func (p *Parser) expressionDisjunction() (ast.Expr, error) {
 	}
 
 	return lhs, nil
-
 }
 
 // EXPR_CONJUNCTION = expr_not {`or` expr_not} * // for now we go directly to exressionComparison
 func (p *Parser) expressionConjunction() (ast.Expr, error) {
 
-	lhs, err := p.expressionComparison()
+	lhs, err := p.expressionNot()
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +450,7 @@ func (p *Parser) expressionConjunction() (ast.Expr, error) {
 	for p.nextTokenIs(tokenizer.Token_And) {
 		p.expect(tokenizer.Token_And)
 
-		rhs, err := p.expressionComparison()
+		rhs, err := p.expressionNot()
 		if err != nil {
 			return nil, err
 		}
@@ -464,6 +463,24 @@ func (p *Parser) expressionConjunction() (ast.Expr, error) {
 	}
 
 	return lhs, nil
+}
+
+func (p *Parser) expressionNot() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_Not) {
+		p.expect(tokenizer.Token_Not)
+		expr, err := p.expressionComparison()
+		if err != nil {
+			return nil, err
+		}
+
+		return ast.UnaryExpr{
+			Op:   ast.UnaryOp_Not,
+			Expr: expr,
+		}, nil
+
+	}
+
+	return p.expressionComparison()
 }
 
 // EXPR_COMPARISON = expr_add {`<` expr_add}?
@@ -576,7 +593,6 @@ func (p *Parser) expressionMultiplicative() (ast.Expr, error) {
 // EXPR_UNARY: {`-`}? EXPR_ATOM
 func (p *Parser) expressionUnary() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_Minus) {
-		// TODO BOOLEAN Negation.
 		_ = p.expect(tokenizer.Token_Minus)
 
 		expr, err := p.expressionAtom()

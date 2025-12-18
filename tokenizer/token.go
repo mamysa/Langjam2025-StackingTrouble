@@ -5,10 +5,12 @@ import "fmt"
 type TokenKind string
 
 const (
-	Token_Int      TokenKind = "Int"
-	Token_Float    TokenKind = "Float"
-	Token_Or       TokenKind = "or"
-	Token_And      TokenKind = "and"
+	Token_Int   TokenKind = "Int"
+	Token_Float TokenKind = "Float"
+	Token_Or    TokenKind = "or"
+	Token_And   TokenKind = "and"
+	Token_Not   TokenKind = "not"
+
 	Token_Lt       TokenKind = "<"
 	Token_EqEq     TokenKind = "=="
 	Token_NotEq    TokenKind = "!="
@@ -55,6 +57,7 @@ var specialIdentifiers = map[string]TokenKind{
 	"while":  Token_While,
 	"or":     Token_Or,
 	"and":    Token_And,
+	"not":    Token_Not,
 	"len":    Token_Len,
 	"assert": Token_Assert,
 	"True":   Token_True,
