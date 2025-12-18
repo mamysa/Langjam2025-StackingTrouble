@@ -27,6 +27,16 @@ const (
 	Not
 	PushTrue  // pushes True boolean onto the stack
 	PushFalse // pushes False boolean onto the stack
+
+	// various built-ins
+	RlInitWindow        // raylib init window
+	RlCloseWindow       // raylib close window
+	RlWindowShouldClose // raylib window should close
+	RlBeginDrawing      // begin drawing
+	RlEndDrawing        // end drawing
+	RlClearBackground   // clear background with colors
+	RlSetTargetFPS      // set target fps
+
 )
 
 func (o OpCode_NoArgs) String() string {
@@ -75,6 +85,20 @@ func (o OpCode_NoArgs) String() string {
 		return "PushFalse"
 	case Not:
 		return "Not"
+	case RlInitWindow:
+		return "RlInitWindow"
+	case RlCloseWindow:
+		return "RlCloseWindow"
+	case RlWindowShouldClose:
+		return "RlWindowShouldClose"
+	case RlBeginDrawing:
+		return "RlBeginDrawing"
+	case RlEndDrawing:
+		return "RlEndDrawing"
+	case RlClearBackground:
+		return "RlClearBackground"
+	case RlSetTargetFPS:
+		return "RlSetTargetFPS"
 	}
 
 	panic("Unknown opcode" + string(o))

@@ -65,9 +65,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	visitor := ast.CodegenVisitor{}
+	visitor := ast.NewCodegenVisitor()
 
-	a.Accept(&visitor)
+	a.Accept(visitor)
 
 	if debugArg == DebugBytecode {
 		printInstructions(visitor.Program.Instructions)
@@ -76,4 +76,17 @@ func main() {
 
 	interpreter := eval.NewInterpreter(visitor.Program)
 	interpreter.Run()
+
+	/*
+		rl.InitWindow(800, 600, "blah")
+		for !rl.WindowShouldClose() {
+
+			rl.BeginDrawing()
+			rl.ClearBackground(rl.RayWhite)
+			rl.EndDrawing()
+		}
+
+		rl.CloseWindow()
+	*/
+
 }

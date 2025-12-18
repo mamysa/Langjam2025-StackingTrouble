@@ -3,7 +3,11 @@ package eval
 import (
 	"compiler/instruction"
 	"fmt"
+	"image/color"
 	"os"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type Interpreter struct {
@@ -84,6 +88,20 @@ func (interpreter *Interpreter) Run() {
 				interpreter.pushTrue()
 			case instruction.PushFalse:
 				interpreter.pushFalse()
+			case instruction.RlInitWindow:
+				interpreter.rlInitWindow()
+			case instruction.RlWindowShouldClose:
+				interpreter.rlWindowShouldClose()
+			case instruction.RlCloseWindow:
+				interpreter.rlCloseWindow()
+			case instruction.RlBeginDrawing:
+				interpreter.rlBeginDrawing()
+			case instruction.RlEndDrawing:
+				interpreter.rlEndDrawing()
+			case instruction.RlClearBackground:
+				interpreter.rlClearBackground()
+			case instruction.RlSetTargetFPS:
+				interpreter.rlSetTargetFps()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -605,5 +623,105 @@ func (interpreter *Interpreter) pushTrue() {
 
 func (interpreter *Interpreter) pushFalse() {
 	interpreter.evaluationStack.pushBool(false)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlInitWindow() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 2 {
+		panic("rlInitWindow: invalid number of arguments")
+	}
+
+	height := interpreter.evaluationStack.pop().(IntValue).value
+	width := interpreter.evaluationStack.pop().(IntValue).value
+	fmt.Println(width)
+	fmt.Println(height)
+
+	rl.InitWindow(int32(width), int32(height), "raylib")
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlCloseWindow() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("rlCloseWindow: invalid number of arguments")
+	}
+
+	rl.CloseWindow()
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlWindowShouldClose() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("rlWindowShouldClose: invalid number of arguments")
+	}
+
+	v := rl.WindowShouldClose()
+
+	interpreter.evaluationStack.pushBool(v)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlBeginDrawing() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("rlBeginDrawing: invalid number of arguments")
+	}
+
+	rl.BeginDrawing()
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlEndDrawing() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("rlEndDrawing: invalid number of arguments")
+	}
+
+	rl.EndDrawing()
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlClearBackground() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 3 {
+		panic("rlClearBackground: invalid number of arguments")
+	}
+
+	b := interpreter.evaluationStack.pop().(IntValue).value
+	g := interpreter.evaluationStack.pop().(IntValue).value
+	r := interpreter.evaluationStack.pop().(IntValue).value
+
+	rl.ClearBackground(color.RGBA{
+		R: uint8(r),
+		G: uint8(g),
+		B: uint8(b),
+		A: 255,
+	})
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlSetTargetFps() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("rlEndDrawing: invalid number of arguments")
+	}
+
+	b := interpreter.evaluationStack.pop().(IntValue).value
+
+	rl.SetTargetFPS(int32(b))
+
+	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
 }

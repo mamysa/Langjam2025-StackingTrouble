@@ -7,16 +7,26 @@ import (
 )
 
 type CodegenVisitor struct {
-	Instructions []instruction.Instruction
-	Program      *instruction.Program
-	Ast          Ast
-	symGen       util.SymGen
+	Instructions          []instruction.Instruction
+	Program               *instruction.Program
+	Ast                   Ast
+	symGen                util.SymGen
+	reservedFunctionNames map[string]instruction.OpCode_NoArgs
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
 		Instructions: make([]instruction.Instruction, 0),
 		symGen:       util.NewSymGen(),
+		reservedFunctionNames: map[string]instruction.OpCode_NoArgs{
+			"RlInitWindow":        instruction.RlInitWindow,
+			"RlCloseWindow":       instruction.RlCloseWindow,
+			"RlWindowShouldClose": instruction.RlWindowShouldClose,
+			"RlBeginDrawing":      instruction.RlBeginDrawing,
+			"RlEndDrawing":        instruction.RlEndDrawing,
+			"RlClearBackground":   instruction.RlClearBackground,
+			"RlSetTargetFPS":      instruction.RlSetTargetFPS,
+		},
 	}
 }
 
@@ -379,13 +389,19 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 	})
 
 	if variable, ok := expr.Expr.(Var); ok {
+		// todo switch on native functions
+		insnOpcode, ok := visitor.reservedFunctionNames[variable.Var]
+		if ok {
+			visitor.addInstruction(instruction.InstructionNoOperands{OpCode: insnOpcode})
+			return
+		}
+
 		// check if given variable is present in function defs and do direct call instead.
 		if _, ok := visitor.Ast.FunctionDefs[variable.Var]; ok {
 			visitor.addInstruction(instruction.NewCall(variable.Var))
 			return
 		}
 
-		// todo switch on native functions
 	}
 
 	//  otherwise interpret variable is as a function pointer and try calling that
@@ -396,6 +412,11 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 }
 
 func (visitor *CodegenVisitor) visitAddressOfFunction(expr AddressOfFunction) {
+	_, ok := visitor.reservedFunctionNames[expr.Name]
+	if ok {
+		panic(fmt.Errorf("Pointer to built-in function %+v", expr.Name))
+	}
+
 	f, ok := visitor.Ast.FunctionDefs[expr.Name]
 	if !ok {
 		panic(fmt.Errorf("Pointer to unknown function %+v", expr.Name))
