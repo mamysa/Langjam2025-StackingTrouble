@@ -187,3 +187,15 @@ func (e ObjectFieldGet) String() string {
 func (e ObjectFieldGet) Accept(visitor AstVisitor) {
 	visitor.visitObjectFieldGetExpression(e)
 }
+
+type ReadGlobal struct {
+	GlobalName string
+}
+
+func (e ReadGlobal) String() string {
+	return fmt.Sprintf("ReadGlobal(global: %+v)", e.GlobalName)
+}
+
+func (e ReadGlobal) Accept(visitor AstVisitor) {
+	visitor.visitReadGlobalExpression(e)
+}

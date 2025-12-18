@@ -24,6 +24,7 @@ func (f FunctionDef) isTopLevelAstNode() {}
 
 type Ast struct {
 	FunctionDefs map[string]FunctionDef
+	GlobalDefs   map[string]GlobalDef
 }
 
 func (f Ast) Accept(visitor AstVisitor) {
@@ -31,7 +32,7 @@ func (f Ast) Accept(visitor AstVisitor) {
 }
 
 func (f Ast) String() string {
-	return fmt.Sprintf("Ast(FunctionDefs:%+v)", f.FunctionDefs)
+	return fmt.Sprintf("Ast(GlobalDefs: %+v, FunctionDefs:%+v)", f.GlobalDefs, f.FunctionDefs)
 }
 
 func (f Ast) isTopLevelAstNode() {}

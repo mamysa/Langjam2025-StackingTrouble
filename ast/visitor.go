@@ -2,6 +2,7 @@ package ast
 
 type AstVisitor interface {
 	visitAst(Ast)
+	visitGlobalDef(GlobalDef)
 	visitFunctionDef(FunctionDef)
 	visitPrintStatement(PrintStmt)
 	visitAssignStatement(AssignStmt)
@@ -29,4 +30,5 @@ type AstVisitor interface {
 	visitAssignVarExpression(AssignVar)
 	visitObjectFieldSetExpression(ObjectFieldSet)
 	visitSubscriptSetExpression(SubscriptSet)
+	visitReadGlobalExpression(ReadGlobal)
 }

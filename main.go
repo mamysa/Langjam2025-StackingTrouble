@@ -3,7 +3,6 @@ package main
 import (
 	"compiler/ast"
 	"compiler/eval"
-	"compiler/instruction"
 	"compiler/parser"
 	"compiler/tokenizer"
 	"fmt"
@@ -16,8 +15,10 @@ const (
 	DebugBytecode        = "DEBUG=bytecode"
 )
 
-func printInstructions(instructions []instruction.Instruction) {
-	for i, instruction := range instructions {
+func printProgram(prog *eval.Program) {
+	fmt.Printf("Globals: %+v\n", prog.Globals)
+
+	for i, instruction := range prog.Instructions {
 		fmt.Printf("%d: %+v\n", i, instruction)
 	}
 }
@@ -70,7 +71,7 @@ func main() {
 	a.Accept(visitor)
 
 	if debugArg == DebugBytecode {
-		printInstructions(visitor.Program.Instructions)
+		printProgram(visitor.Program)
 		os.Exit(1)
 	}
 

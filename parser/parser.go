@@ -66,19 +66,47 @@ func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) tokenizer.Tok
 	panic(fmt.Sprintf("Error: expected token %+v, actual %+v", expectedTokenKinds, nextToken.Kind()))
 }
 
+func (p *Parser) ensureSymbolNotDefined(functionDefs map[string]ast.FunctionDef, globalDefs map[string]ast.GlobalDef, sym string) error {
+	if _, ok := functionDefs[sym]; ok {
+		return fmt.Errorf("Symbol %+v redefined", sym)
+	}
+
+	if _, ok := globalDefs[sym]; ok {
+		return fmt.Errorf("Symbol %+v redefined", sym)
+	}
+
+	return nil
+}
+
 // AST := FUNCTION_DEF*
 func (p *Parser) Parse() (ast.Ast, error) {
 
 	functionDefs := make(map[string]ast.FunctionDef, 0)
+	globalDefs := make(map[string]ast.GlobalDef, 0)
 
 	for p.hasTokens() {
+		if p.nextTokenIs(tokenizer.Token_Global) {
+			globalDef, err := p.parseGlobalDef()
+			if err != nil {
+				return ast.Ast{}, err
+			}
+
+			if err := p.ensureSymbolNotDefined(functionDefs, globalDefs, globalDef.GlobalName); err != nil {
+				return ast.Ast{}, err
+			}
+
+			globalDefs[globalDef.GlobalName] = globalDef
+			continue
+
+		}
+
 		functionDef, err := p.parseFunctionDef()
 		if err != nil {
 			return ast.Ast{}, err
 		}
 
-		if _, ok := functionDefs[functionDef.Name]; ok {
-			return ast.Ast{}, fmt.Errorf("Function %+v redefined", functionDef.Name)
+		if err := p.ensureSymbolNotDefined(functionDefs, globalDefs, functionDef.Name); err != nil {
+			return ast.Ast{}, err
 		}
 
 		functionDefs[functionDef.Name] = functionDef
@@ -95,9 +123,54 @@ func (p *Parser) Parse() (ast.Ast, error) {
 
 	ast := ast.Ast{
 		FunctionDefs: functionDefs,
+		GlobalDefs:   globalDefs,
 	}
 
 	return ast, nil
+}
+
+// global_def := `global` ident = int | float
+func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
+	p.expect(tokenizer.Token_Global)
+
+	globalName := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+
+	p.expect(tokenizer.Token_Assign)
+
+	if p.nextTokenIs(tokenizer.Token_Int) {
+		constInt := p.expect(tokenizer.Token_Int).(tokenizer.TokenWithData)
+
+		parsedInt, err := strconv.Atoi(constInt.Value())
+		if err != nil {
+			return ast.GlobalDef{}, err
+		}
+
+		return ast.GlobalDef{
+			GlobalName: globalName.Value(),
+			ValueInt: &ast.Int{
+				Integer: parsedInt,
+			},
+		}, nil
+
+	}
+
+	if p.nextTokenIs(tokenizer.Token_Float) {
+		constFloat := p.expect(tokenizer.Token_Float).(tokenizer.TokenWithData)
+
+		parsedFloat, err := strconv.ParseFloat(constFloat.Value(), 64)
+		if err != nil {
+			return ast.GlobalDef{}, err
+		}
+
+		return ast.GlobalDef{
+			GlobalName: globalName.Value(),
+			ValueFloat: &ast.Float{
+				Float: parsedFloat,
+			},
+		}, nil
+	}
+
+	panic("unable to parse global constant definition")
 }
 
 // FUNC_DEF :=  'def' IDENT '(' NON_EMPTY_FUNCTION_PARAMETER_LIST? ')' statement_block
@@ -674,6 +747,15 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		p.expect(tokenizer.Token_RParen)
 
 		return ast.LenExpr{Expr: expr}, nil
+	}
+
+	if p.nextTokenIs(tokenizer.Token_Global) {
+		p.expect(tokenizer.Token_Global)
+		p.expect(tokenizer.Token_LParen)
+		globalName := p.expect(tokenizer.Token_Identifier).(tokenizer.TokenWithData)
+		p.expect(tokenizer.Token_RParen)
+
+		return ast.ReadGlobal{GlobalName: globalName.Value()}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_LBracket) {

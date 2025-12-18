@@ -47,6 +47,8 @@ const (
 	Token_False TokenKind = "False"
 
 	Token_None TokenKind = "None"
+
+	Token_Global TokenKind = "global"
 )
 
 var specialIdentifiers = map[string]TokenKind{
@@ -64,6 +66,7 @@ var specialIdentifiers = map[string]TokenKind{
 	"True":   Token_True,
 	"False":  Token_False,
 	"None":   Token_None,
+	"global": Token_Global,
 }
 
 var operators = map[string]TokenKind{

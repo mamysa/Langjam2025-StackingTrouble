@@ -1,0 +1,7 @@
+global A = 12
+global B = 1338 
+
+def main() {
+	#? STDOUT 1350
+	print(global(A) + global(B));
+}

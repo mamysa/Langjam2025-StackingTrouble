@@ -6,6 +6,28 @@ type Statement interface {
 	Accept(AstVisitor)
 }
 
+type GlobalDef struct {
+	GlobalName string
+	// this is a bit ugly.
+	ValueInt   *Int
+	ValueFloat *Float
+}
+
+func (stmt GlobalDef) Accept(visitor AstVisitor) {
+	visitor.visitGlobalDef(stmt)
+}
+
+func (stmt GlobalDef) String() string {
+	var v interface{}
+	if stmt.ValueInt != nil {
+		v = stmt.ValueInt
+	} else {
+		v = stmt.ValueFloat
+	}
+
+	return fmt.Sprintf("Global(name:%+v, value:%+v)", stmt.GlobalName, v)
+}
+
 // function call statement that discards result of the function call.
 type VoidFunctionCall struct {
 	Expr Expr

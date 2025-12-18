@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"compiler/eval"
 	"compiler/instruction"
 	"compiler/util"
 	"fmt"
@@ -8,16 +9,18 @@ import (
 
 type CodegenVisitor struct {
 	Instructions          []instruction.Instruction
-	Program               *instruction.Program
+	Program               *eval.Program
 	Ast                   Ast
 	symGen                util.SymGen
 	reservedFunctionNames map[string]instruction.OpCode_NoArgs
+	Globals               map[string]eval.Value
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
 		Instructions: make([]instruction.Instruction, 0),
 		symGen:       util.NewSymGen(),
+		Globals:      map[string]eval.Value{},
 		reservedFunctionNames: map[string]instruction.OpCode_NoArgs{
 			"RlInitWindow":        instruction.RlInitWindow,
 			"RlCloseWindow":       instruction.RlCloseWindow,
@@ -113,6 +116,12 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 
 func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	visitor.Ast = ast
+
+	// process globals first
+	for _, globalDef := range ast.GlobalDefs {
+		globalDef.Accept(visitor)
+	}
+
 	for _, functionDef := range ast.FunctionDefs {
 		functionDef.Accept(visitor)
 	}
@@ -125,10 +134,25 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 		panic("could not find offset for main")
 	}
 
-	visitor.Program = &instruction.Program{
+	visitor.Program = &eval.Program{
 		Instructions:            visitor.Instructions,
 		EntryInstructionAddress: mainOffset,
+		Globals:                 visitor.Globals,
 	}
+}
+
+func (visitor *CodegenVisitor) visitGlobalDef(def GlobalDef) {
+	if def.ValueFloat != nil {
+		visitor.Globals[def.GlobalName] = eval.NewFloatValue(def.ValueFloat.Float)
+		return
+	}
+
+	if def.ValueInt != nil {
+		visitor.Globals[def.GlobalName] = eval.NewInt(def.ValueInt.Integer)
+		return
+	}
+
+	panic("no global constant matched")
 }
 
 func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
@@ -166,7 +190,7 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 		}
 	}
 
-	// TODO these should be returned conditionally depending on the last statement being either
+	// these should be returned conditionally depending on the last statement being either
 	// return or return-with-value
 	// If there's no return statement then we add these. All functions should return something (e.g. None).
 
@@ -510,4 +534,12 @@ func (visitor *CodegenVisitor) visitObjectFieldSetExpression(expr ObjectFieldSet
 	visitor.addInstruction(instruction.ObjectFieldSet{
 		Field: expr.Field,
 	})
+}
+
+func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
+	if _, ok := visitor.Globals[expr.GlobalName]; !ok {
+		panic(fmt.Errorf("Global %+v undefined", expr.GlobalName))
+	}
+
+	visitor.addInstruction(instruction.ReadGlobal{Global: expr.GlobalName})
 }

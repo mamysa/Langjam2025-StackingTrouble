@@ -15,6 +15,7 @@ var TESTS_PASSING []string = []string{
 	"boolean-short-circuit.bla",
 	"object-0.bla",
 	"void-fn-call.bla",
+	"global.bla",
 }
 
 const (

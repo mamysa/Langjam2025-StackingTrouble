@@ -14,10 +14,10 @@ type Interpreter struct {
 	callStack       CallStack
 	evaluationStack EvaluationStack
 	programCounter  InstructionOffset
-	program         *instruction.Program
+	program         *Program
 }
 
-func NewInterpreter(program *instruction.Program) Interpreter {
+func NewInterpreter(program *Program) Interpreter {
 	return Interpreter{
 		callStack:       NewCallStack(),
 		evaluationStack: NewEvaluationStack(),
@@ -159,6 +159,10 @@ func (interpreter *Interpreter) Run() {
 
 		if fieldSet, ok := insn.(instruction.ObjectFieldSet); ok {
 			interpreter.objectFieldSet(fieldSet)
+		}
+
+		if readGlobal, ok := insn.(instruction.ReadGlobal); ok {
+			interpreter.readGlobal(readGlobal)
 		}
 	}
 
@@ -625,6 +629,16 @@ func (interpreter *Interpreter) pushTrue() {
 
 func (interpreter *Interpreter) pushFalse() {
 	interpreter.evaluationStack.pushBool(false)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) readGlobal(insn instruction.ReadGlobal) {
+	gl, ok := interpreter.program.Globals[insn.Global]
+	if !ok {
+		panic(fmt.Errorf("readGlobal: global %+v not present in environment", insn.Global))
+	}
+
+	interpreter.evaluationStack.pushValue(gl)
 	interpreter.programCounter++
 }
 

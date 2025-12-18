@@ -198,3 +198,13 @@ func (i ObjectFieldSet) isInstruction() {}
 func (i ObjectFieldSet) String() string {
 	return fmt.Sprintf("ObjectFieldSet FIELD=%s", i.Field)
 }
+
+type ReadGlobal struct {
+	Global string
+}
+
+func (i ReadGlobal) isInstruction() {}
+
+func (i ReadGlobal) String() string {
+	return fmt.Sprintf("ReadGlobal GLOBAL=%s", i.Global)
+}
