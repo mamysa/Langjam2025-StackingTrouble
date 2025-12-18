@@ -102,6 +102,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlClearBackground()
 			case instruction.RlSetTargetFPS:
 				interpreter.rlSetTargetFps()
+			case instruction.RlDrawRectangle:
+				interpreter.rlDrawRectangle()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -715,12 +717,58 @@ func (interpreter *Interpreter) rlClearBackground() {
 func (interpreter *Interpreter) rlSetTargetFps() {
 	argCount := interpreter.evaluationStack.pop().(IntValue)
 	if argCount.value != 1 {
-		panic("rlEndDrawing: invalid number of arguments")
+		panic("rlSetTargetFps: invalid number of arguments")
 	}
 
 	b := interpreter.evaluationStack.pop().(IntValue).value
 
 	rl.SetTargetFPS(int32(b))
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+// (x, y, width, height, r, g, b)
+func (interpreter *Interpreter) rlDrawRectangle() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 7 {
+		panic("rlDrawRectangle: invalid number of arguments")
+	}
+
+	var (
+		b      = interpreter.evaluationStack.pop().(IntValue).value
+		g      = interpreter.evaluationStack.pop().(IntValue).value
+		r      = interpreter.evaluationStack.pop().(IntValue).value
+		height = interpreter.evaluationStack.pop().(IntValue).value
+		width  = interpreter.evaluationStack.pop().(IntValue).value
+
+		x int32
+		y int32
+	)
+
+	// should be abstacted
+	yValue := interpreter.evaluationStack.pop()
+	if yIsInt, ok := yValue.(IntValue); ok {
+		y = int32(yIsInt.value)
+	} else {
+		yIsFloat := yValue.(FloatValue)
+		y = int32(yIsFloat.value)
+	}
+
+	xValue := interpreter.evaluationStack.pop()
+	if xIsInt, ok := xValue.(IntValue); ok {
+		x = int32(xIsInt.value)
+	} else {
+		xIsFloat := xValue.(FloatValue)
+		x = int32(xIsFloat.value)
+	}
+
+	rl.DrawRectangle(x, y, int32(width), int32(height), color.RGBA{
+		R: uint8(r),
+		G: uint8(g),
+		B: uint8(b),
+		A: 255,
+	})
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++

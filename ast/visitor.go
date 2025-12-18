@@ -5,6 +5,7 @@ type AstVisitor interface {
 	visitFunctionDef(FunctionDef)
 	visitPrintStatement(PrintStmt)
 	visitAssignStatement(AssignStmt)
+	visitVoidFunctionCallStatement(VoidFunctionCall)
 	visitAssert(AssertStmt)
 	visitReturn(ReturnStmt)
 	visitReturnWithExpr(ReturnWithExprStmt)

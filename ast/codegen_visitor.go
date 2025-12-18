@@ -26,6 +26,7 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlEndDrawing":        instruction.RlEndDrawing,
 			"RlClearBackground":   instruction.RlClearBackground,
 			"RlSetTargetFPS":      instruction.RlSetTargetFPS,
+			"RlDrawRectangle":     instruction.RlDrawRectangle,
 		},
 	}
 }
@@ -193,6 +194,18 @@ func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 func (visitor *CodegenVisitor) visitAssignStatement(stmt AssignStmt) {
 	stmt.Expr.Accept(visitor)
 	stmt.AssignmentExpr.Accept(visitor)
+}
+
+func (visitor *CodegenVisitor) visitVoidFunctionCallStatement(stmt VoidFunctionCall) {
+	// rewrite void function call as regular function call
+	fnCall := FunctionCall{
+		Expr: stmt.Expr,
+		Args: stmt.Args,
+	}
+
+	fnCall.Accept(visitor)
+	// pop the result pushed by the function call
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop})
 }
 
 func (visitor *CodegenVisitor) visitReturn(stmt ReturnStmt) {

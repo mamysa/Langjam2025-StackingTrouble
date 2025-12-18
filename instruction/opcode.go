@@ -36,6 +36,7 @@ const (
 	RlEndDrawing        // end drawing
 	RlClearBackground   // clear background with colors
 	RlSetTargetFPS      // set target fps
+	RlDrawRectangle     // draw rectangle
 
 )
 
@@ -99,6 +100,8 @@ func (o OpCode_NoArgs) String() string {
 		return "RlClearBackground"
 	case RlSetTargetFPS:
 		return "RlSetTargetFPS"
+	case RlDrawRectangle:
+		return "RlDrawRectangle"
 	}
 
 	panic("Unknown opcode" + string(o))

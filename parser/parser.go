@@ -328,46 +328,67 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 		return nil, err
 	}
 
-	// TODO void function call
-
-	p.expect(tokenizer.Token_Assign)
+	// void function call
+	if p.nextTokenIs(tokenizer.Token_LParen) {
+		expressionList := []ast.Expr{}
+		p.expect(tokenizer.Token_LParen)
+		if !p.nextTokenIs(tokenizer.Token_RParen) {
+			e, err := p.expressionList()
+			if err != nil {
+				return nil, err
+			}
+			expressionList = e
+		}
+		p.expect(tokenizer.Token_RParen)
+		p.expect(tokenizer.Token_Semi)
+		return ast.VoidFunctionCall{
+			Expr: aexpr,
+			Args: expressionList,
+		}, err
+	}
 
 	//definitely assignment expression
-	var assignmentExpr ast.AssignmentExpr
+	if p.nextTokenIs(tokenizer.Token_Assign) {
+		p.expect(tokenizer.Token_Assign)
 
-	if e, ok := aexpr.(ast.Var); ok {
-		assignmentExpr = ast.AssignVar{Var: e.Var}
-	}
+		var assignmentExpr ast.AssignmentExpr
 
-	if e, ok := aexpr.(ast.SubscriptGet); ok {
-		assignmentExpr = ast.SubscriptSet{
-			Expr:      e.Expr,
-			Subscript: e.Subscript,
+		if e, ok := aexpr.(ast.Var); ok {
+			assignmentExpr = ast.AssignVar{Var: e.Var}
 		}
-	}
 
-	if e, ok := aexpr.(ast.ObjectFieldGet); ok {
-		assignmentExpr = ast.ObjectFieldSet{
-			Expr:  e.Expr,
-			Field: e.Field,
+		if e, ok := aexpr.(ast.SubscriptGet); ok {
+			assignmentExpr = ast.SubscriptSet{
+				Expr:      e.Expr,
+				Subscript: e.Subscript,
+			}
 		}
+
+		if e, ok := aexpr.(ast.ObjectFieldGet); ok {
+			assignmentExpr = ast.ObjectFieldSet{
+				Expr:  e.Expr,
+				Field: e.Field,
+			}
+		}
+
+		if assignmentExpr == nil {
+			return nil, fmt.Errorf("Unable to match AssignmentExpr for %+v", aexpr)
+		}
+
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		p.expect(tokenizer.Token_Semi)
+
+		return ast.AssignStmt{
+			AssignmentExpr: assignmentExpr,
+			Expr:           expr,
+		}, nil
 	}
 
-	if assignmentExpr == nil {
-		return nil, fmt.Errorf("Unable to match AssignmentExpr for %+v", aexpr)
-	}
-
-	expr, err := p.expression()
-	if err != nil {
-		return nil, err
-	}
-
-	p.expect(tokenizer.Token_Semi)
-
-	return ast.AssignStmt{
-		AssignmentExpr: assignmentExpr,
-		Expr:           expr,
-	}, nil
+	panic("unable to parse expression")
 }
 
 func (p *Parser) statementPrint() (ast.Statement, error) {

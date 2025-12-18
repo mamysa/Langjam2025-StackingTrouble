@@ -6,6 +6,20 @@ type Statement interface {
 	Accept(AstVisitor)
 }
 
+// function call statement that discards result of the function call.
+type VoidFunctionCall struct {
+	Expr Expr
+	Args []Expr
+}
+
+func (e VoidFunctionCall) Accept(visitor AstVisitor) {
+	visitor.visitVoidFunctionCallStatement(e)
+}
+
+func (stmt VoidFunctionCall) String() string {
+	return fmt.Sprintf("VoidFunctionCall(name:%+v, args:%+v)", stmt.Expr, stmt.Args)
+}
+
 type AssignStmt struct {
 	AssignmentExpr AssignmentExpr
 	Expr           Expr
