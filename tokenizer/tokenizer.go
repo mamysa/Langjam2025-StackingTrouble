@@ -65,7 +65,7 @@ func (reader *TokenReader) peekOperator() bool {
 		return false
 	}
 
-	return *c == '+' || *c == '-' || *c == '*' || *c == '/' || *c == '=' || *c == '&' || *c == '<' || *c == '!'
+	return *c == '+' || *c == '-' || *c == '*' || *c == '/' || *c == '=' || *c == '&' || *c == '<' || *c == '>' || *c == '!'
 }
 
 func (reader *TokenReader) peekAlpha() bool {

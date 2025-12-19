@@ -49,6 +49,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.notEq()
 			case instruction.Lt:
 				interpreter.lt()
+			case instruction.GrEq:
+				interpreter.grEq()
 			case instruction.Add:
 				interpreter.add()
 			case instruction.Sub:
@@ -109,6 +111,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlIsKeyDown()
 			case instruction.GetTime:
 				interpreter.getTime()
+			case instruction.CastFloat:
+				interpreter.castFloat()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -458,6 +462,26 @@ func (interpreter *Interpreter) lt() {
 	}
 
 	result := v1.Int() < v2.Int()
+	interpreter.evaluationStack.pushBool(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) grEq() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() >= v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() >= v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -814,5 +838,34 @@ func (interpreter *Interpreter) rlIsKeyDown() {
 
 	b := rl.IsKeyDown(int32(key))
 	interpreter.evaluationStack.pushBool(b)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) castFloat() {
+	value := interpreter.evaluationStack.pop()
+	if !value.IsNumeric() {
+		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float", value))
+	}
+
+	var (
+		fl          float64
+		castSuccess bool = false
+	)
+
+	if intValue, ok := value.(IntValue); ok {
+		fl = float64(intValue.value)
+		castSuccess = true
+	}
+
+	if floatValue, ok := value.(FloatValue); ok {
+		fl = floatValue.value
+		castSuccess = true
+	}
+
+	if !castSuccess {
+		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float", value))
+	}
+
+	interpreter.evaluationStack.pushFloat(fl)
 	interpreter.programCounter++
 }

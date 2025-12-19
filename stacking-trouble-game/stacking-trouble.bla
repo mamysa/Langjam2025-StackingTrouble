@@ -1,7 +1,120 @@
 global CELL_SIZE = 64
+global BOARD_CELLS_ALONG_X = 12
 global BOARD_CELLS_ALONG_Y = 8
 
+
+global HORIZONTAL_MOVEMENT_LEFT = -1
+global HORIZONTAL_MOVEMENT_RIGHT = 1
+
+
+# steal these from raylib enum
 global RL_KEY_SPACE = 32
+global RL_KEY_RIGHT = 262
+global RL_KEY_LEFT = 263
+
+
+global MOVEMENT_EPS = 0.01
+global VELOCITY = 2.0
+
+def board_x_coordinate_in_bounds(x) {
+	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
+}
+
+# Player object. 
+# (1) Stores (x,y) coodinates of the player. Can be float
+# (2) Stores previousGoalX and currentGoalX int coordinates of target cells on the board.
+#     Initially currentGoalX is None and previousGoalX is set to x. (x assumed to be an integer.)
+# 	  When player moves, current_goal_x is set and movement is performed.
+#     When player reaches his current_goal_x, last_goal_x = current_goal_x and set current_goal_x to None
+# (3) To track in which direction player is moving, maintain horizontal_movement_kind. This will allow to
+#     alter player's movement direction in certain cases. When player reaches his goal, this field is set to None.
+def player_new(x, y) {
+	player = {};
+	player.x = x;
+	player.y = y;
+
+	player.previous_goal_x = x;
+	player.current_goal_x = None;
+
+	player.horizontal_movement_kind = None;
+
+	player.move = &player_move;
+	return player;
+}
+
+def player_move(self, desired_horizontal_movement_kind) {
+	if desired_horizontal_movement_kind == None {
+		return False;
+	}
+
+	if desired_horizontal_movement_kind == self.horizontal_movement_kind {
+		# do not allow player to queue multiple movements in the same direction
+		return False;
+	}
+
+	# player is not moving
+	if self.horizontal_movement_kind == None {
+		new_target_x = self.previous_goal_x + desired_horizontal_movement_kind;
+
+		if not board_x_coordinate_in_bounds(new_target_x) {
+			return False;
+		}
+
+		self.current_goal_x = new_target_x;
+		self.horizontal_movement_kind = desired_horizontal_movement_kind;
+
+		return True;
+	}
+
+	# otherwise player is moving in the opposite direction, swap previous_goal_X and current_goal_x 
+	# and update horizontal_movement_kind
+	target_goal_x = self.previous_goal_x;
+
+	# TODO do we even need this?
+	if not board_x_coordinate_in_bounds(target_goal_x) {
+		return False;
+	}
+
+	self.previous_goal_x = self.current_goal_x;
+	self.current_goal_x = target_goal_x;
+	self.horizontal_movement_kind = desired_horizontal_movement_kind;
+
+	return True;
+}
+
+# self = player
+def player_tick_horizontal_movement(self, dt) {
+	if self.horizontal_movement_kind == None {
+		return;
+	}
+
+	horizontal_movement_float = float(self.horizontal_movement_kind);
+
+	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
+
+	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
+
+	# we have reached the goal
+	if global(MOVEMENT_EPS) >= distance_from_goal {
+		self.x = float(self.current_goal_x);
+		self.previous_goal_x = self.current_goal_x;
+		self.current_goal_x = None;
+		self.horizontal_movement_kind = None;
+	}
+}
+
+def player_draw(self) {
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+
+	cell_start_x = global(CELL_SIZE) *  self.x;
+	cell_start_y = board_height - (global(CELL_SIZE) * self.y);
+
+	width = global(CELL_SIZE);
+	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
+
+
+	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
+}
 
 
 def crate_new(x, y) {
@@ -25,19 +138,36 @@ def crate_draw(self) {
 
 def main() {
 	RlInitWindow(800, 600);
-	RlSetTargetFPS(30);
+	RlSetTargetFPS(60);
 
 	crate1 = crate_new(0, 4);
 	crate2 = crate_new(1, 5);
-	crate3 = crate_new(3.5, 0);
+	crate3 = crate_new(4, 0);
 
 	crates = [] + crate1 + crate2 + crate3;
 
 	current_time_ms = time();
 	dt  = 0.01;
 	accumulator = 0.0;
+	
+	player = player_new(1, 1);
+	print(player);
 
 	while not RlWindowShouldClose() {
+
+		if RlIsKeyDown(global(RL_KEY_SPACE)) {
+			print(1337);
+		}
+
+		if RlIsKeyDown(global(RL_KEY_LEFT)) {
+			player.move(player, global(HORIZONTAL_MOVEMENT_LEFT));
+		}
+
+		if RlIsKeyDown(global(RL_KEY_RIGHT)) {
+			player.move(player, global(HORIZONTAL_MOVEMENT_RIGHT));
+		}
+
+
 		# physics main loop, shamlessly stolen from Gaffer On Games Fix your timestep 
 		# we don't do any interpolation between states though.
 		new_time_ms = time();
@@ -45,21 +175,23 @@ def main() {
 		current_time_ms = new_time_ms;
 
 		accumulator = accumulator + frame_time ;
-		#print(accumulator);
 
-
-		if RlIsKeyDown(global(RL_KEY_SPACE)) {
-			print(1337);
+		while dt < accumulator {
+			player_tick_horizontal_movement(player, dt);
+			accumulator = accumulator - dt;
 		}
+
 
 		RlBeginDrawing();
 		RlClearBackground(255, 255, 255);
+
 
 		i = 0;
 		while i < len(crates) {
 			crates[i].draw(crates[i]);
 			i = i + 1;
 		}
+		player_draw(player);
 		RlEndDrawing();
 	}
 	RlCloseWindow();

@@ -12,6 +12,7 @@ const (
 	Token_Not   TokenKind = "not"
 
 	Token_Lt       TokenKind = "<"
+	Token_GrEq     TokenKind = ">="
 	Token_EqEq     TokenKind = "=="
 	Token_NotEq    TokenKind = "!="
 	Token_Plus     TokenKind = "+"
@@ -40,8 +41,9 @@ const (
 	Token_Else  TokenKind = "else"
 	Token_While TokenKind = "while"
 
-	Token_Len    TokenKind = "len"
-	Token_Assert TokenKind = "assert"
+	Token_Len       TokenKind = "len"
+	Token_Assert    TokenKind = "assert"
+	Token_CastFloat TokenKind = "float"
 
 	Token_True  TokenKind = "True"
 	Token_False TokenKind = "False"
@@ -67,6 +69,7 @@ var specialIdentifiers = map[string]TokenKind{
 	"False":  Token_False,
 	"None":   Token_None,
 	"global": Token_Global,
+	"float":  Token_CastFloat,
 }
 
 var operators = map[string]TokenKind{
@@ -79,6 +82,7 @@ var operators = map[string]TokenKind{
 	"<":  Token_Lt,
 	"==": Token_EqEq,
 	"!=": Token_NotEq,
+	">=": Token_GrEq,
 }
 
 var braces = map[string]TokenKind{

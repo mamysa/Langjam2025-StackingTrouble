@@ -199,3 +199,15 @@ func (e ReadGlobal) String() string {
 func (e ReadGlobal) Accept(visitor AstVisitor) {
 	visitor.visitReadGlobalExpression(e)
 }
+
+type CastFloat struct {
+	Expr Expr
+}
+
+func (e CastFloat) String() string {
+	return fmt.Sprintf("CastFloat(%+v)", e.Expr)
+}
+
+func (e CastFloat) Accept(visitor AstVisitor) {
+	visitor.visitCastFloatExpression(e)
+}

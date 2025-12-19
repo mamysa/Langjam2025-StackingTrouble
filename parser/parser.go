@@ -591,14 +591,14 @@ func (p *Parser) expressionNot() (ast.Expr, error) {
 	return p.expressionComparison()
 }
 
-// EXPR_COMPARISON = expr_add {`<` expr_add}?
+// EXPR_COMPARISON = expr_add {`<` | `>=` | `!=` | `==` expr_add}?
 func (p *Parser) expressionComparison() (ast.Expr, error) {
 	lhs, err := p.expressionAdditive()
 	if err != nil {
 		return nil, err
 	}
 
-	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt}
+	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt, tokenizer.Token_GrEq}
 	if p.nextTokenIs(expectedTokens...) {
 		token := p.expect(expectedTokens...)
 		var op ast.BinOp
@@ -609,7 +609,8 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 			op = ast.BinOp_NotEq
 		case tokenizer.Token_Lt:
 			op = ast.BinOp_Lt
-
+		case tokenizer.Token_GrEq:
+			op = ast.BinOp_GrEq
 		default:
 			panic("unknown comparison token")
 		}
@@ -754,6 +755,18 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		p.expect(tokenizer.Token_RParen)
 
 		return ast.LenExpr{Expr: expr}, nil
+	}
+
+	if p.nextTokenIs(tokenizer.Token_CastFloat) {
+		p.expect(tokenizer.Token_CastFloat)
+		p.expect(tokenizer.Token_LParen)
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		p.expect(tokenizer.Token_RParen)
+
+		return ast.CastFloat{Expr: expr}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Global) {

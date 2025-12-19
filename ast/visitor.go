@@ -31,4 +31,5 @@ type AstVisitor interface {
 	visitObjectFieldSetExpression(ObjectFieldSet)
 	visitSubscriptSetExpression(SubscriptSet)
 	visitReadGlobalExpression(ReadGlobal)
+	visitCastFloatExpression(CastFloat)
 }

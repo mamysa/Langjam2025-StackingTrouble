@@ -365,6 +365,8 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Div})
 	case BinOp_Lt:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Lt})
+	case BinOp_GrEq:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.GrEq})
 	case BinOp_EqEq:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Eq})
 	case BinOp_NotEq:
@@ -544,4 +546,9 @@ func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
 	}
 
 	visitor.addInstruction(instruction.ReadGlobal{Global: expr.GlobalName})
+}
+
+func (visitor *CodegenVisitor) visitCastFloatExpression(expr CastFloat) {
+	expr.Expr.Accept(visitor) // evaluate target castFloat operation
+	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.CastFloat})
 }

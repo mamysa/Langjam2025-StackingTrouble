@@ -7,6 +7,7 @@ const (
 	Eq                  // equality operator
 	NotEq               // not-equality operator
 	Lt                  // less than
+	GrEq                // greater equal
 	Add
 	Sub
 	Mul
@@ -27,6 +28,7 @@ const (
 	Not
 	PushTrue  // pushes True boolean onto the stack
 	PushFalse // pushes False boolean onto the stack
+	CastFloat // casts numeric value on top of the stack to float, otherwise crashes.
 
 	// various built-ins
 	RlInitWindow        // raylib init window
@@ -50,6 +52,8 @@ func (o OpCode_NoArgs) String() string {
 		return "NoOp"
 	case Lt:
 		return "Lt"
+	case GrEq:
+		return "GrEq"
 	case Add:
 		return "Add"
 	case Sub:
