@@ -16,8 +16,33 @@ global RL_KEY_LEFT = 263
 global MOVEMENT_EPS = 0.01
 global VELOCITY = 2.0
 
+global CRATE_HEIGHT = 1
+global PLAYER_HEIGHT = 2
+
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
+}
+
+def min(a, b) {
+	return a if a < b else b;
+}
+
+def max(a, b) {
+	return a if a > b else b;
+}
+
+
+# Interval represents line segment.
+def interval_new(a, b) {
+	interval = {};
+	interval.min = min(a, b);
+	interval.max = max(a, b);
+	return interval;
+}
+
+# This checks if either interval b completely on the right of a or b os on the left of a and returns negation of that.
+def intervals_overlap(a, b) {
+	return not ((b.min > a.min and b.min > a.max) or (a.min > b.max and a.max > b.max));
 }
 
 # Player object. 
@@ -39,10 +64,13 @@ def player_new(x, y) {
 	player.horizontal_movement_kind = None;
 
 	player.move = &player_move;
+	player.tick = &player_tick;
+	player.draw = &player_draw;
+	player.get_y_axis_span = &player_get_y_span;
 	return player;
 }
 
-def player_move(self, desired_horizontal_movement_kind) {
+def player_move(self, desired_horizontal_movement_kind, world) {
 	if desired_horizontal_movement_kind == None {
 		return False;
 	}
@@ -52,11 +80,18 @@ def player_move(self, desired_horizontal_movement_kind) {
 		return False;
 	}
 
+	# compute "bounding box" of the player along y axis
+	player_interval = self.get_y_axis_span(self);
+
 	# player is not moving
 	if self.horizontal_movement_kind == None {
 		new_target_x = self.previous_goal_x + desired_horizontal_movement_kind;
 
 		if not board_x_coordinate_in_bounds(new_target_x) {
+			return False;
+		}
+		
+		if world.interval_overlaps_any_in_column(world, player_interval, new_target_x) {
 			return False;
 		}
 
@@ -70,8 +105,13 @@ def player_move(self, desired_horizontal_movement_kind) {
 	# and update horizontal_movement_kind
 	target_goal_x = self.previous_goal_x;
 
-	# TODO do we even need this?
+	# TODO do we even need this? Player's last goal was on the board anyways, right?
 	if not board_x_coordinate_in_bounds(target_goal_x) {
+		return False;
+	}
+
+	# we might not need this either since we are just leaving this cell...
+	if world.interval_overlaps_any_in_column(world, player_interval, target_goal_x) {
 		return False;
 	}
 
@@ -80,6 +120,10 @@ def player_move(self, desired_horizontal_movement_kind) {
 	self.horizontal_movement_kind = desired_horizontal_movement_kind;
 
 	return True;
+}
+
+def player_tick(self, dt) {
+	player_tick_horizontal_movement(self, dt);
 }
 
 # self = player
@@ -107,21 +151,30 @@ def player_draw(self) {
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
 	cell_start_x = global(CELL_SIZE) *  self.x;
-	cell_start_y = board_height - (global(CELL_SIZE) * self.y);
+
+	#subtract additional CELL_SIZE so that we account for player's height which is twice as large as other objects on scene.
+	cell_start_y = board_height - (global(CELL_SIZE) * self.y) - global(CELL_SIZE);
 
 	width = global(CELL_SIZE);
 	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
 
-
 	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
 }
 
+def player_get_y_span(self) {
+	y_start = self.y;
+	y_end = self.y + global(PLAYER_HEIGHT);
+	return interval_new(y_start, y_end);
+}
 
+
+# CRATE OBJECT
 def crate_new(x, y) {
 	crate = {};
 	crate.x = x;
 	crate.y = y;
 	crate.draw = &crate_draw;
+	crate.get_y_axis_span = &crate_get_y_axis_span;
 	return crate;
 }
 
@@ -135,23 +188,97 @@ def crate_draw(self) {
 	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
 }
 
+# computes minY, maxY of the crate on the board and returns Interval instance.
+def crate_get_y_axis_span(self) {
+	y_start = self.y;
+	y_end = self.y + global(CRATE_HEIGHT);
+	return interval_new(y_start, y_end);
+}
+
+
+# WORLD object.
+# Is a collection of columns containing crates.
+# Also contains player instance.
+def world_new() {
+	columns = [];
+	x = 0;
+	while x < global(BOARD_CELLS_ALONG_X) {
+		columns = columns + [];
+		x = x + 1;
+	}
+
+	crate1 = crate_new(8, 0);
+	crate2 = crate_new(2, 0);
+	crate3 = crate_new(4, 0);
+	columns[8] = columns[8] + crate1;
+	columns[2] = columns[2] + crate2;
+	columns[4] = columns[4] + crate3;
+	
+	world = {};
+	world.columns = columns;
+	world.player = player_new(0, 0);
+	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
+	return world;
+}
+
+def world_tick(self, dt) {
+	self.player.tick(self.player, dt);
+}
+
+# returns true if given interval overlaps any crates in column with columnIndex.
+def world_interval_overlaps_any_in_column(self, interval, columnIndex) {
+	assert(board_x_coordinate_in_bounds(columnIndex)); # TODO we should really have messages here.
+
+	column = self.columns[columnIndex];
+
+	i = 0;
+	while i < len(column) {
+		crate = column[i];
+		crate_interval = crate.get_y_axis_span(crate);
+
+		if intervals_overlap(interval, crate_interval) {
+		return True;
+
+		}
+		i = i + 1;
+	}
+
+	return False;
+}
+
+def world_draw(self) {
+	columnIndex = 0;
+	while columnIndex < len(self.columns) {
+		column = self.columns[columnIndex];
+
+		rowIndex = 0;
+		while rowIndex < len(column) {
+			crate = column[rowIndex];
+			crate.draw(crate);
+			rowIndex = rowIndex + 1;
+		}
+
+		columnIndex = columnIndex + 1;
+	}
+
+	self.player.draw(self.player);
+}
+
+
 
 def main() {
 	RlInitWindow(800, 600);
 	RlSetTargetFPS(60);
 
-	crate1 = crate_new(0, 4);
-	crate2 = crate_new(1, 5);
-	crate3 = crate_new(4, 0);
 
-	crates = [] + crate1 + crate2 + crate3;
+
+	world = world_new();
+	print(world);
 
 	current_time_ms = time();
 	dt  = 0.01;
 	accumulator = 0.0;
 	
-	player = player_new(1, 1);
-	print(player);
 
 	while not RlWindowShouldClose() {
 
@@ -160,11 +287,11 @@ def main() {
 		}
 
 		if RlIsKeyDown(global(RL_KEY_LEFT)) {
-			player.move(player, global(HORIZONTAL_MOVEMENT_LEFT));
+			world.player.move(world.player, global(HORIZONTAL_MOVEMENT_LEFT), world);
 		}
 
 		if RlIsKeyDown(global(RL_KEY_RIGHT)) {
-			player.move(player, global(HORIZONTAL_MOVEMENT_RIGHT));
+			world.player.move(world.player, global(HORIZONTAL_MOVEMENT_RIGHT), world);
 		}
 
 
@@ -177,7 +304,7 @@ def main() {
 		accumulator = accumulator + frame_time ;
 
 		while dt < accumulator {
-			player_tick_horizontal_movement(player, dt);
+			world_tick(world, dt);
 			accumulator = accumulator - dt;
 		}
 
@@ -186,12 +313,7 @@ def main() {
 		RlClearBackground(255, 255, 255);
 
 
-		i = 0;
-		while i < len(crates) {
-			crates[i].draw(crates[i]);
-			i = i + 1;
-		}
-		player_draw(player);
+		world_draw(world);
 		RlEndDrawing();
 	}
 	RlCloseWindow();

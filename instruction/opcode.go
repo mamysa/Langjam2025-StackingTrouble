@@ -1,5 +1,7 @@
 package instruction
 
+import "fmt"
+
 type OpCode_NoArgs int
 
 const (
@@ -7,6 +9,7 @@ const (
 	Eq                  // equality operator
 	NotEq               // not-equality operator
 	Lt                  // less than
+	Gt                  // greater than
 	GrEq                // greater equal
 	Add
 	Sub
@@ -47,11 +50,17 @@ const (
 )
 
 func (o OpCode_NoArgs) String() string {
+
 	switch o {
 	case NoOp:
 		return "NoOp"
+
+	case Eq:
+		return "Eq"
 	case Lt:
 		return "Lt"
+	case Gt:
+		return "Gt"
 	case GrEq:
 		return "GrEq"
 	case Add:
@@ -114,7 +123,10 @@ func (o OpCode_NoArgs) String() string {
 		return "RlIsKeyDown"
 	case GetTime:
 		return "GetTime"
+	case CastFloat:
+		return "CastFloat"
+	default:
+		panic(fmt.Errorf("Unknown opcode %d", o))
 	}
 
-	panic("Unknown opcode" + string(o))
 }

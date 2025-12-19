@@ -365,6 +365,8 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Div})
 	case BinOp_Lt:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Lt})
+	case BinOp_Gt:
+		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Gt})
 	case BinOp_GrEq:
 		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.GrEq})
 	case BinOp_EqEq:

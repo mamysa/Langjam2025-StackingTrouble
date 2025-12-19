@@ -54,3 +54,12 @@ Day 6:
 Parser-level hack to allow negative constants. 
 
 Implement time() and rlIsKeyPressed() operations. Begin actually working on the game.
+
+Implemented casting to float / greater equal operator.
+
+Implemented player grid-based movement.
+
+
+Implemented World class, which essentially is a collection of columns containing crates.
+
+Implemented collision checking while moving the player horizontally. Given player's new_goal_x, we sample the column at index `new_goal_x` and check if any of the crates overlap with a player along the Y-axis. This overlap check is handled by `Interval` object and `intervals_overlap` function. 

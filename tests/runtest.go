@@ -16,6 +16,7 @@ var TESTS_PASSING []string = []string{
 	"object-0.bla",
 	"void-fn-call.bla",
 	"global.bla",
+	"interval-test.bla",
 }
 
 const (

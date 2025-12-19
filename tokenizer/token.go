@@ -12,6 +12,7 @@ const (
 	Token_Not   TokenKind = "not"
 
 	Token_Lt       TokenKind = "<"
+	Token_Gt       TokenKind = ">"
 	Token_GrEq     TokenKind = ">="
 	Token_EqEq     TokenKind = "=="
 	Token_NotEq    TokenKind = "!="
@@ -80,6 +81,7 @@ var operators = map[string]TokenKind{
 	"=":  Token_Assign,
 	"&":  Token_FuncAddr,
 	"<":  Token_Lt,
+	">":  Token_Gt,
 	"==": Token_EqEq,
 	"!=": Token_NotEq,
 	">=": Token_GrEq,

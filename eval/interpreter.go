@@ -49,6 +49,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.notEq()
 			case instruction.Lt:
 				interpreter.lt()
+			case instruction.Gt:
+				interpreter.gt()
 			case instruction.GrEq:
 				interpreter.grEq()
 			case instruction.Add:
@@ -192,7 +194,7 @@ func (interpreter *Interpreter) assertArgCount(insn instruction.AssertArgCount) 
 	intValue := value.Int()
 
 	if int(intValue) != insn.ArgCount {
-		panic(fmt.Errorf("assertArgCount: unexpected function argument count: expected %d, actual %d", insn.ArgCount, intValue))
+		panic(fmt.Errorf("assertArgCount: unexpected function argument count: expected %d, actual %d, PC=%+v", insn.ArgCount, intValue, interpreter.programCounter))
 	}
 
 	interpreter.programCounter++
@@ -462,6 +464,26 @@ func (interpreter *Interpreter) lt() {
 	}
 
 	result := v1.Int() < v2.Int()
+	interpreter.evaluationStack.pushBool(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) gt() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() > v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() > v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }

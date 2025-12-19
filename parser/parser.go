@@ -598,7 +598,7 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 		return nil, err
 	}
 
-	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt, tokenizer.Token_GrEq}
+	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt, tokenizer.Token_Gt, tokenizer.Token_GrEq}
 	if p.nextTokenIs(expectedTokens...) {
 		token := p.expect(expectedTokens...)
 		var op ast.BinOp
@@ -609,6 +609,8 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 			op = ast.BinOp_NotEq
 		case tokenizer.Token_Lt:
 			op = ast.BinOp_Lt
+		case tokenizer.Token_Gt:
+			op = ast.BinOp_Gt
 		case tokenizer.Token_GrEq:
 			op = ast.BinOp_GrEq
 		default:

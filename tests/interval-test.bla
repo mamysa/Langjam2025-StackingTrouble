@@ -1,0 +1,40 @@
+
+# Interval represents line segment.
+def interval_new(a, b) {
+	interval = {};
+	# TODO 
+	interval.min = a;
+	interval.max = b;
+	return interval;
+}
+
+def intervals_overlap(a, b) {
+	return not ((b.min > a.min and b.min > a.max) or (a.min > b.max and a.max > b.max));
+}
+
+
+def main() {
+	i1 = interval_new(1, 2);
+	i2 = interval_new(4, 5);
+	i3 = interval_new(-12, 0.9);
+
+	overlapping_1 = interval_new(-1.0, 1.2);
+	overlapping_2 = interval_new(1.8, 2.2);
+
+	containing = interval_new(-1.0, 3.0);
+
+	#? STDOUT False
+	print(intervals_overlap(i1, i2));
+
+	#? STDOUT False
+	print(intervals_overlap(i1, i3));
+
+	#? STDOUT True 
+	print(intervals_overlap(i1, overlapping_1));
+
+	#? STDOUT True 
+	print(intervals_overlap(i1, overlapping_2));
+
+	#? STDOUT True 
+	print(intervals_overlap(i1, containing));
+}
