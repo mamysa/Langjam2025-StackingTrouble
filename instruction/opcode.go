@@ -45,7 +45,9 @@ const (
 	RlIsKeyDown         // is key down
 
 	// Time
-	GetTime // returns time since epoch in millisenonds
+	GetTime     // returns time since epoch in millisenonds
+	RandomInt   // returns random int in range 0 <= supplied int
+	RandomFloat //  returns random float in [0, 1)
 
 )
 
@@ -54,7 +56,8 @@ func (o OpCode_NoArgs) String() string {
 	switch o {
 	case NoOp:
 		return "NoOp"
-
+	case NotEq:
+		return "NotEq"
 	case Eq:
 		return "Eq"
 	case Lt:
@@ -125,6 +128,10 @@ func (o OpCode_NoArgs) String() string {
 		return "GetTime"
 	case CastFloat:
 		return "CastFloat"
+	case RandomInt:
+		return "RandomInt"
+	case RandomFloat:
+		return "RandomFloat"
 	default:
 		panic(fmt.Errorf("Unknown opcode %d", o))
 	}

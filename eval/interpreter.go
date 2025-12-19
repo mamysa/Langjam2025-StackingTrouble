@@ -4,6 +4,7 @@ import (
 	"compiler/instruction"
 	"fmt"
 	"image/color"
+	"math/rand"
 	"os"
 	"time"
 
@@ -115,6 +116,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.getTime()
 			case instruction.CastFloat:
 				interpreter.castFloat()
+			case instruction.RandomInt:
+				interpreter.randomInt()
+			case instruction.RandomFloat:
+				interpreter.randomFloat()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -889,5 +894,37 @@ func (interpreter *Interpreter) castFloat() {
 	}
 
 	interpreter.evaluationStack.pushFloat(fl)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) randomInt() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("randomInt: invalid number of arguments")
+	}
+
+	value := interpreter.evaluationStack.pop()
+	if !value.IsInt() {
+		panic(fmt.Errorf("randomInt: non-integer value %+v", value))
+	}
+
+	intValue := value.(IntValue)
+	if intValue.value <= 0 {
+		panic(fmt.Errorf("randomInt: negative or zero value %+v", value))
+
+	}
+	randomValue := rand.Intn(int(intValue.value))
+
+	interpreter.evaluationStack.pushInt(int64(randomValue))
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) randomFloat() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("randomFloat: invalid number of arguments")
+	}
+	randomValue := rand.Float64()
+	interpreter.evaluationStack.pushFloat(randomValue)
 	interpreter.programCounter++
 }

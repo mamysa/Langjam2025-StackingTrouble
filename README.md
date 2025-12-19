@@ -63,3 +63,12 @@ Implemented player grid-based movement.
 Implemented World class, which essentially is a collection of columns containing crates.
 
 Implemented collision checking while moving the player horizontally. Given player's new_goal_x, we sample the column at index `new_goal_x` and check if any of the crates overlap with a player along the Y-axis. This overlap check is handled by `Interval` object and `intervals_overlap` function. 
+
+
+Implemented player jumping by introducing `goal_y` field. When the user requests jump, this `goal_y` is set to be current `y` position + 1, and `PLAYER_JUMPING` state is set.
+
+Gravity and jumping is simulated in `player_tick_vertical_movement`  function. Whoops, we are not taking column's crate position into account while applying gravity.
+
+World object now has method `world_get_highest_in_column_below` which samples the highest ground level that is below provided y coordinate. Implemented naively without taking a scenario of player sinking into the crate into account. 
+
+So now, when gravity is applied, sample player's current ground level using `world_get_highest_in_column_below` and if player is moving then we sample the target cell as well and take the maximum of these two ground heights. Gravity seems to work as expected.
