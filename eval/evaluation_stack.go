@@ -24,7 +24,7 @@ func (stack *EvaluationStack) pushBool(b bool) {
 	stack.stack[stack.top] = NewBool(b)
 }
 
-func (stack *EvaluationStack) pushInt(i int) {
+func (stack *EvaluationStack) pushInt(i int64) {
 	stack.top += 1
 	stack.stack[stack.top] = NewInt(i)
 }

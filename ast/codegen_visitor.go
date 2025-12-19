@@ -30,6 +30,8 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlClearBackground":   instruction.RlClearBackground,
 			"RlSetTargetFPS":      instruction.RlSetTargetFPS,
 			"RlDrawRectangle":     instruction.RlDrawRectangle,
+			"RlIsKeyDown":         instruction.RlIsKeyDown,
+			"time":                instruction.GetTime,
 		},
 	}
 }
@@ -148,7 +150,7 @@ func (visitor *CodegenVisitor) visitGlobalDef(def GlobalDef) {
 	}
 
 	if def.ValueInt != nil {
-		visitor.Globals[def.GlobalName] = eval.NewInt(def.ValueInt.Integer)
+		visitor.Globals[def.GlobalName] = eval.NewInt(int64(def.ValueInt.Integer))
 		return
 	}
 

@@ -49,3 +49,8 @@ Implemented poor man's objects + field access. Setup tiny testing framework that
 Implement boolean not operator. Begin hooking up Raylib functions (each function is its own instruction in the bytecode). We can open windows now woo.
 
 Implemented ability to call functions without necessarily assigning them (e.g `_ = a()` => `a()`). Implement constant globals as well as a way to read them. So far only INT/Float globals are supported and are converted directly into IntValue/FloatValue objects accordingly.
+
+Day 6:
+Parser-level hack to allow negative constants. 
+
+Implement time() and rlIsKeyPressed() operations. Begin actually working on the game.

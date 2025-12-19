@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"os"
+	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 	//rl "github.com/gen2brain/raylib-go/raylib"
@@ -104,6 +105,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlSetTargetFps()
 			case instruction.RlDrawRectangle:
 				interpreter.rlDrawRectangle()
+			case instruction.RlIsKeyDown:
+				interpreter.rlIsKeyDown()
+			case instruction.GetTime:
+				interpreter.getTime()
 			default:
 				panic(fmt.Errorf("Unhandled instruction %+v", simple))
 			}
@@ -182,7 +187,7 @@ func (interpreter *Interpreter) assertArgCount(insn instruction.AssertArgCount) 
 
 	intValue := value.Int()
 
-	if intValue != insn.ArgCount {
+	if int(intValue) != insn.ArgCount {
 		panic(fmt.Errorf("assertArgCount: unexpected function argument count: expected %d, actual %d", insn.ArgCount, intValue))
 	}
 
@@ -190,7 +195,7 @@ func (interpreter *Interpreter) assertArgCount(insn instruction.AssertArgCount) 
 }
 
 func (interpreter *Interpreter) constInt(insn instruction.ConstInt) {
-	interpreter.evaluationStack.pushInt(insn.Arg)
+	interpreter.evaluationStack.pushInt(int64(insn.Arg))
 	interpreter.programCounter++
 }
 
@@ -536,7 +541,7 @@ func (interpreter *Interpreter) len() {
 
 	list := value.(ListValue)
 
-	interpreter.evaluationStack.pushInt(list.array.Length)
+	interpreter.evaluationStack.pushInt(int64(list.array.Length))
 	interpreter.programCounter++
 }
 
@@ -553,7 +558,7 @@ func (interpreter *Interpreter) subscriptGet() {
 		}
 
 		index := subscript.Int()
-		value := target.(ListValue).GetValue(index)
+		value := target.(ListValue).GetValue(int(index))
 
 		interpreter.evaluationStack.pushValue(value)
 		interpreter.programCounter++
@@ -589,7 +594,7 @@ func (interpreter *Interpreter) subscriptSet() {
 		}
 
 		index := subscript.Int()
-		target.(ListValue).SetValue(index, value)
+		target.(ListValue).SetValue(int(index), value)
 
 		interpreter.evaluationStack.pushValue(value)
 		interpreter.programCounter++
@@ -785,5 +790,29 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 	})
 
 	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) getTime() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("rlDrawRectangle: invalid number of arguments")
+	}
+
+	t := time.Now().UnixMilli()
+	interpreter.evaluationStack.pushInt(t)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlIsKeyDown() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("rlIsKeyDown: invalid number of arguments")
+	}
+
+	key := interpreter.evaluationStack.pop().(IntValue).value
+
+	b := rl.IsKeyDown(int32(key))
+	interpreter.evaluationStack.pushBool(b)
 	interpreter.programCounter++
 }

@@ -20,7 +20,7 @@ type Value interface {
 	IsBool() bool
 	IsFloat() bool
 	IsNone() bool
-	Int() int
+	Int() int64
 	Float() float64
 	FunctionAddress() int
 	Truthy() bool
@@ -28,16 +28,16 @@ type Value interface {
 }
 
 type IntValue struct {
-	value int
+	value int64
 }
 
-func NewInt(i int) IntValue {
+func NewInt(i int64) IntValue {
 	return IntValue{
 		value: i,
 	}
 }
 
-func (value IntValue) Int() int {
+func (value IntValue) Int() int64 {
 	return value.value
 }
 
@@ -98,7 +98,7 @@ func NewFloatValue(value float64) FloatValue {
 	}
 }
 
-func (value FloatValue) Int() int {
+func (value FloatValue) Int() int64 {
 	panic("invalid conversion")
 }
 
@@ -160,7 +160,7 @@ func NewNone() None {
 	}
 }
 
-func (value None) Int() int {
+func (value None) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
@@ -222,7 +222,7 @@ type FunctionAddress struct {
 	Offset int
 }
 
-func (value FunctionAddress) Int() int {
+func (value FunctionAddress) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
@@ -284,7 +284,7 @@ func NewBool(b bool) BoolValue {
 	}
 }
 
-func (value BoolValue) Int() int {
+func (value BoolValue) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
@@ -358,7 +358,7 @@ func NewList() ListValue {
 	}
 }
 
-func (value ListValue) Int() int {
+func (value ListValue) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 
@@ -486,7 +486,7 @@ func NewObjectValue() ObjectValue {
 	}
 }
 
-func (value ObjectValue) Int() int {
+func (value ObjectValue) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
 

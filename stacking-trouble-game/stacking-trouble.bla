@@ -1,0 +1,67 @@
+global CELL_SIZE = 64
+global BOARD_CELLS_ALONG_Y = 8
+
+global RL_KEY_SPACE = 32
+
+
+def crate_new(x, y) {
+	crate = {};
+	crate.x = x;
+	crate.y = y;
+	crate.draw = &crate_draw;
+	return crate;
+}
+
+def crate_draw(self) {
+
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+
+	cellStartX = global(CELL_SIZE) *  self.x;
+	cellStartY = board_height - (global(CELL_SIZE) * self.y);
+
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
+}
+
+
+def main() {
+	RlInitWindow(800, 600);
+	RlSetTargetFPS(30);
+
+	crate1 = crate_new(0, 4);
+	crate2 = crate_new(1, 5);
+	crate3 = crate_new(3.5, 0);
+
+	crates = [] + crate1 + crate2 + crate3;
+
+	current_time_ms = time();
+	dt  = 0.01;
+	accumulator = 0.0;
+
+	while not RlWindowShouldClose() {
+		# physics main loop, shamlessly stolen from Gaffer On Games Fix your timestep 
+		# we don't do any interpolation between states though.
+		new_time_ms = time();
+		frame_time = (new_time_ms - current_time_ms) / 1000.0;
+		current_time_ms = new_time_ms;
+
+		accumulator = accumulator + frame_time ;
+		#print(accumulator);
+
+
+		if RlIsKeyDown(global(RL_KEY_SPACE)) {
+			print(1337);
+		}
+
+		RlBeginDrawing();
+		RlClearBackground(255, 255, 255);
+
+		i = 0;
+		while i < len(crates) {
+			crates[i].draw(crates[i]);
+			i = i + 1;
+		}
+		RlEndDrawing();
+	}
+	RlCloseWindow();
+}
+

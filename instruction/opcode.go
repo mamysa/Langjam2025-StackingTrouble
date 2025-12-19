@@ -37,6 +37,10 @@ const (
 	RlClearBackground   // clear background with colors
 	RlSetTargetFPS      // set target fps
 	RlDrawRectangle     // draw rectangle
+	RlIsKeyDown         // is key down
+
+	// Time
+	GetTime // returns time since epoch in millisenonds
 
 )
 
@@ -102,6 +106,10 @@ func (o OpCode_NoArgs) String() string {
 		return "RlSetTargetFPS"
 	case RlDrawRectangle:
 		return "RlDrawRectangle"
+	case RlIsKeyDown:
+		return "RlIsKeyDown"
+	case GetTime:
+		return "GetTime"
 	}
 
 	panic("Unknown opcode" + string(o))
