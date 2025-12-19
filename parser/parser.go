@@ -137,6 +137,13 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 
 	p.expect(tokenizer.Token_Assign)
 
+	// quick dirty hack, need to have negative constants.
+	sign := 1
+	if p.nextTokenIs(tokenizer.Token_Minus) {
+		p.expect(tokenizer.Token_Minus)
+		sign = -1
+	}
+
 	if p.nextTokenIs(tokenizer.Token_Int) {
 		constInt := p.expect(tokenizer.Token_Int).(tokenizer.TokenWithData)
 
@@ -148,7 +155,7 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 		return ast.GlobalDef{
 			GlobalName: globalName.Value(),
 			ValueInt: &ast.Int{
-				Integer: parsedInt,
+				Integer: parsedInt * sign,
 			},
 		}, nil
 
@@ -165,7 +172,7 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 		return ast.GlobalDef{
 			GlobalName: globalName.Value(),
 			ValueFloat: &ast.Float{
-				Float: parsedFloat,
+				Float: parsedFloat * float64(sign),
 			},
 		}, nil
 	}
