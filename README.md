@@ -72,3 +72,6 @@ Gravity and jumping is simulated in `player_tick_vertical_movement`  function. W
 World object now has method `world_get_highest_in_column_below` which samples the highest ground level that is below provided y coordinate. Implemented naively without taking a scenario of player sinking into the crate into account. 
 
 So now, when gravity is applied, sample player's current ground level using `world_get_highest_in_column_below` and if player is moving then we sample the target cell as well and take the maximum of these two ground heights. Gravity seems to work as expected.
+
+
+Implemented random_int/random_float built-ins. We can now generate random colors for crates and we can now spawn crates`random_float() < 0.0008`. Also, work on applying crate gravity. I realized that object comparison doesn't quite work, should work based on reference comparison. Something to look into after the deadline. For crate gravity, we find the crate's column, take top-y coordinate of the crate underneath it (if present) and move the crate up until that point.

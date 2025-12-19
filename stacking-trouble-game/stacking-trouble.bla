@@ -7,6 +7,9 @@ global HORIZONTAL_MOVEMENT_LEFT = -1
 global HORIZONTAL_MOVEMENT_RIGHT = 1
 
 
+global VERTICAL_MOVEMENT_FALLING = -1
+global VERTICAL_MOVEMENT_JUMPING = 1
+
 # steal these from raylib enum
 global RL_KEY_SPACE = 32
 global RL_KEY_RIGHT = 262
@@ -53,6 +56,7 @@ def intervals_overlap(a, b) {
 #     When player reaches his current_goal_x, last_goal_x = current_goal_x and set current_goal_x to None
 # (3) To track in which direction player is moving, maintain horizontal_movement_kind. This will allow to
 #     alter player's movement direction in certain cases. When player reaches his goal, this field is set to None.
+# (4) goal_y for storing y coordinate player must reach while jumping. 
 def player_new(x, y) {
 	player = {};
 	player.x = x;
@@ -63,10 +67,16 @@ def player_new(x, y) {
 
 	player.horizontal_movement_kind = None;
 
+
+	player.goal_y = None;
+	player.vertical_movement_kind = None;
+
 	player.move = &player_move;
+	player.jump = &player_jump;
 	player.tick = &player_tick;
 	player.draw = &player_draw;
 	player.get_y_axis_span = &player_get_y_span;
+
 	return player;
 }
 
@@ -81,7 +91,7 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 	}
 
 	# compute "bounding box" of the player along y axis
-	player_interval = self.get_y_axis_span(self);
+	player_interval = player_get_y_span_scaled(self);
 
 	# player is not moving
 	if self.horizontal_movement_kind == None {
@@ -122,8 +132,20 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 	return True;
 }
 
-def player_tick(self, dt) {
+def player_jump(self) {
+  # do not allow double jumping.
+	if self.vertical_movement_kind != None {
+		return False;
+	}
+
+	self.goal_y = self.y + 1 + global(MOVEMENT_EPS) * 2; 
+	self.vertical_movement_kind = global(VERTICAL_MOVEMENT_JUMPING);
+	return True;
+}
+
+def player_tick(self, dt, world) {
 	player_tick_horizontal_movement(self, dt);
+	player_tick_vertical_movement(self, dt, world);
 }
 
 # self = player
@@ -147,6 +169,46 @@ def player_tick_horizontal_movement(self, dt) {
 	}
 }
 
+# If jumping apply contant velocity's to player's y component until destination is reached.
+# Once destination has been reached, player goes into FALLING state in which case we simulate gravity until player
+# reaches the ground.
+def player_tick_vertical_movement(self, dt, world) {
+	if self.vertical_movement_kind == global(VERTICAL_MOVEMENT_JUMPING){
+		# we are jumping
+		self.y = self.y + dt * global(VELOCITY);
+
+		# find the difference between player's goalY and actual position Y and if it is close enough,
+		# set player's vertical_movement_kind to falling.
+
+		if self.goal_y - self.y < global(MOVEMENT_EPS) {
+			self.y = self.goal_y;
+			self.goal_y = None;
+			self.vertical_movement_kind = global(VERTICAL_MOVEMENT_FALLING);
+		}
+
+	} else {
+		# otherwise apply gravity here.
+		# assume player is falling and apply gravity.
+		self.vertical_movement_kind = global(VERTICAL_MOVEMENT_FALLING);
+
+
+		ground = world.get_highest_in_column_below(world, self.y, self.previous_goal_x); 
+		if self.horizontal_movement_kind != None {
+			# player is moving, we sample current_goal_x as well and return maximum of those 
+			ground = max(ground, world.get_highest_in_column_below(world, self.y, self.current_goal_x)); 
+		}
+
+		# apply gravity after sampling ground level. Otherwise, we will have a situation when object sinks into a valid crate.
+		self.y = self.y - global(VELOCITY) * dt;
+
+		# have we reached ground yet?
+		if self.y - ground < global(MOVEMENT_EPS){
+			self.y = ground; 
+			self.vertical_movement_kind = None;  
+		}
+	}
+}
+
 def player_draw(self) {
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
@@ -161,10 +223,19 @@ def player_draw(self) {
 	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
 }
 
+# This should be unused, right?
 def player_get_y_span(self) {
 	y_start = self.y;
 	y_end = self.y + global(PLAYER_HEIGHT);
 	return interval_new(y_start, y_end);
+}
+
+# so it turns out I actually need to sliighly scale down the interval to make movement work 
+# on top of crates
+def player_get_y_span_scaled(self) {
+	y_start = self.y;
+	y_end = self.y + global(PLAYER_HEIGHT);
+	return interval_new(y_start+0.02, y_end-0.02);
 }
 
 
@@ -173,19 +244,52 @@ def crate_new(x, y) {
 	crate = {};
 	crate.x = x;
 	crate.y = y;
+	crate.previous_goal_x = x; 
 	crate.draw = &crate_draw;
 	crate.get_y_axis_span = &crate_get_y_axis_span;
+	crate.color = {};
+	crate.color.r = random_int(255);
+	crate.color.g = random_int(255);
+	crate.color.b = random_int(255);
+	crate.tick = &crate_tick;
 	return crate;
 }
 
 def crate_draw(self) {
-
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
 	cellStartX = global(CELL_SIZE) *  self.x;
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
 
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), self.color.r, self.color.g, self.color.b);
+}
+
+def crate_tick(self, dt, world, crate_index) {
+	crate_tick_vertical_movement(self, dt, world, crate_index);
+}
+
+# get previous crate in the column. 
+# pass crate_index as an argument since we do not know the position of the crate, and I really don't want 
+# to refactor compiler to compare references (at least before the deadline).
+# TODO refactor to compare objects and lists by reference.
+def crate_tick_vertical_movement(self, dt, world, crate_index) {
+	column = world.columns[self.previous_goal_x];
+
+
+	assert(crate_index >= 0);
+
+	target_y = 0.0;
+	if crate_index > 0 {
+		previous_crate = column[crate_index-1];
+		target_y = previous_crate.y + 1.0;
+	}
+
+	self.y = self.y - global(VELOCITY) * dt;
+
+	if self.y < target_y {
+		self.y = target_y;
+	}
+
 }
 
 # computes minY, maxY of the crate on the board and returns Interval instance.
@@ -199,6 +303,7 @@ def crate_get_y_axis_span(self) {
 # WORLD object.
 # Is a collection of columns containing crates.
 # Also contains player instance.
+# All crates in columns are sorted by y coordinate.
 def world_new() {
 	columns = [];
 	x = 0;
@@ -218,18 +323,59 @@ def world_new() {
 	world.columns = columns;
 	world.player = player_new(0, 0);
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
+	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	return world;
 }
 
 def world_tick(self, dt) {
-	self.player.tick(self.player, dt);
+	self.player.tick(self.player, dt, self);
+
+	x  = 0;
+	while x < len(self.columns) {
+		column = self.columns[x];
+		y = 0;
+		while y < len(column) {
+			crate = column[y];
+			crate.tick(crate, dt, self, y);
+			y = y + 1;
+		}
+		x = x + 1;
+	}
+
+	if random_float() < 0.008 {
+		world_randomly_spawn_crate(self);
+	}
+
+}
+
+def world_randomly_spawn_crate(self) {
+	x = random_int(global(BOARD_CELLS_ALONG_X));
+	y = global(BOARD_CELLS_ALONG_Y) + 2;
+
+	crate = crate_new(x, y);
+
+	can_spawn = True;
+	column = self.columns[x];
+	# inspect topmost element of the column
+	if len(column) > 0 {
+		last_crate = column[len(column)-1];
+		
+		if intervals_overlap(crate.get_y_axis_span(crate), last_crate.get_y_axis_span(last_crate)) {
+			can_spawn = False;
+		}
+	}
+
+	if can_spawn {
+		self.columns[x] = column + crate;
+	}
+
 }
 
 # returns true if given interval overlaps any crates in column with columnIndex.
-def world_interval_overlaps_any_in_column(self, interval, columnIndex) {
-	assert(board_x_coordinate_in_bounds(columnIndex)); # TODO we should really have messages here.
+def world_interval_overlaps_any_in_column(self, interval, column_index) {
+	assert(board_x_coordinate_in_bounds(column_index)); # TODO we should really have messages here.
 
-	column = self.columns[columnIndex];
+	column = self.columns[column_index];
 
 	i = 0;
 	while i < len(column) {
@@ -244,6 +390,34 @@ def world_interval_overlaps_any_in_column(self, interval, columnIndex) {
 	}
 
 	return False;
+}
+
+# returns y-coordinate of the crate is highest y below supplied y.
+# For example, given below_y = 5 and ys = [7, 4, 3, 1]  4 should returning 
+# TODO this name is confusing AF.
+# TODO okay, so what happens when we have tiny overlap between some crate and y coordinate? It will 
+# return wrong ground height.
+def world_get_highest_in_column_below(self, below_y, column_index) {
+	assert(board_x_coordinate_in_bounds(column_index)); # TODO we should really have messages here.
+	#print(below_y);
+	#print(column_index);
+
+	column = self.columns[column_index];
+
+	highest = 0;
+
+	i = 0;
+	while i < len(column) {
+		box_top_y = column[i].y + 1;
+		if below_y >= box_top_y {
+			highest = max(highest, box_top_y);
+		}
+		i = i + 1;
+	}
+
+	#print(highest);
+
+	return highest;
 }
 
 def world_draw(self) {
@@ -283,7 +457,7 @@ def main() {
 	while not RlWindowShouldClose() {
 
 		if RlIsKeyDown(global(RL_KEY_SPACE)) {
-			print(1337);
+			world.player.jump(world.player);
 		}
 
 		if RlIsKeyDown(global(RL_KEY_LEFT)) {
