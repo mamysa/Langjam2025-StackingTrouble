@@ -24,8 +24,18 @@ global PLAYER_HEIGHT = 2
 
 global PUSHING_DISTANCE = 0.05
 
+# if player tries to move during this cooldown, input is not applied.
+global PLAYER_MOVEMENT_COOLDOWN = 0.02
+
+# if player tries to jump during this cooldown, input is not applied.
+global PLAYER_JUMP_COOLDOWN = 0.56
+
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
+}
+
+def abs(a) {
+	return a if a >= 0 else -a;
 }
 
 def min(a, b) {
@@ -89,6 +99,44 @@ def list_insert_after_index(a, index, elem) {
 	return new_list;
 }
 
+# pops first element of the list and returns a new list. 
+def list_pop_front(l) {
+	lst = [];
+
+	i = 1;
+	while i < len(l) {
+		lst = lst + l[i];
+		i = i + 1;
+	}
+
+	return lst;
+}
+
+# Timer. To be used for to prevent user from applying too many move/jump commands. 
+def timer_new(default_duration) {
+ 	timer = {};
+	timer.default_duration = default_duration;
+	timer.is_applied = False;
+	timer.counter = 0.0;
+	return timer;
+}
+
+# initialized the timer to its default duration.
+def timer_arm(self) {
+	self.counter = self.default_duration;
+	self.is_applied = True;
+}
+
+# ticks the timer :)
+def timer_tick(self, dt) {
+	self.counter = self.counter - dt;
+
+	if self.counter < 0 {
+		self.is_applied = False;
+		self.counter = 0.0;
+	}
+}
+
 
 # Interval represents line segment.
 def interval_new(a, b) {
@@ -132,6 +180,9 @@ def player_new(x, y) {
 	player.draw = &player_draw;
 	player.get_y_axis_span = &player_get_y_span;
 
+	player.movement_cooldown_timer = timer_new(global(PLAYER_MOVEMENT_COOLDOWN));
+	player.jump_cooldown_timer = timer_new(global(PLAYER_JUMP_COOLDOWN));
+
 	return player;
 }
 
@@ -147,6 +198,11 @@ def player_can_push_crate(self, crate) {
 }
 
 def player_move(self, desired_horizontal_movement_kind, world) {
+	if self.movement_cooldown_timer.is_applied {
+		return False;
+	}
+
+
 	if desired_horizontal_movement_kind == None {
 		return False;
 	}
@@ -173,6 +229,7 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 			#print(len(overlapping_crates_in_target_column));
 			#print(overlapping_crates_in_target_column);
 			#print(1337);
+
 
 
 			if len(overlapping_crates_in_target_column) != 1 {
@@ -221,6 +278,10 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 }
 
 def player_jump(self) {
+	if self.jump_cooldown_timer.is_applied {
+		return False;
+	}
+
   # do not allow double jumping.
 	if self.vertical_movement_kind != None {
 		return False;
@@ -232,6 +293,8 @@ def player_jump(self) {
 }
 
 def player_tick(self, dt, world) {
+	timer_tick(self.movement_cooldown_timer, dt);
+	timer_tick(self.jump_cooldown_timer, dt);
 	player_tick_horizontal_movement(self, dt);
 	player_tick_vertical_movement(self, dt, world);
 }
@@ -254,6 +317,8 @@ def player_tick_horizontal_movement(self, dt) {
 		self.previous_goal_x = self.current_goal_x;
 		self.current_goal_x = None;
 		self.horizontal_movement_kind = None;
+
+		timer_arm(self.movement_cooldown_timer);
 	}
 }
 
@@ -272,6 +337,7 @@ def player_tick_vertical_movement(self, dt, world) {
 			self.y = self.goal_y;
 			self.goal_y = None;
 			self.vertical_movement_kind = global(VERTICAL_MOVEMENT_FALLING);
+			timer_arm(self.jump_cooldown_timer);
 		}
 
 	} else {
@@ -340,7 +406,7 @@ def crate_new(x, y) {
 	crate.get_y_axis_span = &crate_get_y_axis_span;
 	crate.color = {};
 	crate.color.r = random_int(255);
-	crate.color.g = random_int(255);
+	crate.color.g = random_int(100);
 	crate.color.b = random_int(255);
 	crate.tick = &crate_tick;
 	return crate;
@@ -374,6 +440,10 @@ def crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 
 	target_goal_x = self.previous_goal_x + desired_horizontal_movement_kind;
 
+	if not board_x_coordinate_in_bounds(target_goal_x) {
+		return False;
+	}
+
 	e = crate_get_y_span_scaled(self);
 
 	overlapping_crates_in_target_column = world.interval_overlaps_any_in_column(world, e, target_goal_x);
@@ -401,7 +471,6 @@ def crate_tick(self, dt, world, crate_index) {
 def crate_tick_vertical_movement(self, dt, world, crate_index) {
 	column = world.columns[self.previous_goal_x];
 
-
 	assert(crate_index >= 0);
 
 	target_y = 0.0;
@@ -409,6 +478,20 @@ def crate_tick_vertical_movement(self, dt, world, crate_index) {
 		previous_crate = column[crate_index-1];
 		target_y = previous_crate.y + 1.0;
 	}
+
+	# need to take pushed crate into account
+	pushed_crate = world.pushed_crate;
+	if pushed_crate != None {
+		if pushed_crate.previous_goal_x == self.previous_goal_x or pushed_crate.current_goal_x == self.previous_goal_x {
+			pushed_crate_top = pushed_crate.y + global(CRATE_HEIGHT);
+			#adjust target of any colliding box from above so that it stacks on top of the box that is being pushed
+			# This ensures that if either self-crate is above or overlapping the pushed_box, we treat the pushed box as a ground.
+			if pushed_crate_top < self.y or pushed_crate_top < self.y+global(CRATE_HEIGHT) {
+				target_y = max(target_y, pushed_crate_top);
+			}
+		}
+	}
+
 
 	self.y = self.y - global(VELOCITY) * dt;
 
@@ -490,6 +573,8 @@ def world_new() {
 	columns[2] = columns[2] + crate2;
 	columns[4] = columns[4] + crate3;
 	columns[4] = columns[4] + crate4;
+
+	
 	
 	world = {};
 	world.columns = columns;
@@ -500,7 +585,37 @@ def world_new() {
 	return world;
 }
 
+def world_try_destroy_bottom_row(self) {
+	target_row_y = 0;
+
+
+	x = 0;
+	while x < len(self.columns) {
+		col = self.columns[x];
+		if len(col) == 0 {
+			return;
+		}
+
+		bottom_most_crate = col[0];
+		if abs(bottom_most_crate.y - target_row_y) >= global(MOVEMENT_EPS) {
+			return;
+		}
+
+		x = x + 1;
+	}
+
+	# looking good, can remove row
+	x = 0;
+	while x < len(self.columns) {
+		self.columns[x] = list_pop_front(self.columns[x]);
+		x = x + 1;
+	}
+}
+
 def world_tick(self, dt) {
+	world_try_destroy_bottom_row(self);
+
+
 	self.player.tick(self.player, dt, self);
 
 	if self.pushed_crate != None {
@@ -519,8 +634,9 @@ def world_tick(self, dt) {
 		x = x + 1;
 	}
 
-	if random_float() < 0.008 {
-		#world_randomly_spawn_crate(self);
+
+	if random_float() < 0.006 {
+		world_randomly_spawn_crate(self);
 	}
 
 }
