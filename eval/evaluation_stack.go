@@ -21,11 +21,11 @@ func (stack *EvaluationStack) getStackTop() int {
 }
 
 func (stack *EvaluationStack) pushGuarded(value Value) {
+	//fmt.Printf("%+v\n", stack.top)
 
 	if stack.top >= evaluationStackHeight {
 		fmt.Printf("%+v\n", stack)
-		panic("evaulation stack overflow")
-
+		panic("evaluation stack overflow")
 	}
 
 	stack.stack[stack.top] = value

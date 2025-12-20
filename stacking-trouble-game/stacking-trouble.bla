@@ -789,10 +789,10 @@ def world_randomly_spawn_crate(self) {
 		column_index = column_index + 1;
 	}
 	
-	print("Candidates " + spawn_candidates);
+	#print("Candidates " + spawn_candidates);
 
 	if len(spawn_candidates) == 0 {
-		print("unable to spawn crates");
+		#print("unable to spawn crates");
 		return;
 
 	}
