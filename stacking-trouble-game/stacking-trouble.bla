@@ -183,6 +183,7 @@ def player_new(x, y) {
 	player.movement_cooldown_timer = timer_new(global(PLAYER_MOVEMENT_COOLDOWN));
 	player.jump_cooldown_timer = timer_new(global(PLAYER_JUMP_COOLDOWN));
 	player.is_pushing = False;
+	player.is_dead = False;
 
 	return player;
 }
@@ -199,6 +200,10 @@ def player_can_push_crate(self, crate) {
 }
 
 def player_move(self, desired_horizontal_movement_kind, world) {
+	if self.is_dead {
+			return False;
+	}
+
 	if self.movement_cooldown_timer.is_applied {
 		return False;
 	}
@@ -285,6 +290,10 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 }
 
 def player_jump(self) {
+	if self.is_dead {
+			return False;
+	}
+
 	if self.jump_cooldown_timer.is_applied {
 		return False;
 	}
@@ -338,6 +347,32 @@ def player_tick_horizontal_movement(self, dt) {
 # Once destination has been reached, player goes into FALLING state in which case we simulate gravity until player
 # reaches the ground.
 def player_tick_vertical_movement(self, dt, world) {
+	crates_above = [];
+
+	crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.previous_goal_x); 
+
+	if self.horizontal_movement_kind != None {
+		crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.current_goal_x); 
+	}
+
+	#print(crates_above);
+
+	c = 0;
+	while c < len(crates_above) {
+		crate_info = crates_above[c];
+		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
+			if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
+					self.is_dead = True;
+			}
+			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
+		}
+		c = c + 1;
+	}
+
+	if self.is_dead {
+		return;
+	}
+
 	if self.vertical_movement_kind == global(VERTICAL_MOVEMENT_JUMPING){
 		# we are jumping
 		self.y = self.y + dt * global(VELOCITY);
@@ -386,7 +421,12 @@ def player_draw(self) {
 	width = global(CELL_SIZE);
 	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
 
-	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
+	if self.is_dead {
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0);
+	} else {
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
+	}
+
 }
 
 # This should be unused, right?
@@ -481,7 +521,8 @@ def crate_tick(self, dt, world, crate_index) {
 # to refactor compiler to compare references (at least before the deadline).
 # TODO refactor to compare objects and lists by reference.
 def crate_tick_vertical_movement(self, dt, world, crate_index) {
-	column = world.columns[self.previous_goal_x];
+	crate_column_index = self.previous_goal_x;
+	column = world.columns[crate_column_index];
 
 	assert(crate_index >= 0);
 
@@ -503,6 +544,22 @@ def crate_tick_vertical_movement(self, dt, world, crate_index) {
 			}
 		}
 	}
+
+	# also need to take into account the player, if we hit the player from above.
+	#player = world.player;
+	#if player.previous_goal_x == crate_column_index or player.current_goal_x == crate_column_index {
+	#	crate_interval = crate_get_y_axis_span(self);
+	#	player_interval = player_get_y_span_scaled(player);
+	#	if intervals_overlap(crate_interval, player_interval) {
+	#		if player.vertical_movement_kind == global(VERTICAL_MOVEMENT_JUMPING) {
+	#			return True;
+	#		} else {
+	#			player.is_dead = True;
+	#			return True;
+	#		}
+	#	}
+	#}
+
 
 
 	self.y = self.y - global(VELOCITY) * dt;
@@ -702,7 +759,7 @@ def world_interval_overlaps_any_in_column(self, interval, column_index) {
 }
 
 # returns y-coordinate of the crate is highest y below supplied y.
-# For example, given below_y = 5 and ys = [7, 4, 3, 1]  4 should returning 
+# For example, given below_y = 5 and ys = [7, 4, 3, 1], 4 should be returned
 # TODO this name is confusing AF.
 def world_get_highest_in_column_below(self, below_y, column_index) {
 	assert(board_x_coordinate_in_bounds(column_index)); # TODO we should really have messages here.
@@ -716,7 +773,7 @@ def world_get_highest_in_column_below(self, below_y, column_index) {
 	i = 0;
 	while i < len(column) {
 		box_bottom_y = column[i].y;
-		box_top_y = column[i].y + 1;
+		box_top_y = column[i].y + global(CRATE_HEIGHT);
 		if below_y >= box_top_y {
 			highest = max(highest, box_top_y);
 		}
@@ -728,7 +785,6 @@ def world_get_highest_in_column_below(self, below_y, column_index) {
 		# TODO I am not entirely sure this margin computation is worth it though? (Do we even) want to find out by how much player is sinking?
 		if below_y >= box_bottom_y and box_top_y >= below_y {
 			l = lerp_find_t(box_bottom_y, box_top_y, below_y); # in [0, 1] range
-			# we are looking for number 
 			margin_from_top = 1 - global(MOVEMENT_EPS) * 10;
 			if l > margin_from_top  {
 				highest = max(highest, box_top_y);
@@ -741,6 +797,55 @@ def world_get_highest_in_column_below(self, below_y, column_index) {
 	#print(highest);
 
 	return highest;
+}
+
+
+# returns index of the lowest crate after given y.
+# For example, given after_y= 5 and ys = [0, 1, 3, 5, 9], 3 should be returned (3 is index of 5)
+def world_get_lowest_in_column_after(self, after_y, column_index) {
+	assert(board_x_coordinate_in_bounds(column_index)); # TODO we should really have messages here.
+	column = self.columns[column_index];
+
+	lowest = 9999.0; #yuck
+	lowest_index = -1;
+
+	i = len(column) - 1; 
+	while i >= 0 {
+		crate = column[i];
+		crate_bottom_y = crate.y;
+		crate_top_y = column[i].y + global(CRATE_HEIGHT);
+
+		if after_y < crate_bottom_y {
+			if crate_bottom_y < lowest {
+				lowest = crate_bottom_y; 
+				lowest_index = i;
+			}
+		}
+
+		# apply sinking logic (see above)
+		if after_y >= crate_bottom_y and crate_top_y >= after_y {
+			if crate_bottom_y < lowest {
+				lowest = crate_bottom_y; 
+				lowest_index = i;
+			}
+			#l = lerp_find_t(crate_bottom_y, crate_top_y, after_y); # in [0, 1] range
+			#margin_from_bottom = global(MOVEMENT_EPS) * 10;
+			#if l < margin_from_bottom {
+			#}
+		}
+
+		i = i - 1;
+	}
+
+	ret = {};
+	ret.crate_index = lowest_index;
+	ret.column_index = column_index;
+	ret.crate_y = lowest;
+	return ret;
+}
+
+def world_remove_crate(self, column_index, crate_index) {
+	self.columns[column_index] = list_remove_at_index(self.columns[column_index], crate_index);
 }
 
 def world_draw(self) {
@@ -769,7 +874,7 @@ def world_draw(self) {
 
 def main() {
 	RlInitWindow(800, 600);
-	RlSetTargetFPS(60);
+	RlSetTargetFPS(30);
 
 
 
