@@ -75,3 +75,7 @@ So now, when gravity is applied, sample player's current ground level using `wor
 
 
 Implemented random_int/random_float built-ins. We can now generate random colors for crates and we can now spawn crates`random_float() < 0.0008`. Also, work on applying crate gravity. I realized that object comparison doesn't quite work, should work based on reference comparison. Something to look into after the deadline. For crate gravity, we find the crate's column, take top-y coordinate of the crate underneath it (if present) and move the crate up until that point.
+
+
+Day 7: 
+Pushing crates.

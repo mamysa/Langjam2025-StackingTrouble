@@ -1,0 +1,90 @@
+def list_remove_at_index(a, index) {
+	assert (index >= 0 and index < len(a));
+
+	new_list = [];
+
+	i = 0; 
+	while i < index {
+		new_list = new_list + a[i];
+		i = i + 1;
+	}
+
+	j = index + 1; 
+	while j < len(a) {
+		new_list = new_list + a[j];
+		j = j + 1;
+	}
+
+	return new_list;
+}
+
+def list_insert_after_index(a, index, elem) {
+	assert ((index >= 0 and index < len(a)) or index == -1);
+	if index == -1 {
+		# prepend to list
+		new_list = [] + elem;
+		i = 0;
+		while i < len(a) {
+			new_list = new_list + a[i];
+			i = i + 1;
+		}
+		
+		return new_list;
+	}
+
+
+
+	# otherwise insert after index
+	new_list = [];
+
+	i = 0;
+	while i < index + 1 {
+		new_list = new_list + a[i];
+		i = i + 1;
+	}
+
+	# add element
+	new_list = new_list + elem;
+
+	j = index+1;
+	while j < len(a) {
+		new_list = new_list + a[j];
+		j = j + 1;
+	}
+
+	return new_list;
+}
+
+
+def main() {
+	a = [];
+	a = a + 1 + 2 + 3 + 4;
+
+	b = [];
+	b = b + 1;
+
+	print(list_remove_at_index(a, 2));
+	print(list_remove_at_index(b, 0));
+
+
+
+	a = [];
+	a = a + 1 + 2 + 3 + 4 + 5;
+	print(list_insert_after_index(a, 2, 1337));
+
+
+	a = [];
+	a = a + 1 + 2 + 3 + 4 + 5;
+	print(list_insert_after_index(a, 0, 1338));
+
+	a = [];
+	a = a + 1 + 2 + 3 + 4 + 5;
+	print(list_insert_after_index(a, 4, 1339));
+
+	a = [];
+	a = a + 1 + 2 + 3 + 4 + 5;
+	print(list_insert_after_index(a, -1, 1339));
+
+	a = [];
+	print(list_insert_after_index(a, -1, 1339));
+}
