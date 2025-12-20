@@ -182,6 +182,7 @@ def player_new(x, y) {
 
 	player.movement_cooldown_timer = timer_new(global(PLAYER_MOVEMENT_COOLDOWN));
 	player.jump_cooldown_timer = timer_new(global(PLAYER_JUMP_COOLDOWN));
+	player.is_pushing = False;
 
 	return player;
 }
@@ -202,6 +203,9 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 		return False;
 	}
 
+	if self.is_pushing {
+		return False;
+	}
 
 	if desired_horizontal_movement_kind == None {
 		return False;
@@ -245,6 +249,9 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 			if not crate_move(overlap_info.crate, desired_horizontal_movement_kind, world, overlap_info.index) {
 				return False;
 			}
+
+			# crate is ok to move, mark player as pushing the crate.
+			self.is_pushing = True;
 		}
 
 
@@ -279,6 +286,10 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 
 def player_jump(self) {
 	if self.jump_cooldown_timer.is_applied {
+		return False;
+	}
+
+	if self.is_pushing {
 		return False;
 	}
 
@@ -319,6 +330,7 @@ def player_tick_horizontal_movement(self, dt) {
 		self.horizontal_movement_kind = None;
 
 		timer_arm(self.movement_cooldown_timer);
+		self.is_pushing = False;
 	}
 }
 
@@ -389,7 +401,7 @@ def player_get_y_span(self) {
 def player_get_y_span_scaled(self) {
 	y_start = self.y;
 	y_end = self.y + global(PLAYER_HEIGHT);
-	return interval_new(y_start+0.04, y_end-0.04);
+	return interval_new(y_start+0.08, y_end-0.08);
 }
 
 
