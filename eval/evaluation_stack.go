@@ -21,7 +21,6 @@ func (stack *EvaluationStack) getStackTop() int {
 }
 
 func (stack *EvaluationStack) pushGuarded(value Value) {
-	//fmt.Printf("stacktop: %+v\n", stack.top)
 
 	if stack.top >= evaluationStackHeight {
 		fmt.Printf("%+v\n", stack)

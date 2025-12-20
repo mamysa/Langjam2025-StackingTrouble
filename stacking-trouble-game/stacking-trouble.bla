@@ -14,15 +14,18 @@ global VERTICAL_MOVEMENT_JUMPING = 1
 global RL_KEY_SPACE = 32
 global RL_KEY_RIGHT = 262
 global RL_KEY_LEFT = 263
+global RL_KEY_ENTER = 257
 
 
 global MOVEMENT_EPS = 0.01
-global VELOCITY = 2.0
+global VELOCITY = 1.75
 
 global CRATE_HEIGHT = 1
 global PLAYER_HEIGHT = 2
 
 global PUSHING_DISTANCE = 0.05
+
+global SCORE_PER_CRATE_DESTROYED = 1
 
 # if player tries to move during this cooldown, input is not applied.
 global PLAYER_MOVEMENT_COOLDOWN = 0.02
@@ -53,7 +56,6 @@ def lerp_find_t(a, b, x) {
 # returns new list with entry at index removed
 def list_remove_at_index(a, index) {
 	assert (index >= 0 and index < len(a));
-	print(900);
 
 	new_list = [];
 	i = 0; 
@@ -363,6 +365,10 @@ def player_tick_vertical_movement(self, dt, world) {
 		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
 			if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
 					self.is_dead = True;
+			} else {
+				if not self.is_dead {
+					world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+				}
 			}
 			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
 		}
@@ -651,12 +657,12 @@ def world_new() {
 	world.pushed_crate = None;
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
+	world.score = 0;
 	return world;
 }
 
 def world_try_destroy_bottom_row(self) {
 	target_row_y = 0;
-
 
 	x = 0;
 	while x < len(self.columns) {
@@ -679,6 +685,8 @@ def world_try_destroy_bottom_row(self) {
 		self.columns[x] = list_pop_front(self.columns[x]);
 		x = x + 1;
 	}
+
+	self.score = self.score + global(SCORE_PER_CRATE_DESTROYED) * global(BOARD_CELLS_ALONG_X);
 }
 
 def world_tick(self, dt) {
@@ -704,7 +712,7 @@ def world_tick(self, dt) {
 	}
 
 
-	if random_float() < 0.006 {
+	if random_float() < 0.006 and not self.player.is_dead {
 		world_randomly_spawn_crate(self);
 	}
 
@@ -874,12 +882,9 @@ def world_draw(self) {
 
 def main() {
 	RlInitWindow(800, 600);
-	RlSetTargetFPS(30);
-
-
+	RlSetTargetFPS(60);
 
 	world = world_new();
-	print(world);
 
 	current_time_ms = time();
 	dt  = 0.01;
@@ -887,6 +892,10 @@ def main() {
 	
 
 	while not RlWindowShouldClose() {
+		if RlIsKeyReleased(global(RL_KEY_ENTER)) {
+			accumulator = 0.0;
+			world = world_new();
+		}
 
 		if RlIsKeyDown(global(RL_KEY_SPACE)) {
 			world.player.jump(world.player);
@@ -914,12 +923,19 @@ def main() {
 			accumulator = accumulator - dt;
 		}
 
-
 		RlBeginDrawing();
-		RlClearBackground(255, 255, 255);
+		RlClearBackground(230, 230, 230);
+
 
 
 		world_draw(world);
+
+		RlDrawText("Score: " + world.score, 10, 10, 40, 255,0,0);
+
+		if world.player.is_dead {
+			RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
+			RlDrawText("(press enter to restart)" , 300, 350, 20, 255,0,0);
+		}
 		RlEndDrawing();
 	}
 	RlCloseWindow();

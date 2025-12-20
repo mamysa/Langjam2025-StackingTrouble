@@ -112,6 +112,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlDrawRectangle()
 			case instruction.RlIsKeyDown:
 				interpreter.rlIsKeyDown()
+			case instruction.RlIsKeyReleased:
+				interpreter.rlIsKeyReleased()
+			case instruction.RlDrawText:
+				interpreter.rlDrawText()
 			case instruction.GetTime:
 				interpreter.getTime()
 			case instruction.CastFloat:
@@ -894,6 +898,19 @@ func (interpreter *Interpreter) rlIsKeyDown() {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) rlIsKeyReleased() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("rlIsKeyReleased: invalid number of arguments")
+	}
+
+	key := interpreter.evaluationStack.pop().(IntValue).value
+
+	b := rl.IsKeyReleased(int32(key))
+	interpreter.evaluationStack.pushBool(b)
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) castFloat() {
 	value := interpreter.evaluationStack.pop()
 	if !value.IsNumeric() {
@@ -953,4 +970,32 @@ func (interpreter *Interpreter) randomFloat() {
 	randomValue := rand.Float64()
 	interpreter.evaluationStack.pushFloat(randomValue)
 	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlDrawText() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 7 {
+		panic("rlDrawText: invalid number of arguments")
+	}
+
+	var (
+		b        = interpreter.evaluationStack.pop().(IntValue).value
+		g        = interpreter.evaluationStack.pop().(IntValue).value
+		r        = interpreter.evaluationStack.pop().(IntValue).value
+		fontSize = interpreter.evaluationStack.pop().(IntValue).value
+		y        = interpreter.evaluationStack.pop().(IntValue).value
+		x        = interpreter.evaluationStack.pop().(IntValue).value
+		text     = interpreter.evaluationStack.pop().(StringValue).Str
+	)
+
+	rl.DrawText(text, int32(x), int32(y), int32(fontSize), color.RGBA{
+		R: uint8(r),
+		G: uint8(g),
+		B: uint8(b),
+		A: 255,
+	})
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+
 }

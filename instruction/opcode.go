@@ -42,7 +42,9 @@ const (
 	RlClearBackground   // clear background with colors
 	RlSetTargetFPS      // set target fps
 	RlDrawRectangle     // draw rectangle
-	RlIsKeyDown         // is key down
+	RlIsKeyReleased
+	RlIsKeyDown // is key down
+	RlDrawText  // draw text
 
 	// Time
 	GetTime     // returns time since epoch in millisenonds
@@ -124,6 +126,8 @@ func (o OpCode_NoArgs) String() string {
 		return "RlDrawRectangle"
 	case RlIsKeyDown:
 		return "RlIsKeyDown"
+	case RlDrawText:
+		return "RlDrawText"
 	case GetTime:
 		return "GetTime"
 	case CastFloat:
@@ -132,6 +136,8 @@ func (o OpCode_NoArgs) String() string {
 		return "RandomInt"
 	case RandomFloat:
 		return "RandomFloat"
+	case RlIsKeyReleased:
+		return "RlIsKeyReleased"
 	default:
 		panic(fmt.Errorf("Unknown opcode %d", o))
 	}

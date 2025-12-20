@@ -31,6 +31,8 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlSetTargetFPS":      instruction.RlSetTargetFPS,
 			"RlDrawRectangle":     instruction.RlDrawRectangle,
 			"RlIsKeyDown":         instruction.RlIsKeyDown,
+			"RlIsKeyReleased":     instruction.RlIsKeyReleased,
+			"RlDrawText":          instruction.RlDrawText,
 			"time":                instruction.GetTime,
 			"random_int":          instruction.RandomInt,
 			"random_float":        instruction.RandomFloat,
