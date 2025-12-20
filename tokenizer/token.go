@@ -5,11 +5,12 @@ import "fmt"
 type TokenKind string
 
 const (
-	Token_Int   TokenKind = "Int"
-	Token_Float TokenKind = "Float"
-	Token_Or    TokenKind = "or"
-	Token_And   TokenKind = "and"
-	Token_Not   TokenKind = "not"
+	Token_String TokenKind = "String"
+	Token_Int    TokenKind = "Int"
+	Token_Float  TokenKind = "Float"
+	Token_Or     TokenKind = "or"
+	Token_And    TokenKind = "and"
+	Token_Not    TokenKind = "not"
 
 	Token_Lt       TokenKind = "<"
 	Token_Gt       TokenKind = ">"

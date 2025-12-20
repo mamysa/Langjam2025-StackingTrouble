@@ -423,6 +423,12 @@ func (visitor *CodegenVisitor) visitNone(expr None) {
 	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushNone})
 }
 
+func (visitor *CodegenVisitor) visitString(expr String) {
+	visitor.addInstruction(instruction.PushString{
+		Arg: expr.Str,
+	})
+}
+
 func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 	// TODO handle indirect calls.
 	for _, argument := range expr.Args {

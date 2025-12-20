@@ -33,6 +33,18 @@ func (e UnaryExpr) Accept(visitor AstVisitor) {
 	visitor.visitUnaryExpression(e)
 }
 
+type String struct {
+	Str string
+}
+
+func (e String) String() string {
+	return fmt.Sprintf("String(%s)", e.Str)
+}
+
+func (e String) Accept(visitor AstVisitor) {
+	visitor.visitString(e)
+}
+
 type Int struct {
 	Integer int
 }

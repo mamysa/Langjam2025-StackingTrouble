@@ -141,6 +141,10 @@ func (interpreter *Interpreter) Run() {
 			interpreter.constInt(constInt)
 		}
 
+		if constStr, ok := insn.(instruction.PushString); ok {
+			interpreter.pushString(constStr)
+		}
+
 		if constFloat, ok := insn.(instruction.ConstFloat); ok {
 			interpreter.constFloat(constFloat)
 		}
@@ -213,6 +217,11 @@ func (interpreter *Interpreter) constInt(insn instruction.ConstInt) {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) pushString(insn instruction.PushString) {
+	interpreter.evaluationStack.pushString(insn.Arg)
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) constFloat(insn instruction.ConstFloat) {
 	interpreter.evaluationStack.pushFloat(insn.Arg)
 	interpreter.programCounter++
@@ -258,6 +267,13 @@ func (interpreter *Interpreter) add() {
 		originalList := v1.(ListValue)
 		newList := originalList.AddValue(v2)
 		interpreter.evaluationStack.pushValue(newList)
+		interpreter.programCounter++
+		return
+	}
+
+	if v1.IsString() {
+		x := fmt.Sprintf("%s%s", v1.String(), v2.String())
+		interpreter.evaluationStack.pushString(x)
 		interpreter.programCounter++
 		return
 	}
@@ -589,14 +605,22 @@ func (interpreter *Interpreter) newObject() {
 
 func (interpreter *Interpreter) len() {
 	value := interpreter.evaluationStack.pop()
-	if !value.IsList() {
-		panic("Len operator applied to non-list")
+	if value.IsList() {
+		list := value.(ListValue)
+
+		interpreter.evaluationStack.pushInt(int64(list.array.Length))
+		interpreter.programCounter++
+		return
 	}
 
-	list := value.(ListValue)
+	if value.IsString() {
+		list := value.(StringValue)
+		interpreter.evaluationStack.pushInt(int64(len(list.Str)))
+		interpreter.programCounter++
+		return
+	}
 
-	interpreter.evaluationStack.pushInt(int64(list.array.Length))
-	interpreter.programCounter++
+	panic(fmt.Errorf("len: unsupported argument %+v", value))
 }
 
 // pops two entries off the stack, topmost being subscript and bottommost being the target.

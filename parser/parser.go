@@ -728,6 +728,13 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // expr_atom = '{' '}'     (new-object-expr)
 // expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
+	if p.nextTokenIs(tokenizer.Token_String) {
+		tok := p.expect(tokenizer.Token_String).(tokenizer.TokenWithData)
+		return ast.String{
+			Str: tok.Value(),
+		}, nil
+	}
+
 	if p.nextTokenIs(tokenizer.Token_None) {
 		p.expect(tokenizer.Token_None)
 		return ast.None{}, nil

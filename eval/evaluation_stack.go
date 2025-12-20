@@ -57,6 +57,11 @@ func (stack *EvaluationStack) pushFunctionAddress(i int) {
 	stack.pushGuarded(NewFunctionAddress(i))
 }
 
+func (stack *EvaluationStack) pushString(s string) {
+	stack.top += 1
+	stack.pushGuarded(NewStringValue(s))
+}
+
 func (stack *EvaluationStack) pushValue(value Value) {
 	if value == nil {
 		panic("Pushing nil value onto evaluation stack")

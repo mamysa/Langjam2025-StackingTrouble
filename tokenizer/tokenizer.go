@@ -47,7 +47,7 @@ func (reader *TokenReader) peekWhitespace() bool {
 		return false
 	}
 
-	return *c == ' ' || *c == '\n' || *c == '\t'
+	return *c == ' ' || *c == '\n' || *c == '\t' || *c == '\r'
 }
 
 func (reader *TokenReader) peekParen() bool {
@@ -166,7 +166,6 @@ func (t *Tokenizer) NextToken() (Token, error) {
 		if tok == "." {
 			return Simple{token: Token_Dot}, nil
 		}
-
 		return nil, fmt.Errorf("Unknown punctuation")
 	}
 
@@ -194,6 +193,12 @@ func (t *Tokenizer) NextToken() (Token, error) {
 	if t.reader.peekDigit() {
 		num := t.ReadNumber()
 		return num, nil
+	}
+
+	c := t.reader.peek()
+	if *c == '"' {
+		return t.readString(), nil
+
 	}
 
 	return nil, fmt.Errorf("Could not match any tokens")
@@ -287,4 +292,30 @@ func (t *Tokenizer) skipComment() {
 		t.reader.advance()
 	}
 
+}
+
+// doesnt support escape sequences.
+func (t Tokenizer) readString() Token {
+	t.reader.advance() // consume "
+
+	for {
+		c := t.reader.peek()
+		if c == nil {
+			panic("reached end of file while reading the string")
+		}
+
+		if *c == '"' {
+			t.reader.advance()
+			strTok := t.reader.getToken()
+
+			trimmedString := strTok[1 : len(strTok)-1]
+
+			return TokenWithData{
+				token: Token_String,
+				value: trimmedString,
+			}
+		}
+
+		t.reader.advance()
+	}
 }

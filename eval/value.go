@@ -20,11 +20,13 @@ type Value interface {
 	IsBool() bool
 	IsFloat() bool
 	IsNone() bool
+	IsString() bool
 	Int() int64
 	Float() float64
 	FunctionAddress() int
 	Truthy() bool
 	Copy() Value
+	String() string
 }
 
 type IntValue struct {
@@ -61,6 +63,10 @@ func (value IntValue) IsFloat() bool {
 }
 
 func (value IntValue) IsNone() bool {
+	return false
+}
+
+func (value IntValue) IsString() bool {
 	return false
 }
 
@@ -126,6 +132,10 @@ func (value FloatValue) IsNone() bool {
 	return false
 }
 
+func (value FloatValue) IsString() bool {
+	return false
+}
+
 func (value FloatValue) FunctionAddress() int {
 	panic("Invalid conversion")
 }
@@ -186,6 +196,10 @@ func (value None) IsFloat() bool {
 
 func (value None) IsNone() bool {
 	return true
+}
+
+func (value None) IsString() bool {
+	return false
 }
 
 func (value None) Truthy() bool {
@@ -250,6 +264,10 @@ func (value FunctionAddress) IsNone() bool {
 	return false
 }
 
+func (value FunctionAddress) IsString() bool {
+	return false
+}
+
 func (value FunctionAddress) Truthy() bool {
 	panic("FunctionAddress cannot be used in boolean context")
 }
@@ -309,6 +327,10 @@ func (value BoolValue) IsNumeric() bool {
 }
 
 func (value BoolValue) IsNone() bool {
+	return false
+}
+
+func (value BoolValue) IsString() bool {
 	return false
 }
 
@@ -383,6 +405,10 @@ func (value ListValue) IsFloat() bool {
 }
 
 func (value ListValue) IsNone() bool {
+	return false
+}
+
+func (value ListValue) IsString() bool {
 	return false
 }
 
@@ -514,6 +540,10 @@ func (value ObjectValue) IsNone() bool {
 	return false
 }
 
+func (value ObjectValue) IsString() bool {
+	return false
+}
+
 func (value ObjectValue) Truthy() bool {
 	return false
 }
@@ -562,4 +592,72 @@ func (list ObjectValue) GetValue(key string) Value {
 
 func (list ObjectValue) SetValue(key string, value Value) {
 	list.Object.object[key] = value
+}
+
+type StringValue struct {
+	Str string
+}
+
+func NewStringValue(s string) StringValue {
+	return StringValue{
+		Str: s,
+	}
+
+}
+
+func (value StringValue) Int() int64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value StringValue) Float() float64 {
+	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value StringValue) IsNumeric() bool {
+	return false
+}
+
+func (value StringValue) IsInt() bool {
+	return false
+}
+
+func (value StringValue) IsBool() bool {
+	return false
+}
+
+func (value StringValue) IsFloat() bool {
+	return false
+}
+
+func (value StringValue) IsNone() bool {
+	return false
+}
+
+func (value StringValue) IsString() bool {
+	return true
+}
+
+func (value StringValue) Truthy() bool {
+	return false
+}
+
+func (value StringValue) IsList() bool {
+	return false
+}
+
+func (value StringValue) IsObject() bool {
+	return false
+}
+
+func (value StringValue) FunctionAddress() int {
+	panic("Invalid conversion")
+}
+
+func (value StringValue) Copy() Value {
+	// copy reference
+	return StringValue{Str: value.Str}
+}
+
+func (value StringValue) String() string {
+	return value.Str
 }
