@@ -186,10 +186,13 @@ func (interpreter *Interpreter) Run() {
 		panic("callstack not empty")
 	}
 
-	// by the end evaluation stack should only contain none
+	if interpreter.evaluationStack.getStackTop() != 0 {
+		panic(fmt.Errorf("Evaluation stack is not empty: %+v, %+v\n", interpreter.evaluationStack.top, interpreter.evaluationStack.stack))
+	}
+
 	value := interpreter.evaluationStack.peek()
 	if !value.IsNone() {
-		panic("evaluation stack")
+		panic("evaluation stack should contain None after execution")
 	}
 }
 
@@ -647,7 +650,6 @@ func (interpreter *Interpreter) subscriptSet() {
 		index := subscript.Int()
 		target.(ListValue).SetValue(int(index), value)
 
-		interpreter.evaluationStack.pushValue(value)
 		interpreter.programCounter++
 
 		return

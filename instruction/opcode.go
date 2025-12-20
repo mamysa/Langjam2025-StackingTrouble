@@ -97,7 +97,7 @@ func (o OpCode_NoArgs) String() string {
 	case SubscriptGet:
 		return "SubscriptGet"
 	case SubscriptSet:
-		return "SubscriptGet"
+		return "SubscriptSet"
 	case Assert:
 		return "Assert"
 	case PushTrue:

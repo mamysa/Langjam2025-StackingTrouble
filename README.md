@@ -78,4 +78,7 @@ Implemented random_int/random_float built-ins. We can now generate random colors
 
 
 Day 7: 
-Pushing crates.
+Pushing crates. Correct gravity application for falling crates.
+
+
+Bugfix: had evaluation stack overflow happening after running the game for a few minutes. Few `printf` statements in the interpreter later, I found out that stack top increased while spawning crates. Commenting out lines in that function, `self.columns[x] = column + crate;` was the culprit. Surely enough, `subscriptSet` had a bug: I was pushing a popped value onto the stack again after setting value in the array. And that was the fix. Quite surprized that the game has behaved in expected way.

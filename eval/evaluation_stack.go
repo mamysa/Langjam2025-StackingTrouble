@@ -1,6 +1,8 @@
 package eval
 
-const evaluationStackHeight int = 200
+import "fmt"
+
+const evaluationStackHeight int = 100
 
 type EvaluationStack struct {
 	top   int
@@ -14,29 +16,45 @@ func NewEvaluationStack() EvaluationStack {
 	}
 }
 
+func (stack *EvaluationStack) getStackTop() int {
+	return stack.top
+}
+
+func (stack *EvaluationStack) pushGuarded(value Value) {
+	//fmt.Printf("stacktop: %+v\n", stack.top)
+
+	if stack.top >= evaluationStackHeight {
+		fmt.Printf("%+v\n", stack)
+		panic("evaulation stack overflow")
+
+	}
+
+	stack.stack[stack.top] = value
+}
+
 func (stack *EvaluationStack) pushNone() {
 	stack.top += 1
-	stack.stack[stack.top] = NewNone()
+	stack.pushGuarded(NewNone())
 }
 
 func (stack *EvaluationStack) pushBool(b bool) {
 	stack.top += 1
-	stack.stack[stack.top] = NewBool(b)
+	stack.pushGuarded(NewBool(b))
 }
 
 func (stack *EvaluationStack) pushInt(i int64) {
 	stack.top += 1
-	stack.stack[stack.top] = NewInt(i)
+	stack.pushGuarded(NewInt(i))
 }
 
 func (stack *EvaluationStack) pushFloat(f float64) {
 	stack.top += 1
-	stack.stack[stack.top] = NewFloatValue(f)
+	stack.pushGuarded(NewFloatValue(f))
 }
 
 func (stack *EvaluationStack) pushFunctionAddress(i int) {
 	stack.top += 1
-	stack.stack[stack.top] = NewFunctionAddress(i)
+	stack.pushGuarded(NewFunctionAddress(i))
 }
 
 func (stack *EvaluationStack) pushValue(value Value) {
@@ -44,7 +62,7 @@ func (stack *EvaluationStack) pushValue(value Value) {
 		panic("Pushing nil value onto evaluation stack")
 	}
 	stack.top += 1
-	stack.stack[stack.top] = value
+	stack.pushGuarded(value)
 }
 
 func (stack *EvaluationStack) pop() Value {
