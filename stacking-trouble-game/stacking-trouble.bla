@@ -33,6 +33,9 @@ global PLAYER_MOVEMENT_COOLDOWN = 0.02
 # if player tries to jump during this cooldown, input is not applied.
 global PLAYER_JUMP_COOLDOWN = 0.56
 
+global INITIAL_CRATE_SPAWN_TIMER = 5.5
+global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
+
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
 }
@@ -643,12 +646,9 @@ def world_new() {
 	crate1 = crate_new(8, 0);
 	crate2 = crate_new(2, 0);
 	crate3 = crate_new(4, 0);
-	crate4 = crate_new(4, 5);
 	columns[8] = columns[8] + crate1;
 	columns[2] = columns[2] + crate2;
 	columns[4] = columns[4] + crate3;
-	columns[4] = columns[4] + crate4;
-
 	
 	
 	world = {};
@@ -658,6 +658,7 @@ def world_new() {
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	world.score = 0;
+	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER ));
 	return world;
 }
 
@@ -691,6 +692,7 @@ def world_try_destroy_bottom_row(self) {
 
 def world_tick(self, dt) {
 	world_try_destroy_bottom_row(self);
+	timer_tick(self.crate_spawn_timer, dt);
 
 
 	self.player.tick(self.player, dt, self);
@@ -712,32 +714,109 @@ def world_tick(self, dt) {
 	}
 
 
-	if random_float() < 0.006 and not self.player.is_dead {
-		world_randomly_spawn_crate(self);
+	if self.player.is_dead {
+		return;
 	}
 
+	# crate spawning, this is pretty bad though, but not much time left.
+	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE);
+
+
+	if self.score >= 12 {
+		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER ) - 1.0;
+		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.0002;
+	}
+
+	if self.score >= 24 {
+		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 2.0;
+		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.0005;
+	}
+
+	if self.score >= 48 {
+		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 2.5;
+		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.001;
+	}
+
+	if self.score >=72 {
+	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
+	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
+	}
+
+	if self.score > 96 {
+		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
+		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
+	}
+
+
+
+	crate_spawn_chance = random_float();
+	if not self.crate_spawn_timer.is_applied or crate_spawn_chance < initial_crate_spawn_chance {
+		world_randomly_spawn_crate(self);
+	}
 }
 
 def world_randomly_spawn_crate(self) {
-	x = random_int(global(BOARD_CELLS_ALONG_X));
+	#print("timer: " + self.crate_spawn_timer + " random_chance: " + self.initial_crate_spawn_chance );
+
+
+
+
+	#  find all columns that a crate can spawn in.
+	column_index = 0;
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
 
-	crate = crate_new(x, y);
+	spawn_candidates = [];
 
-	can_spawn = True;
-	column = self.columns[x];
-	# inspect topmost element of the column
-	if len(column) > 0 {
-		last_crate = column[len(column)-1];
-		
-		if intervals_overlap(crate.get_y_axis_span(crate), last_crate.get_y_axis_span(last_crate)) {
-			can_spawn = False;
+	while column_index < global(BOARD_CELLS_ALONG_X) {
+		column = self.columns[column_index];
+		able_to_spawn = True;
+		if len(column) >= global(BOARD_CELLS_ALONG_Y)  {
+		able_to_spawn = able_to_spawn and False;
 		}
+
+		if len(column) > 0 {
+			last_crate = column[len(column)-1];
+			last_crate_top = last_crate.y + global(CRATE_HEIGHT);
+			if y - last_crate_top < 2 {
+				able_to_spawn = able_to_spawn and False;
+			}
+		}
+
+		if able_to_spawn {
+			spawn_candidates = spawn_candidates + column_index;
+		}
+
+		column_index = column_index + 1;
+	}
+	
+	print("Candidates " + spawn_candidates);
+
+	if len(spawn_candidates) == 0 {
+		print("unable to spawn crates");
+		return;
+
 	}
 
-	if can_spawn {
-		self.columns[x] = column + crate;
-	}
+	r = random_int(len(spawn_candidates)); # pick random column
+	x = spawn_candidates[r];
+	crate = crate_new(x, y);
+	self.columns[x] = self.columns[x] + crate;
+	
+	timer_arm(self.crate_spawn_timer);
+
+	#can_spawn = True;
+	#column = self.columns[x];
+	# inspect topmost element of the column
+	#if len(column) > 0 {
+	#	last_crate = column[len(column)-1];
+		
+	#	if intervals_overlap(crate.get_y_axis_span(crate), last_crate.get_y_axis_span(last_crate)) {
+	#		can_spawn = False;
+	#	}
+	#}
+
+	#if can_spawn {
+	#}
 
 }
 
@@ -925,8 +1004,6 @@ def main() {
 
 		RlBeginDrawing();
 		RlClearBackground(230, 230, 230);
-
-
 
 		world_draw(world);
 
