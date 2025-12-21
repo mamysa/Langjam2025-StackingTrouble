@@ -3,7 +3,13 @@ Stacking Trouble is a game that (poorly) attempts to re-create Stack Attack game
 
 This game is made for the [Langjam Gamejam](https://langjamgamejam.com/), the goal of which is to make some programming language first and then write a game in it. Stacking Trouble is written in Bla - a very Python-inspired dynamically-typed imperative interpreted programming language. The compiler and the interpreter are written in Go. See `stacking-trouble-game.bla` for game's source code and see `tests` directory for (incomplete) testing suite.
 
+The language supports:
+* Functions/Function references (i.e. virtual calls)
+* Lists/Objects.
+* Loop/If statements.
+* Global constants.
 
+[!screenshot](https://github.com/mamysa/Langjam2025-StackingTrouble/blob/main/stacking-trouble-screenshot.png)
 
 # Building/Running
 
