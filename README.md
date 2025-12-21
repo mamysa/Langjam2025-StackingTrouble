@@ -9,7 +9,7 @@ The language supports:
 * Loop/If statements.
 * Global constants.
 
-[!screenshot](https://github.com/mamysa/Langjam2025-StackingTrouble/blob/main/stacking-trouble-screenshot.png)
+![screenshot](https://github.com/mamysa/Langjam2025-StackingTrouble/blob/main/stacking-trouble-screenshot.png?raw=true)
 
 # Building/Running
 
