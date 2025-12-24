@@ -9,6 +9,7 @@ type TokenReader struct {
 	buf        []byte // file contents
 	tokenStart int
 	tokenEnd   int
+	lineNumber int
 }
 
 func NewTokenReader(filename string) (*TokenReader, error) {
@@ -21,6 +22,7 @@ func NewTokenReader(filename string) (*TokenReader, error) {
 		buf:        buf,
 		tokenStart: 0,
 		tokenEnd:   0,
+		lineNumber: 1,
 	}, err
 }
 
@@ -95,13 +97,17 @@ func (reader *TokenReader) reachedEof() bool {
 }
 
 func (reader *TokenReader) advance() {
+	if reader.buf[reader.tokenEnd] == '\n' {
+		reader.lineNumber++
+	}
+
 	reader.tokenEnd += 1
 }
 
-func (reader *TokenReader) getToken() string {
+func (reader *TokenReader) getToken() (string, int) {
 	token := reader.buf[reader.tokenStart:reader.tokenEnd]
 	reader.tokenStart = reader.tokenEnd
-	return string(token)
+	return string(token), reader.lineNumber
 }
 
 type Tokenizer struct {
@@ -156,43 +162,41 @@ func (t *Tokenizer) NextToken() (Token, error) {
 
 	if t.reader.peekPunctuation() {
 		t.reader.advance()
-		tok := t.reader.getToken()
+		tok, lineNumber := t.reader.getToken()
 		if tok == ";" {
-			return Simple{token: Token_Semi}, nil
+			return NewToken(Token_Semi, lineNumber), nil
 		}
 		if tok == "," {
-			return Simple{token: Token_Comma}, nil
+			return NewToken(Token_Comma, lineNumber), nil
 		}
 		if tok == "." {
-			return Simple{token: Token_Dot}, nil
+			return NewToken(Token_Dot, lineNumber), nil
 		}
 		return nil, fmt.Errorf("Unknown punctuation")
 	}
 
 	if t.reader.peekParen() {
 		t.reader.advance()
-		tok := t.reader.getToken()
+		tok, lineNumber := t.reader.getToken()
 
-		brace := IdentifyBrace(tok)
-		if brace == nil {
-			return nil, fmt.Errorf("Unknown token %+v", tok)
+		brace, err := IdentifyBrace(tok, lineNumber)
+		if err != nil {
+			return nil, err
 		}
 
 		return brace, nil
 	}
 
 	if t.reader.peekOperator() {
-		return t.ReadOperator(), nil
+		return t.ReadOperator()
 	}
 
 	if t.reader.peekAlpha() {
-		ident := t.readIdentifier()
-		return ident, nil
+		return t.readIdentifier()
 	}
 
 	if t.reader.peekDigit() {
-		num := t.ReadNumber()
-		return num, nil
+		return t.ReadNumber()
 	}
 
 	c := t.reader.peek()
@@ -204,29 +208,29 @@ func (t *Tokenizer) NextToken() (Token, error) {
 	return nil, fmt.Errorf("Could not match any tokens")
 }
 
-func (t *Tokenizer) ReadOperator() Token {
+func (t *Tokenizer) ReadOperator() (Token, error) {
 	t.reader.advance()
 	for t.reader.peekOperator() {
 		t.reader.advance()
 	}
 
-	tok := t.reader.getToken()
-	operator := IdentifyOperator(tok)
-	if operator == nil {
-		panic(fmt.Sprintf("Unknown operator %+v", tok))
+	tok, lineNumber := t.reader.getToken()
+	operator, err := IdentifyOperator(tok, lineNumber)
+	if err != nil {
+		return nil, err
 	}
 
-	return operator
+	return operator, nil
 }
 
-func (t *Tokenizer) ReadNumber() Token {
+func (t *Tokenizer) ReadNumber() (Token, error) {
 	t.reader.advance() // consume first digit
 
 	for t.reader.peekDigit() {
 		t.reader.advance()
 	}
 
-	tok := t.reader.getToken()
+	tok, lineNum := t.reader.getToken()
 
 	if *t.reader.peek() == '.' {
 		t.reader.advance()
@@ -235,31 +239,25 @@ func (t *Tokenizer) ReadNumber() Token {
 			t.reader.advance()
 		}
 
-		fractionalPart := t.reader.getToken()
+		fractionalPart, lineNum := t.reader.getToken()
 		floatingPointNum := fmt.Sprintf("%s%s", tok, fractionalPart)
 
-		return TokenWithData{
-			token: Token_Float,
-			value: floatingPointNum,
-		}
+		return NewTokenWithValue(Token_Float, floatingPointNum, lineNum), nil
 	}
 
-	return TokenWithData{
-		token: Token_Int,
-		value: tok,
-	}
+	return NewTokenWithValue(Token_Int, tok, lineNum), nil
 }
 
-func (t *Tokenizer) readIdentifier() Token {
+func (t *Tokenizer) readIdentifier() (Token, error) {
 	t.reader.advance()
 
 	for t.reader.peekAlphanumeric() {
 		t.reader.advance()
 	}
 
-	tok := t.reader.getToken()
+	tok, lineNum := t.reader.getToken()
 
-	return SpecializeIdentifier(tok)
+	return SpecializeIdentifier(tok, lineNum), nil
 }
 
 func (t *Tokenizer) consumeWhitespaceOrComment() {
@@ -306,14 +304,10 @@ func (t Tokenizer) readString() Token {
 
 		if *c == '"' {
 			t.reader.advance()
-			strTok := t.reader.getToken()
+			strTok, lineNum := t.reader.getToken()
 
 			trimmedString := strTok[1 : len(strTok)-1]
-
-			return TokenWithData{
-				token: Token_String,
-				value: trimmedString,
-			}
+			return NewTokenWithValue(Token_String, trimmedString, lineNum)
 		}
 
 		t.reader.advance()

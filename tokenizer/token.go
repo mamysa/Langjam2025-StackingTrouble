@@ -37,7 +37,7 @@ const (
 	Token_Print    TokenKind = "print"
 	Token_Def      TokenKind = "def"
 	Token_Return   TokenKind = "return"
-	Token_FuncAddr TokenKind = "function-addr"
+	Token_FuncAddr TokenKind = "&"
 
 	Token_If    TokenKind = "if"
 	Token_Else  TokenKind = "else"
@@ -97,68 +97,99 @@ var braces = map[string]TokenKind{
 	"]": Token_RBracket,
 }
 
-func SpecializeIdentifier(identifier string) Token {
+func SpecializeIdentifier(identifier string, lineNumber int) Token {
 	if tok, ok := specialIdentifiers[identifier]; ok {
-		return Simple{
-			token: tok,
-		}
+		return NewToken(tok, lineNumber)
 	}
 
-	return TokenWithData{
-		token: Token_Identifier,
-		value: identifier,
-	}
+	return NewTokenWithValue(Token_Identifier, identifier, lineNumber)
 }
 
-func IdentifyOperator(operator string) Token {
+func IdentifyOperator(operator string, lineNumber int) (Token, error) {
 	if tok, ok := operators[operator]; ok {
-		return &Simple{
-			token: tok,
-		}
+		return NewToken(tok, lineNumber), nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("Error processing symbol %+v on line %+v", operator, lineNumber)
 }
 
-func IdentifyBrace(operator string) Token {
-	if tok, ok := braces[operator]; ok {
-		return &Simple{
-			token: tok,
-		}
+func IdentifyBrace(brace string, lineNumber int) (Token, error) {
+	if tok, ok := braces[brace]; ok {
+		return NewToken(tok, lineNumber), nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("Error processing symbol %+v on line %+v", brace, lineNumber)
 }
 
 type Token interface {
 	Kind() TokenKind
+	Value() string
+	LineNumber() int
+	Source() string // returns symbol for the token.
 }
 
-type TokenWithData struct {
-	token TokenKind
-	value string
+type simpleToken struct {
+	tokenKind  TokenKind
+	lineNumber int
 }
 
-func (t TokenWithData) String() string {
-	return fmt.Sprintf("TokenWithData(%+v, %+v)", t.token, t.value)
+func NewToken(tokenKind TokenKind, lineNumber int) Token {
+	return simpleToken{
+		tokenKind:  tokenKind,
+		lineNumber: lineNumber,
+	}
 }
 
-func (t TokenWithData) Kind() TokenKind {
+func (t simpleToken) Kind() TokenKind {
+	return t.tokenKind
+}
+
+func (t simpleToken) Value() string {
+	panic("This token doesn't have attached value")
+}
+
+func (t simpleToken) LineNumber() int {
+	return t.lineNumber
+}
+
+func (t simpleToken) String() string {
+	return fmt.Sprintf("Token(%+v, lineNumber: %+v)", t.tokenKind, t.lineNumber)
+}
+
+func (t simpleToken) Source() string {
+	return string(t.tokenKind)
+}
+
+type tokenWithValue struct {
+	token      TokenKind
+	value      string
+	lineNumber int
+}
+
+func NewTokenWithValue(tokenKind TokenKind, value string, lineNumber int) Token {
+	return tokenWithValue{
+		token:      tokenKind,
+		value:      value,
+		lineNumber: lineNumber,
+	}
+}
+
+func (t tokenWithValue) Kind() TokenKind {
 	return t.token
 }
 
-func (t TokenWithData) Value() string {
+func (t tokenWithValue) Value() string {
 	return t.value
 }
 
-type Simple struct {
-	token TokenKind
+func (t tokenWithValue) LineNumber() int {
+	return t.lineNumber
 }
 
-func (t Simple) String() string {
-	return fmt.Sprintf("Simple('%+v')", t.token)
+func (t tokenWithValue) Source() string {
+	return t.value
 }
 
-func (t Simple) Kind() TokenKind {
-	return t.token
+func (t tokenWithValue) String() string {
+	return fmt.Sprintf("Token(%+v, value: %+v, lineNumber: %+v)", t.token, t.value, t.lineNumber)
 }
