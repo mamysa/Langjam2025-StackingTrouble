@@ -24,7 +24,7 @@ func NewParser(tokens []tokenizer.Token) (*Parser, error) {
 	}, nil
 }
 
-func (p *Parser) generateErrorLine(expectedTokens ...tokenizer.TokenKind) string {
+func (p *Parser) generateErrorLine(message string, expectedTokens ...tokenizer.TokenKind) error {
 	const (
 		RED   string = "\033[1;31m"
 		GREEN        = "\033[0;32m"
@@ -104,7 +104,7 @@ func (p *Parser) generateErrorLine(expectedTokens ...tokenizer.TokenKind) string
 		errorString = fmt.Sprintf("%s %s", errorString, nextToken.Source())
 	}
 
-	return fmt.Sprintf("Parse error on line %d: %s", token.LineNumber(), errorString)
+	return fmt.Errorf("Parse error on line %d: %s: %s", token.LineNumber(), message, errorString)
 }
 
 func (p *Parser) hasTokens() bool {
@@ -131,10 +131,10 @@ func (p *Parser) nextTokenIs(expectedTokenKinds ...tokenizer.TokenKind) bool {
 	return false
 }
 
-func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) tokenizer.Token {
+func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) (tokenizer.Token, error) {
 	nextTokenIndex := p.currentTokenIndex + 1
 	if nextTokenIndex >= len(p.tokens) {
-		panic("Reached end of token list")
+		return nil, fmt.Errorf("Reached end of file while expecting %+v", expectedTokenKinds)
 	}
 
 	nextToken := p.tokens[nextTokenIndex]
@@ -142,11 +142,11 @@ func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) tokenizer.Tok
 
 		if nextToken.Kind() == tokenKind {
 			p.currentTokenIndex = nextTokenIndex
-			return nextToken
+			return nextToken, nil
 		}
 	}
 
-	panic(p.generateErrorLine(expectedTokenKinds...))
+	return nil, p.generateErrorLine("unexpected token", expectedTokenKinds...)
 }
 
 func (p *Parser) ensureSymbolNotDefined(functionDefs map[string]ast.FunctionDef, globalDefs map[string]ast.GlobalDef, sym string) error {
@@ -196,7 +196,7 @@ func (p *Parser) Parse() (ast.Ast, error) {
 			continue
 		}
 
-		panic(p.generateErrorLine(tokenizer.Token_Def, tokenizer.Token_Global))
+		return ast.Ast{}, p.generateErrorLine("unable to parse either function def or global", tokenizer.Token_Def, tokenizer.Token_Global)
 	}
 
 	main, ok := functionDefs["main"]
@@ -218,21 +218,33 @@ func (p *Parser) Parse() (ast.Ast, error) {
 
 // global_def := `global` ident = int | float
 func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
-	p.expect(tokenizer.Token_Global)
+	if _, err := p.expect(tokenizer.Token_Global); err != nil {
+		return ast.GlobalDef{}, err
+	}
 
-	globalName := p.expect(tokenizer.Token_Identifier)
+	globalName, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return ast.GlobalDef{}, err
+	}
 
-	p.expect(tokenizer.Token_Assign)
+	if _, err := p.expect(tokenizer.Token_Assign); err != nil {
+		return ast.GlobalDef{}, err
+	}
 
 	// quick dirty hack, need to have negative constants.
 	sign := 1
 	if p.nextTokenIs(tokenizer.Token_Minus) {
-		p.expect(tokenizer.Token_Minus)
+		if _, err := p.expect(tokenizer.Token_Minus); err != nil {
+			return ast.GlobalDef{}, err
+		}
 		sign = -1
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Int) {
-		constInt := p.expect(tokenizer.Token_Int)
+		constInt, err := p.expect(tokenizer.Token_Int)
+		if err != nil {
+			return ast.GlobalDef{}, err
+		}
 
 		parsedInt, err := strconv.Atoi(constInt.Value())
 		if err != nil {
@@ -249,7 +261,10 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Float) {
-		constFloat := p.expect(tokenizer.Token_Float)
+		constFloat, err := p.expect(tokenizer.Token_Float)
+		if err != nil {
+			return ast.GlobalDef{}, err
+		}
 
 		parsedFloat, err := strconv.ParseFloat(constFloat.Value(), 64)
 		if err != nil {
@@ -264,16 +279,23 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 		}, nil
 	}
 
-	panic("unable to parse global constant definition")
+	return ast.GlobalDef{}, p.generateErrorLine("Unable to parse global", tokenizer.Token_Int, tokenizer.Token_Float)
 }
 
 // FUNC_DEF :=  'def' IDENT '(' NON_EMPTY_FUNCTION_PARAMETER_LIST? ')' statement_block
 func (p *Parser) parseFunctionDef() (ast.FunctionDef, error) {
-	p.expect(tokenizer.Token_Def)
+	if _, err := p.expect(tokenizer.Token_Def); err != nil {
+		return ast.FunctionDef{}, err
+	}
 
-	name := p.expect(tokenizer.Token_Identifier)
+	name, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return ast.FunctionDef{}, err
+	}
 
-	p.expect(tokenizer.Token_LParen)
+	if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+		return ast.FunctionDef{}, err
+	}
 
 	parameters := make([]ast.Var, 0)
 
@@ -285,7 +307,9 @@ func (p *Parser) parseFunctionDef() (ast.FunctionDef, error) {
 		parameters = ps
 	}
 
-	p.expect(tokenizer.Token_RParen)
+	if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+		return ast.FunctionDef{}, err
+	}
 
 	statements, err := p.parseStatementBlock()
 	if err != nil {
@@ -303,7 +327,11 @@ func (p *Parser) parseFunctionDef() (ast.FunctionDef, error) {
 func (p *Parser) parseFunctionParameterList() ([]ast.Var, error) {
 	parameters := make([]ast.Var, 0)
 
-	ident := p.expect(tokenizer.Token_Identifier)
+	ident, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return nil, err
+	}
+
 	param := ast.Var{
 		Var: ident.Value(),
 	}
@@ -311,8 +339,14 @@ func (p *Parser) parseFunctionParameterList() ([]ast.Var, error) {
 	parameters = append(parameters, param)
 
 	for p.nextTokenIs(tokenizer.Token_Comma) {
-		p.expect(tokenizer.Token_Comma)
-		ident := p.expect(tokenizer.Token_Identifier)
+		if _, err := p.expect(tokenizer.Token_Comma); err != nil {
+			return nil, err
+		}
+		ident, err := p.expect(tokenizer.Token_Identifier)
+		if err != nil {
+			return nil, err
+		}
+
 		param := ast.Var{
 			Var: ident.Value(),
 		}
@@ -327,7 +361,9 @@ func (p *Parser) parseFunctionParameterList() ([]ast.Var, error) {
 // STATEMENT_BLOCK = '{' {PRINT_STATEMENT | ASSIGN_STATEMENT | RETURN {EXPR}?}* '}'
 func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 	statements := make([]ast.Statement, 0)
-	p.expect(tokenizer.Token_LBrace)
+	if _, err := p.expect(tokenizer.Token_LBrace); err != nil {
+		return nil, err
+	}
 
 	for !p.nextTokenIs(tokenizer.Token_RBrace) {
 
@@ -385,22 +421,34 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 		statements = append(statements, stmt)
 	}
 
-	p.expect(tokenizer.Token_RBrace)
+	if _, err := p.expect(tokenizer.Token_RBrace); err != nil {
+		return nil, err
+	}
 	return statements, nil
 }
 
 // statement_assert = `assert` `(` expression `)`
 func (p *Parser) statementAssert() (ast.Statement, error) {
-	p.expect(tokenizer.Token_Assert)
-	p.expect(tokenizer.Token_LParen)
+	if _, err := p.expect(tokenizer.Token_Assert); err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+		return nil, err
+	}
 
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
 	}
 
-	p.expect(tokenizer.Token_RParen)
-	p.expect(tokenizer.Token_Semi)
+	if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+		return nil, err
+	}
 
 	return ast.AssertStmt{
 		Expr: expr,
@@ -409,7 +457,9 @@ func (p *Parser) statementAssert() (ast.Statement, error) {
 
 // STATEMENT_WHILE `while` EXPRESSION STATEMENT_BLOCK
 func (p *Parser) statementWhile() (ast.Statement, error) {
-	p.expect(tokenizer.Token_While)
+	if _, err := p.expect(tokenizer.Token_While); err != nil {
+		return nil, err
+	}
 
 	cond, err := p.expression()
 	if err != nil {
@@ -429,7 +479,9 @@ func (p *Parser) statementWhile() (ast.Statement, error) {
 
 // STATEMENT_IF: `if`  EXPRESSION   STATEMENT_BLOCK  { `else` STATEMENT_BLOCK }?
 func (p *Parser) statementIf() (ast.Statement, error) {
-	p.expect(tokenizer.Token_If)
+	if _, err := p.expect(tokenizer.Token_If); err != nil {
+		return nil, err
+	}
 
 	cond, err := p.expression()
 	if err != nil {
@@ -444,7 +496,9 @@ func (p *Parser) statementIf() (ast.Statement, error) {
 	elseStatementBlock := []ast.Statement{}
 
 	if p.nextTokenIs(tokenizer.Token_Else) {
-		p.expect(tokenizer.Token_Else)
+		if _, err := p.expect(tokenizer.Token_Else); err != nil {
+			return nil, err
+		}
 
 		b, err := p.parseStatementBlock()
 		if err != nil {
@@ -462,10 +516,14 @@ func (p *Parser) statementIf() (ast.Statement, error) {
 
 // STATEMENT_RETURN := 'return' {EXPR}?
 func (p *Parser) statementReturn() (ast.Statement, error) {
-	p.expect(tokenizer.Token_Return)
+	if _, err := p.expect(tokenizer.Token_Return); err != nil {
+		return nil, err
+	}
 
 	if p.nextTokenIs(tokenizer.Token_Semi) {
-		p.expect(tokenizer.Token_Semi)
+		if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+			return nil, err
+		}
 
 		return ast.ReturnStmt{}, nil
 	}
@@ -476,7 +534,9 @@ func (p *Parser) statementReturn() (ast.Statement, error) {
 		return nil, err
 	}
 
-	p.expect(tokenizer.Token_Semi)
+	if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+		return nil, err
+	}
 
 	return ast.ReturnWithExprStmt{
 		Expr: expr,
@@ -493,7 +553,10 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 	// void function call
 	if p.nextTokenIs(tokenizer.Token_LParen) {
 		expressionList := []ast.Expr{}
-		p.expect(tokenizer.Token_LParen)
+		if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+			return nil, err
+		}
+
 		if !p.nextTokenIs(tokenizer.Token_RParen) {
 			e, err := p.expressionList()
 			if err != nil {
@@ -501,8 +564,13 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 			}
 			expressionList = e
 		}
-		p.expect(tokenizer.Token_RParen)
-		p.expect(tokenizer.Token_Semi)
+		if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+			return nil, err
+		}
 		return ast.VoidFunctionCall{
 			Expr: aexpr,
 			Args: expressionList,
@@ -511,7 +579,9 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 
 	//definitely assignment expression
 	if p.nextTokenIs(tokenizer.Token_Assign) {
-		p.expect(tokenizer.Token_Assign)
+		if _, err := p.expect(tokenizer.Token_Assign); err != nil {
+			return nil, err
+		}
 
 		var assignmentExpr ast.AssignmentExpr
 
@@ -542,7 +612,9 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 			return nil, err
 		}
 
-		p.expect(tokenizer.Token_Semi)
+		if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+			return nil, err
+		}
 
 		return ast.AssignStmt{
 			AssignmentExpr: assignmentExpr,
@@ -550,18 +622,22 @@ func (p *Parser) statementAssign() (ast.Statement, error) {
 		}, nil
 	}
 
-	panic(p.generateErrorLine(tokenizer.Token_Assign, tokenizer.Token_LParen))
+	return nil, p.generateErrorLine("unable to parse assign or function call statement", tokenizer.Token_Assign, tokenizer.Token_LParen)
 }
 
 func (p *Parser) statementPrint() (ast.Statement, error) {
-	p.expect(tokenizer.Token_Print)
+	if _, err := p.expect(tokenizer.Token_Print); err != nil {
+		return nil, err
+	}
 
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
 	}
 
-	p.expect(tokenizer.Token_Semi)
+	if _, err := p.expect(tokenizer.Token_Semi); err != nil {
+		return nil, err
+	}
 
 	return ast.PrintStmt{
 		Expr: expr,
@@ -580,14 +656,18 @@ func (p *Parser) expressionTernary() (ast.Expr, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_If) {
-		p.expect(tokenizer.Token_If)
+		if _, err := p.expect(tokenizer.Token_If); err != nil {
+			return nil, err
+		}
 
 		cond, err := p.expressionDisjunction()
 		if err != nil {
 			return nil, err
 		}
 
-		p.expect(tokenizer.Token_Else)
+		if _, err := p.expect(tokenizer.Token_Else); err != nil {
+			return nil, err
+		}
 
 		elseExpr, err := p.expressionDisjunction()
 		if err != nil {
@@ -612,7 +692,9 @@ func (p *Parser) expressionDisjunction() (ast.Expr, error) {
 	}
 
 	for p.nextTokenIs(tokenizer.Token_Or) {
-		p.expect(tokenizer.Token_Or)
+		if _, err := p.expect(tokenizer.Token_Or); err != nil {
+			return nil, err
+		}
 
 		rhs, err := p.expressionConjunction()
 		if err != nil {
@@ -638,7 +720,9 @@ func (p *Parser) expressionConjunction() (ast.Expr, error) {
 	}
 
 	for p.nextTokenIs(tokenizer.Token_And) {
-		p.expect(tokenizer.Token_And)
+		if _, err := p.expect(tokenizer.Token_And); err != nil {
+			return nil, err
+		}
 
 		rhs, err := p.expressionNot()
 		if err != nil {
@@ -657,7 +741,10 @@ func (p *Parser) expressionConjunction() (ast.Expr, error) {
 
 func (p *Parser) expressionNot() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_Not) {
-		p.expect(tokenizer.Token_Not)
+		if _, err := p.expect(tokenizer.Token_Not); err != nil {
+			return nil, err
+		}
+
 		expr, err := p.expressionComparison()
 		if err != nil {
 			return nil, err
@@ -682,7 +769,11 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 
 	expectedTokens := []tokenizer.TokenKind{tokenizer.Token_EqEq, tokenizer.Token_NotEq, tokenizer.Token_Lt, tokenizer.Token_Gt, tokenizer.Token_GrEq}
 	if p.nextTokenIs(expectedTokens...) {
-		token := p.expect(expectedTokens...)
+		token, err := p.expect(expectedTokens...)
+		if err != nil {
+			return nil, err
+		}
+
 		var op ast.BinOp
 		switch token.Kind() {
 		case tokenizer.Token_EqEq:
@@ -696,7 +787,7 @@ func (p *Parser) expressionComparison() (ast.Expr, error) {
 		case tokenizer.Token_GrEq:
 			op = ast.BinOp_GrEq
 		default:
-			panic("unknown comparison token")
+			return nil, p.generateErrorLine("Unknown comparison token:", expectedTokens...)
 		}
 
 		rhs, err := p.expressionAdditive()
@@ -725,7 +816,11 @@ func (p *Parser) expressionAdditive() (ast.Expr, error) {
 	addOps := []tokenizer.TokenKind{tokenizer.Token_Plus, tokenizer.Token_Minus}
 
 	for p.nextTokenIs(addOps...) {
-		opToken := p.expect(addOps...)
+		opToken, err := p.expect(addOps...)
+		if err != nil {
+			return nil, err
+		}
+
 		var op ast.BinOp
 		switch opToken.Kind() {
 		case tokenizer.Token_Plus:
@@ -759,7 +854,11 @@ func (p *Parser) expressionMultiplicative() (ast.Expr, error) {
 	ops := []tokenizer.TokenKind{tokenizer.Token_Mul, tokenizer.Token_Div}
 
 	for p.nextTokenIs(ops...) {
-		opToken := p.expect(ops...)
+		opToken, err := p.expect(ops...)
+		if err != nil {
+			return nil, err
+		}
+
 		var op ast.BinOp
 		switch opToken.Kind() {
 		case tokenizer.Token_Mul:
@@ -786,7 +885,10 @@ func (p *Parser) expressionMultiplicative() (ast.Expr, error) {
 // EXPR_UNARY: {`-`}? EXPR_ATOM
 func (p *Parser) expressionUnary() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_Minus) {
-		_ = p.expect(tokenizer.Token_Minus)
+		_, err := p.expect(tokenizer.Token_Minus)
+		if err != nil {
+			return nil, err
+		}
 
 		expr, err := p.expressionAtom()
 		if err != nil {
@@ -811,80 +913,137 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // expr_atom = `len` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_String) {
-		tok := p.expect(tokenizer.Token_String)
+		tok, err := p.expect(tokenizer.Token_String)
+		if err != nil {
+			return nil, err
+		}
+
 		return ast.String{
 			Str: tok.Value(),
 		}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_None) {
-		p.expect(tokenizer.Token_None)
+		if _, err := p.expect(tokenizer.Token_None); err != nil {
+			return nil, err
+		}
 		return ast.None{}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_True) {
-		p.expect(tokenizer.Token_True)
+		if _, err := p.expect(tokenizer.Token_True); err != nil {
+			return nil, err
+		}
 		return ast.Bool{
 			Value: true,
 		}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_False) {
-		p.expect(tokenizer.Token_False)
+		if _, err := p.expect(tokenizer.Token_False); err != nil {
+			return nil, err
+		}
 		return ast.Bool{
 			Value: false,
 		}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Len) {
-		p.expect(tokenizer.Token_Len)
-		p.expect(tokenizer.Token_LParen)
+		if _, err := p.expect(tokenizer.Token_Len); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+			return nil, err
+		}
+
 		expr, err := p.expression()
 		if err != nil {
 			return nil, err
 		}
-		p.expect(tokenizer.Token_RParen)
+
+		if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+			return nil, err
+		}
 
 		return ast.LenExpr{Expr: expr}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_CastFloat) {
-		p.expect(tokenizer.Token_CastFloat)
-		p.expect(tokenizer.Token_LParen)
+		if _, err := p.expect(tokenizer.Token_CastFloat); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+			return nil, err
+		}
+
 		expr, err := p.expression()
 		if err != nil {
 			return nil, err
 		}
-		p.expect(tokenizer.Token_RParen)
+
+		if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+			return nil, err
+		}
 
 		return ast.CastFloat{Expr: expr}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Global) {
-		p.expect(tokenizer.Token_Global)
-		p.expect(tokenizer.Token_LParen)
-		globalName := p.expect(tokenizer.Token_Identifier)
-		p.expect(tokenizer.Token_RParen)
+		if _, err := p.expect(tokenizer.Token_Global); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+			return nil, err
+		}
+
+		globalName, err := p.expect(tokenizer.Token_Identifier)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+			return nil, err
+		}
 
 		return ast.ReadGlobal{GlobalName: globalName.Value()}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_LBracket) {
-		p.expect(tokenizer.Token_LBracket)
-		p.expect(tokenizer.Token_RBracket)
+		if _, err := p.expect(tokenizer.Token_LBracket); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_RBracket); err != nil {
+			return nil, err
+		}
+
 		return ast.NewListExpr{}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_LBrace) {
-		p.expect(tokenizer.Token_LBrace)
-		p.expect(tokenizer.Token_RBrace)
+		if _, err := p.expect(tokenizer.Token_LBrace); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_RBrace); err != nil {
+			return nil, err
+		}
+
 		return ast.NewObjectExpr{}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_FuncAddr) {
-		p.expect(tokenizer.Token_FuncAddr)
+		if _, err := p.expect(tokenizer.Token_FuncAddr); err != nil {
+			return nil, err
+		}
 
-		tok := p.expect(tokenizer.Token_Identifier)
+		tok, err := p.expect(tokenizer.Token_Identifier)
+		if err != nil {
+			return nil, err
+		}
 
 		return ast.AddressOfFunction{
 			Name: tok.Value(),
@@ -892,14 +1051,20 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_LParen) {
-		_ = p.expect(tokenizer.Token_LParen)
+		_, err := p.expect(tokenizer.Token_LParen)
+		if err != nil {
+			return nil, err
+		}
 
 		expr, err := p.expression()
 		if err != nil {
 			return nil, err
 		}
 
-		_ = p.expect(tokenizer.Token_RParen)
+		_, err = p.expect(tokenizer.Token_RParen)
+		if err != nil {
+			return nil, err
+		}
 
 		return expr, nil
 	}
@@ -914,7 +1079,10 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Int) {
-		token := p.expect(tokenizer.Token_Int)
+		token, err := p.expect(tokenizer.Token_Int)
+		if err != nil {
+			return nil, err
+		}
 
 		parsedInt, err := strconv.Atoi(token.Value())
 		if err != nil {
@@ -927,7 +1095,10 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Float) {
-		token := p.expect(tokenizer.Token_Float)
+		token, err := p.expect(tokenizer.Token_Float)
+		if err != nil {
+			return nil, err
+		}
 
 		parsedFloat, err := strconv.ParseFloat(token.Value(), 64)
 		if err != nil {
@@ -940,13 +1111,32 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 
 	}
 
-	return nil, fmt.Errorf("Unable to parse EXPR_ATOM")
+	return nil, p.generateErrorLine(
+		"unable to parse atom",
+		tokenizer.Token_String,
+		tokenizer.Token_None,
+		tokenizer.Token_True,
+		tokenizer.Token_False,
+		tokenizer.Token_Len,
+		tokenizer.Token_CastFloat,
+		tokenizer.Token_Global,
+		tokenizer.Token_LBracket,
+		tokenizer.Token_LBrace,
+		tokenizer.Token_FuncAddr,
+		tokenizer.Token_LParen,
+		tokenizer.Token_Identifier,
+		tokenizer.Token_Int,
+		tokenizer.Token_Float,
+	)
 }
 
 // expression_lhs_ident_trailer =   rhs_ident_trailer_list_subscript
 // left side of assignment doesnt allow function calls
 func (p *Parser) expressionLhsIdentTrailer() (ast.Expr, error) {
-	token := p.expect(tokenizer.Token_Identifier)
+	token, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return nil, err
+	}
 
 	var expr ast.Expr = ast.Var{
 		Var: token.Value(),
@@ -978,7 +1168,10 @@ func (p *Parser) expressionLhsIdentTrailer() (ast.Expr, error) {
 // right side of assignment allows function calls
 func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
 	// consume ident
-	token := p.expect(tokenizer.Token_Identifier)
+	token, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return nil, err
+	}
 
 	var expr ast.Expr = ast.Var{
 		Var: token.Value(),
@@ -1019,7 +1212,10 @@ func (p *Parser) expressionRhsIdentTrailer() (ast.Expr, error) {
 
 // rhs_ident_trailer_function_call  := identifier { '('  expression_list `)` }?
 func (p *Parser) identifierTrailerFunctionCall(expr ast.Expr) (ast.Expr, error) {
-	p.expect(tokenizer.Token_LParen)
+	if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+		return nil, err
+	}
+
 	expressionList := []ast.Expr{}
 	if !p.nextTokenIs(tokenizer.Token_RParen) {
 		e, err := p.expressionList()
@@ -1028,19 +1224,28 @@ func (p *Parser) identifierTrailerFunctionCall(expr ast.Expr) (ast.Expr, error) 
 		}
 		expressionList = e
 	}
-	p.expect(tokenizer.Token_RParen)
+
+	if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+		return nil, err
+	}
 
 	return ast.FunctionCall{Expr: expr, Args: expressionList}, nil
 }
 
 // rhs_ident_trailer_list_subscript  := identifier { '['  expression`]` }?
 func (p *Parser) identifierTrailerListSubscript(expr ast.Expr) (ast.Expr, error) {
-	p.expect(tokenizer.Token_LBracket)
+	if _, err := p.expect(tokenizer.Token_LBracket); err != nil {
+		return nil, err
+	}
+
 	subscriptExpr, err := p.expression()
 	if err != nil {
 		return nil, err
 	}
-	p.expect(tokenizer.Token_RBracket)
+
+	if _, err := p.expect(tokenizer.Token_RBracket); err != nil {
+		return nil, err
+	}
 
 	return ast.SubscriptGet{
 		Expr:      expr,
@@ -1050,8 +1255,14 @@ func (p *Parser) identifierTrailerListSubscript(expr ast.Expr) (ast.Expr, error)
 
 // rhs_ident_trailer_field_access := identifier {'.' identifier}?
 func (p *Parser) identifierTrailerFieldAccess(expr ast.Expr) (ast.Expr, error) {
-	p.expect(tokenizer.Token_Dot)
-	ident := p.expect(tokenizer.Token_Identifier)
+	if _, err := p.expect(tokenizer.Token_Dot); err != nil {
+		return nil, err
+	}
+
+	ident, err := p.expect(tokenizer.Token_Identifier)
+	if err != nil {
+		return nil, err
+	}
 
 	return ast.ObjectFieldGet{
 		Expr:  expr,
@@ -1070,7 +1281,10 @@ func (p *Parser) expressionList() ([]ast.Expr, error) {
 	expressions = append(expressions, expr)
 
 	for p.nextTokenIs(tokenizer.Token_Comma) {
-		p.expect(tokenizer.Token_Comma)
+		if _, err := p.expect(tokenizer.Token_Comma); err != nil {
+			return nil, err
+		}
+
 		expr, err := p.expression()
 		if err != nil {
 			return nil, err
