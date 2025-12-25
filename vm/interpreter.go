@@ -1,7 +1,6 @@
-package eval
+package vm
 
 import (
-	"compiler/instruction"
 	"fmt"
 	"image/color"
 	"math/rand"
@@ -42,150 +41,150 @@ func (interpreter *Interpreter) Run() {
 
 		//fmt.Printf("%d, %+v %+v\n", interpreter.programCounter, insn, interpreter.evaluationStack)
 
-		if simple, ok := insn.(instruction.InstructionNoOperands); ok {
+		if simple, ok := insn.(InstructionNoOperands); ok {
 			switch simple.OpCode {
-			case instruction.Eq:
+			case Eq:
 				interpreter.eq()
-			case instruction.NotEq:
+			case NotEq:
 				interpreter.notEq()
-			case instruction.Lt:
+			case Lt:
 				interpreter.lt()
-			case instruction.Gt:
+			case Gt:
 				interpreter.gt()
-			case instruction.GrEq:
+			case GrEq:
 				interpreter.grEq()
-			case instruction.Add:
+			case Add:
 				interpreter.add()
-			case instruction.Sub:
+			case Sub:
 				interpreter.sub()
-			case instruction.Mul:
+			case Mul:
 				interpreter.mul()
-			case instruction.Div:
+			case Div:
 				interpreter.div()
-			case instruction.Not:
+			case Not:
 				interpreter.not()
-			case instruction.Neg:
+			case Neg:
 				interpreter.neg()
-			case instruction.Ret:
+			case Ret:
 				interpreter.ret()
-			case instruction.Print:
+			case Print:
 				interpreter.print()
-			case instruction.PushNone:
+			case PushNone:
 				interpreter.pushNone()
-			case instruction.CallVirtual:
+			case CallVirtual:
 				interpreter.callVirtual()
-			case instruction.Dup:
+			case Dup:
 				interpreter.dup()
-			case instruction.Pop:
+			case Pop:
 				interpreter.pop()
-			case instruction.NewList:
+			case NewList:
 				interpreter.newList()
-			case instruction.NewObject:
+			case NewObject:
 				interpreter.newObject()
-			case instruction.Len:
+			case Len:
 				interpreter.len()
-			case instruction.SubscriptGet:
+			case SubscriptGet:
 				interpreter.subscriptGet()
-			case instruction.SubscriptSet:
+			case SubscriptSet:
 				interpreter.subscriptSet()
-			case instruction.Assert:
+			case Assert:
 				interpreter.assert()
-			case instruction.PushTrue:
+			case PushTrue:
 				interpreter.pushTrue()
-			case instruction.PushFalse:
+			case PushFalse:
 				interpreter.pushFalse()
-			case instruction.RlInitWindow:
+			case RlInitWindow:
 				interpreter.rlInitWindow()
-			case instruction.RlWindowShouldClose:
+			case RlWindowShouldClose:
 				interpreter.rlWindowShouldClose()
-			case instruction.RlCloseWindow:
+			case RlCloseWindow:
 				interpreter.rlCloseWindow()
-			case instruction.RlBeginDrawing:
+			case RlBeginDrawing:
 				interpreter.rlBeginDrawing()
-			case instruction.RlEndDrawing:
+			case RlEndDrawing:
 				interpreter.rlEndDrawing()
-			case instruction.RlClearBackground:
+			case RlClearBackground:
 				interpreter.rlClearBackground()
-			case instruction.RlSetTargetFPS:
+			case RlSetTargetFPS:
 				interpreter.rlSetTargetFps()
-			case instruction.RlDrawRectangle:
+			case RlDrawRectangle:
 				interpreter.rlDrawRectangle()
-			case instruction.RlIsKeyDown:
+			case RlIsKeyDown:
 				interpreter.rlIsKeyDown()
-			case instruction.RlIsKeyReleased:
+			case RlIsKeyReleased:
 				interpreter.rlIsKeyReleased()
-			case instruction.RlDrawText:
+			case RlDrawText:
 				interpreter.rlDrawText()
-			case instruction.GetTime:
+			case GetTime:
 				interpreter.getTime()
-			case instruction.CastFloat:
+			case CastFloat:
 				interpreter.castFloat()
-			case instruction.RandomInt:
+			case RandomInt:
 				interpreter.randomInt()
-			case instruction.RandomFloat:
+			case RandomFloat:
 				interpreter.randomFloat()
 			default:
-				panic(fmt.Errorf("Unhandled instruction %+v", simple))
+				panic(fmt.Errorf("Unhandled %+v", simple))
 			}
 		}
 
-		if assertArgCount, ok := insn.(instruction.AssertArgCount); ok {
+		if assertArgCount, ok := insn.(AssertArgCount); ok {
 			interpreter.assertArgCount(assertArgCount)
 		}
 
-		if loadVar, ok := insn.(instruction.LoadVar); ok {
+		if loadVar, ok := insn.(LoadVar); ok {
 			interpreter.loadVar(loadVar)
 		}
 
-		if storeVar, ok := insn.(instruction.StoreVar); ok {
+		if storeVar, ok := insn.(StoreVar); ok {
 			interpreter.storeVar(storeVar)
 		}
 
-		if constInt, ok := insn.(instruction.ConstInt); ok {
+		if constInt, ok := insn.(ConstInt); ok {
 			interpreter.constInt(constInt)
 		}
 
-		if constStr, ok := insn.(instruction.PushString); ok {
+		if constStr, ok := insn.(PushString); ok {
 			interpreter.pushString(constStr)
 		}
 
-		if constFloat, ok := insn.(instruction.ConstFloat); ok {
+		if constFloat, ok := insn.(ConstFloat); ok {
 			interpreter.constFloat(constFloat)
 		}
 
-		if call, ok := insn.(instruction.Call); ok {
+		if call, ok := insn.(Call); ok {
 			interpreter.call(call)
 		}
 
-		if pushFunctionAddr, ok := insn.(instruction.PushFunctionAddr); ok {
+		if pushFunctionAddr, ok := insn.(PushFunctionAddr); ok {
 			interpreter.pushFunctionAddr(pushFunctionAddr)
 		}
 
-		if brIf, ok := insn.(instruction.BrIf); ok {
+		if brIf, ok := insn.(BrIf); ok {
 			interpreter.brIf(brIf)
 		}
 
-		if brIfNot, ok := insn.(instruction.BrIfNot); ok {
+		if brIfNot, ok := insn.(BrIfNot); ok {
 			interpreter.brIfNot(brIfNot)
 		}
 
-		if br, ok := insn.(instruction.Br); ok {
+		if br, ok := insn.(Br); ok {
 			interpreter.br(br)
 		}
 
-		if label, ok := insn.(instruction.Label); ok {
+		if label, ok := insn.(Label); ok {
 			interpreter.label(label)
 		}
 
-		if fieldGet, ok := insn.(instruction.ObjectFieldGet); ok {
+		if fieldGet, ok := insn.(ObjectFieldGet); ok {
 			interpreter.objectFieldGet(fieldGet)
 		}
 
-		if fieldSet, ok := insn.(instruction.ObjectFieldSet); ok {
+		if fieldSet, ok := insn.(ObjectFieldSet); ok {
 			interpreter.objectFieldSet(fieldSet)
 		}
 
-		if readGlobal, ok := insn.(instruction.ReadGlobal); ok {
+		if readGlobal, ok := insn.(ReadGlobal); ok {
 			interpreter.readGlobal(readGlobal)
 		}
 	}
@@ -204,7 +203,7 @@ func (interpreter *Interpreter) Run() {
 	}
 }
 
-func (interpreter *Interpreter) assertArgCount(insn instruction.AssertArgCount) {
+func (interpreter *Interpreter) assertArgCount(insn AssertArgCount) {
 	value := interpreter.evaluationStack.pop()
 
 	intValue := value.Int()
@@ -216,28 +215,28 @@ func (interpreter *Interpreter) assertArgCount(insn instruction.AssertArgCount) 
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) constInt(insn instruction.ConstInt) {
+func (interpreter *Interpreter) constInt(insn ConstInt) {
 	interpreter.evaluationStack.pushInt(int64(insn.Arg))
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) pushString(insn instruction.PushString) {
+func (interpreter *Interpreter) pushString(insn PushString) {
 	interpreter.evaluationStack.pushString(insn.Arg)
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) constFloat(insn instruction.ConstFloat) {
+func (interpreter *Interpreter) constFloat(insn ConstFloat) {
 	interpreter.evaluationStack.pushFloat(insn.Arg)
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) storeVar(insn instruction.StoreVar) {
+func (interpreter *Interpreter) storeVar(insn StoreVar) {
 	value := interpreter.evaluationStack.pop()
 	interpreter.callStack.putLocal(insn.Arg, value)
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) loadVar(insn instruction.LoadVar) {
+func (interpreter *Interpreter) loadVar(insn LoadVar) {
 	local, err := interpreter.callStack.getLocal(insn.Arg)
 	if err != nil {
 		panic(err)
@@ -247,7 +246,7 @@ func (interpreter *Interpreter) loadVar(insn instruction.LoadVar) {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) call(insn instruction.Call) {
+func (interpreter *Interpreter) call(insn Call) {
 	nextInstructionOffset := interpreter.programCounter + 1
 	interpreter.callStack.pushStackFrame(nextInstructionOffset)
 	interpreter.programCounter = InstructionOffset(insn.Offset)
@@ -543,8 +542,8 @@ func (interpreter *Interpreter) print() {
 }
 
 func (interpreter *Interpreter) ret() {
-	instructionOffset := interpreter.callStack.popStackFrame()
-	interpreter.programCounter = instructionOffset
+	ffset := interpreter.callStack.popStackFrame()
+	interpreter.programCounter = ffset
 }
 
 func (interpreter *Interpreter) pushNone() {
@@ -552,12 +551,12 @@ func (interpreter *Interpreter) pushNone() {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) pushFunctionAddr(insn instruction.PushFunctionAddr) {
+func (interpreter *Interpreter) pushFunctionAddr(insn PushFunctionAddr) {
 	interpreter.evaluationStack.pushFunctionAddress(insn.Offset)
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) brIf(insn instruction.BrIf) {
+func (interpreter *Interpreter) brIf(insn BrIf) {
 	v := interpreter.evaluationStack.pop()
 	if v.Truthy() {
 		interpreter.programCounter = InstructionOffset(insn.Offset)
@@ -567,7 +566,7 @@ func (interpreter *Interpreter) brIf(insn instruction.BrIf) {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) brIfNot(insn instruction.BrIfNot) {
+func (interpreter *Interpreter) brIfNot(insn BrIfNot) {
 	v := interpreter.evaluationStack.pop()
 	if !v.Truthy() {
 		interpreter.programCounter = InstructionOffset(insn.Offset)
@@ -577,11 +576,11 @@ func (interpreter *Interpreter) brIfNot(insn instruction.BrIfNot) {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) br(insn instruction.Br) {
+func (interpreter *Interpreter) br(insn Br) {
 	interpreter.programCounter = InstructionOffset(insn.Offset)
 }
 
-func (interpreter *Interpreter) label(insn instruction.Label) {
+func (interpreter *Interpreter) label(insn Label) {
 	interpreter.programCounter++
 }
 
@@ -598,7 +597,7 @@ func (interpreter *Interpreter) pop() {
 }
 
 func (interpreter *Interpreter) newList() {
-	interpreter.evaluationStack.pushValue(NewList())
+	interpreter.evaluationStack.pushValue(NewListValue())
 	interpreter.programCounter++
 }
 
@@ -651,7 +650,7 @@ func (interpreter *Interpreter) subscriptGet() {
 	panic("subscript operator on non-list")
 }
 
-func (interpreter *Interpreter) objectFieldGet(insn instruction.ObjectFieldGet) {
+func (interpreter *Interpreter) objectFieldGet(insn ObjectFieldGet) {
 	target := interpreter.evaluationStack.pop()
 
 	if !target.IsObject() {
@@ -686,7 +685,7 @@ func (interpreter *Interpreter) subscriptSet() {
 	panic("subscript operator on non-list")
 }
 
-func (interpreter *Interpreter) objectFieldSet(insn instruction.ObjectFieldSet) {
+func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 	target := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
 
@@ -718,7 +717,7 @@ func (interpreter *Interpreter) pushFalse() {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) readGlobal(insn instruction.ReadGlobal) {
+func (interpreter *Interpreter) readGlobal(insn ReadGlobal) {
 	gl, ok := interpreter.program.Globals[insn.Global]
 	if !ok {
 		panic(fmt.Errorf("readGlobal: global %+v not present in environment", insn.Global))

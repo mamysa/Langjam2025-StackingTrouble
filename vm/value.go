@@ -1,4 +1,4 @@
-package eval
+package vm
 
 import "fmt"
 
@@ -371,7 +371,7 @@ type array struct {
 	Array  []Value
 }
 
-func NewList() ListValue {
+func NewListValue() ListValue {
 	return ListValue{
 		array: &array{
 			Length: 0,

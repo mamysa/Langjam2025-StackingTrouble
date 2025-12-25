@@ -2,9 +2,9 @@ package main
 
 import (
 	"compiler/ast"
-	"compiler/eval"
 	"compiler/parser"
 	"compiler/tokenizer"
+	"compiler/vm"
 	"fmt"
 	"os"
 )
@@ -15,7 +15,7 @@ const (
 	DebugBytecode        = "DEBUG=bytecode"
 )
 
-func printProgram(prog *eval.Program) {
+func printProgram(prog *vm.Program) {
 	fmt.Printf("Globals: %+v\n", prog.Globals)
 
 	for i, instruction := range prog.Instructions {
@@ -75,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	interpreter := eval.NewInterpreter(visitor.Program)
+	interpreter := vm.NewInterpreter(visitor.Program)
 	interpreter.Run()
 
 	/*

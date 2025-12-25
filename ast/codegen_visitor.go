@@ -1,55 +1,54 @@
 package ast
 
 import (
-	"compiler/eval"
-	"compiler/instruction"
 	"compiler/util"
+	"compiler/vm"
 	"fmt"
 )
 
 type CodegenVisitor struct {
-	Instructions          []instruction.Instruction
-	Program               *eval.Program
+	Instructions          []vm.Instruction
+	Program               *vm.Program
 	Ast                   Ast
 	symGen                util.SymGen
-	reservedFunctionNames map[string]instruction.OpCode_NoArgs
-	Globals               map[string]eval.Value
+	reservedFunctionNames map[string]vm.OpCode_NoArgs
+	Globals               map[string]vm.Value
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
-		Instructions: make([]instruction.Instruction, 0),
+		Instructions: make([]vm.Instruction, 0),
 		symGen:       util.NewSymGen(),
-		Globals:      map[string]eval.Value{},
-		reservedFunctionNames: map[string]instruction.OpCode_NoArgs{
-			"RlInitWindow":        instruction.RlInitWindow,
-			"RlCloseWindow":       instruction.RlCloseWindow,
-			"RlWindowShouldClose": instruction.RlWindowShouldClose,
-			"RlBeginDrawing":      instruction.RlBeginDrawing,
-			"RlEndDrawing":        instruction.RlEndDrawing,
-			"RlClearBackground":   instruction.RlClearBackground,
-			"RlSetTargetFPS":      instruction.RlSetTargetFPS,
-			"RlDrawRectangle":     instruction.RlDrawRectangle,
-			"RlIsKeyDown":         instruction.RlIsKeyDown,
-			"RlIsKeyReleased":     instruction.RlIsKeyReleased,
-			"RlDrawText":          instruction.RlDrawText,
-			"time":                instruction.GetTime,
-			"random_int":          instruction.RandomInt,
-			"random_float":        instruction.RandomFloat,
+		Globals:      map[string]vm.Value{},
+		reservedFunctionNames: map[string]vm.OpCode_NoArgs{
+			"RlInitWindow":        vm.RlInitWindow,
+			"RlCloseWindow":       vm.RlCloseWindow,
+			"RlWindowShouldClose": vm.RlWindowShouldClose,
+			"RlBeginDrawing":      vm.RlBeginDrawing,
+			"RlEndDrawing":        vm.RlEndDrawing,
+			"RlClearBackground":   vm.RlClearBackground,
+			"RlSetTargetFPS":      vm.RlSetTargetFPS,
+			"RlDrawRectangle":     vm.RlDrawRectangle,
+			"RlIsKeyDown":         vm.RlIsKeyDown,
+			"RlIsKeyReleased":     vm.RlIsKeyReleased,
+			"RlDrawText":          vm.RlDrawText,
+			"time":                vm.GetTime,
+			"random_int":          vm.RandomInt,
+			"random_float":        vm.RandomFloat,
 		},
 	}
 }
 
-func (visitor *CodegenVisitor) addInstruction(i instruction.Instruction) {
+func (visitor *CodegenVisitor) addInstruction(i vm.Instruction) {
 	visitor.Instructions = append(visitor.Instructions, i)
 }
 
-// enumerate all instructions, insert index of each Label instruction into the map.
+// enumerate all vm., insert index of each Label vm.into the map.
 func (visitor *CodegenVisitor) generateLabelOffsetMap() map[string]int {
 	labelToOffsetMap := map[string]int{}
 
 	for i, insn := range visitor.Instructions {
-		label, ok := insn.(instruction.Label)
+		label, ok := insn.(vm.Label)
 		if ok {
 			if _, ok := labelToOffsetMap[label.Label]; ok {
 				panic(fmt.Errorf("label %+v is present in the map", label.Label))
@@ -67,7 +66,7 @@ func (visitor *CodegenVisitor) generateLabelOffsetMap() map[string]int {
 
 func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 	for insnIndex, insn := range visitor.Instructions {
-		if i, ok := insn.(instruction.Call); ok {
+		if i, ok := insn.(vm.Call); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
 				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
@@ -78,7 +77,7 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 
 		}
 
-		if i, ok := insn.(instruction.PushFunctionAddr); ok {
+		if i, ok := insn.(vm.PushFunctionAddr); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
 				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
@@ -88,7 +87,7 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 			visitor.Instructions[insnIndex] = i
 		}
 
-		if i, ok := insn.(instruction.BrIf); ok {
+		if i, ok := insn.(vm.BrIf); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
 				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
@@ -98,7 +97,7 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 			visitor.Instructions[insnIndex] = i
 		}
 
-		if i, ok := insn.(instruction.BrIfNot); ok {
+		if i, ok := insn.(vm.BrIfNot); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
 				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
@@ -108,7 +107,7 @@ func (visitor *CodegenVisitor) resolveOffsets(labelToOffsetMap map[string]int) {
 			visitor.Instructions[insnIndex] = i
 		}
 
-		if i, ok := insn.(instruction.Br); ok {
+		if i, ok := insn.(vm.Br); ok {
 			offset, ok := labelToOffsetMap[i.Label]
 			if !ok {
 				panic(fmt.Errorf("Unable to find offset for label %+v", i.Label))
@@ -140,7 +139,7 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 		panic("could not find offset for main")
 	}
 
-	visitor.Program = &eval.Program{
+	visitor.Program = &vm.Program{
 		Instructions:            visitor.Instructions,
 		EntryInstructionAddress: mainOffset,
 		Globals:                 visitor.Globals,
@@ -149,12 +148,12 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 
 func (visitor *CodegenVisitor) visitGlobalDef(def GlobalDef) {
 	if def.ValueFloat != nil {
-		visitor.Globals[def.GlobalName] = eval.NewFloatValue(def.ValueFloat.Float)
+		visitor.Globals[def.GlobalName] = vm.NewFloatValue(def.ValueFloat.Float)
 		return
 	}
 
 	if def.ValueInt != nil {
-		visitor.Globals[def.GlobalName] = eval.NewInt(int64(def.ValueInt.Integer))
+		visitor.Globals[def.GlobalName] = vm.NewInt(int64(def.ValueInt.Integer))
 		return
 	}
 
@@ -162,9 +161,9 @@ func (visitor *CodegenVisitor) visitGlobalDef(def GlobalDef) {
 }
 
 func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
-	visitor.addInstruction(instruction.NewLabel(def.Name))
+	visitor.addInstruction(vm.NewLabel(def.Name))
 
-	visitor.addInstruction(instruction.AssertArgCount{
+	visitor.addInstruction(vm.AssertArgCount{
 		ArgCount: len(def.Params),
 	})
 
@@ -176,7 +175,7 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 	for i := len(def.Params) - 1; i >= 0; i-- {
 		param := def.Params[i]
 
-		visitor.addInstruction(instruction.StoreVar{
+		visitor.addInstruction(vm.StoreVar{
 			Arg: param.Var,
 		})
 	}
@@ -201,24 +200,24 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 	// If there's no return statement then we add these. All functions should return something (e.g. None).
 
 	if shouldAddReturn {
-		visitor.addInstruction(instruction.InstructionNoOperands{
-			OpCode: instruction.PushNone,
+		visitor.addInstruction(vm.InstructionNoOperands{
+			OpCode: vm.PushNone,
 		})
-		visitor.addInstruction(instruction.InstructionNoOperands{
-			OpCode: instruction.Ret,
+		visitor.addInstruction(vm.InstructionNoOperands{
+			OpCode: vm.Ret,
 		})
 	}
 }
 
 func (visitor *CodegenVisitor) visitAssert(stmt AssertStmt) {
 	stmt.Expr.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Assert})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Assert})
 }
 
 func (visitor *CodegenVisitor) visitPrintStatement(stmt PrintStmt) {
 	stmt.Expr.Accept(visitor)
 
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Print})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Print})
 }
 
 func (visitor *CodegenVisitor) visitAssignStatement(stmt AssignStmt) {
@@ -235,22 +234,22 @@ func (visitor *CodegenVisitor) visitVoidFunctionCallStatement(stmt VoidFunctionC
 
 	fnCall.Accept(visitor)
 	// pop the result pushed by the function call
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Pop})
 }
 
 func (visitor *CodegenVisitor) visitReturn(stmt ReturnStmt) {
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.PushNone,
+	visitor.addInstruction(vm.InstructionNoOperands{
+		OpCode: vm.PushNone,
 	})
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.Ret,
+	visitor.addInstruction(vm.InstructionNoOperands{
+		OpCode: vm.Ret,
 	})
 }
 
 func (visitor *CodegenVisitor) visitReturnWithExpr(stmt ReturnWithExprStmt) {
 	stmt.Expr.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.Ret,
+	visitor.addInstruction(vm.InstructionNoOperands{
+		OpCode: vm.Ret,
 	})
 }
 
@@ -264,31 +263,31 @@ func (visitor *CodegenVisitor) visitIfStatement(stmt IfStmt) {
 	// generate code for condition
 	stmt.Cond.Accept(visitor)
 
-	visitor.addInstruction(instruction.NewBrIf(ifBranchLabel))
+	visitor.addInstruction(vm.NewBrIf(ifBranchLabel))
 
 	if hasElseBranch {
-		visitor.addInstruction(instruction.NewBr(elseBranchLabel))
+		visitor.addInstruction(vm.NewBr(elseBranchLabel))
 	} else {
-		visitor.addInstruction(instruction.NewBr(endIfLabel))
+		visitor.addInstruction(vm.NewBr(endIfLabel))
 	}
 
-	visitor.addInstruction(instruction.NewLabel(ifBranchLabel))
+	visitor.addInstruction(vm.NewLabel(ifBranchLabel))
 
 	for _, ifBranchStmt := range stmt.IfBranch {
 		ifBranchStmt.Accept(visitor)
 	}
 
-	visitor.addInstruction(instruction.NewBr(endIfLabel))
+	visitor.addInstruction(vm.NewBr(endIfLabel))
 
 	if hasElseBranch {
-		visitor.addInstruction(instruction.NewLabel(elseBranchLabel))
+		visitor.addInstruction(vm.NewLabel(elseBranchLabel))
 		for _, elseBranchStmt := range stmt.ElseBranch {
 			elseBranchStmt.Accept(visitor)
 		}
-		visitor.addInstruction(instruction.NewBr(endIfLabel))
+		visitor.addInstruction(vm.NewBr(endIfLabel))
 	}
 
-	visitor.addInstruction(instruction.NewLabel(endIfLabel))
+	visitor.addInstruction(vm.NewLabel(endIfLabel))
 }
 
 func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
@@ -296,22 +295,22 @@ func (visitor *CodegenVisitor) visitWhileStatement(stmt WhileStmt) {
 	loopBodyLabel := visitor.symGen.Next()
 	loopEndLabel := visitor.symGen.Next()
 
-	visitor.addInstruction(instruction.NewLabel(loopHeaderLabel))
+	visitor.addInstruction(vm.NewLabel(loopHeaderLabel))
 
 	stmt.Cond.Accept(visitor)
-	visitor.addInstruction(instruction.NewBrIf(loopBodyLabel))
-	visitor.addInstruction(instruction.NewBr(loopEndLabel))
+	visitor.addInstruction(vm.NewBrIf(loopBodyLabel))
+	visitor.addInstruction(vm.NewBr(loopEndLabel))
 
-	// loop body: label + instructions + branch to loop header
-	visitor.addInstruction(instruction.NewLabel(loopBodyLabel))
+	// loop body: label + vm. + branch to loop header
+	visitor.addInstruction(vm.NewLabel(loopBodyLabel))
 
 	for _, bodyStmt := range stmt.Body {
 		bodyStmt.Accept(visitor)
 	}
 
-	visitor.addInstruction(instruction.NewBr(loopHeaderLabel))
+	visitor.addInstruction(vm.NewBr(loopHeaderLabel))
 
-	visitor.addInstruction(instruction.NewLabel(loopEndLabel))
+	visitor.addInstruction(vm.NewLabel(loopEndLabel))
 }
 
 func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
@@ -320,18 +319,18 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		ifBodyStart := visitor.symGen.Next()
 		ifBodyEnd := visitor.symGen.Next()
 
-		expr.Lhs.Accept(visitor)                                                           // pushes LHS on the stack
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Dup}) // Duplicates topmost operand
-		visitor.addInstruction(instruction.NewBrIfNot(ifBodyStart))                        // consumes topmost operand keeping original LHS for returning
-		visitor.addInstruction(instruction.NewBr(ifBodyEnd))                               // it was LHS that is good.
+		expr.Lhs.Accept(visitor)                                         // pushes LHS on the stack
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Dup}) // Duplicates topmost operand
+		visitor.addInstruction(vm.NewBrIfNot(ifBodyStart))               // consumes topmost operand keeping original LHS for returning
+		visitor.addInstruction(vm.NewBr(ifBodyEnd))                      // it was LHS that is good.
 
 		// if body
-		visitor.addInstruction(instruction.NewLabel(ifBodyStart))
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop}) // pop previous truthy value
-		expr.Rhs.Accept(visitor)                                                           // pushes RHS on the stack
+		visitor.addInstruction(vm.NewLabel(ifBodyStart))
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Pop}) // pop previous truthy value
+		expr.Rhs.Accept(visitor)                                         // pushes RHS on the stack
 		// omit pushing br ifBodyEnd
 
-		visitor.addInstruction(instruction.NewLabel(ifBodyEnd))
+		visitor.addInstruction(vm.NewLabel(ifBodyEnd))
 		return
 	}
 
@@ -340,18 +339,18 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		ifBodyStart := visitor.symGen.Next()
 		ifBodyEnd := visitor.symGen.Next()
 
-		expr.Lhs.Accept(visitor)                                                           // pushes LHS on the stack
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Dup}) // Duplicates topmost operand
-		visitor.addInstruction(instruction.NewBrIf(ifBodyStart))                           // LHS is true, eval RHS
-		visitor.addInstruction(instruction.NewBr(ifBodyEnd))                               // LHS is false, do not evaluate RHS
+		expr.Lhs.Accept(visitor)                                         // pushes LHS on the stack
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Dup}) // Duplicates topmost operand
+		visitor.addInstruction(vm.NewBrIf(ifBodyStart))                  // LHS is true, eval RHS
+		visitor.addInstruction(vm.NewBr(ifBodyEnd))                      // LHS is false, do not evaluate RHS
 
 		// if body
-		visitor.addInstruction(instruction.NewLabel(ifBodyStart))
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Pop}) // pop previous truthy value
-		expr.Rhs.Accept(visitor)                                                           // pushes RHS on the stack
+		visitor.addInstruction(vm.NewLabel(ifBodyStart))
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Pop}) // pop previous truthy value
+		expr.Rhs.Accept(visitor)                                         // pushes RHS on the stack
 		// omit pushing br ifBodyEnd
 
-		visitor.addInstruction(instruction.NewLabel(ifBodyEnd))
+		visitor.addInstruction(vm.NewLabel(ifBodyEnd))
 		return
 	}
 
@@ -360,23 +359,23 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 
 	switch expr.Op {
 	case BinOp_Add:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Add})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Add})
 	case BinOp_Sub:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Sub})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Sub})
 	case BinOp_Mul:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Mul})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Mul})
 	case BinOp_Div:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Div})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Div})
 	case BinOp_Lt:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Lt})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Lt})
 	case BinOp_Gt:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Gt})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Gt})
 	case BinOp_GrEq:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.GrEq})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.GrEq})
 	case BinOp_EqEq:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Eq})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Eq})
 	case BinOp_NotEq:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NotEq})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.NotEq})
 	default:
 		panic(fmt.Errorf("Unknown operator %+v", expr.Op))
 	}
@@ -387,46 +386,46 @@ func (visitor *CodegenVisitor) visitUnaryExpression(expr UnaryExpr) {
 
 	switch expr.Op {
 	case UnaryOp_Neg:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Neg})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Neg})
 	case UnaryOp_Not:
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Not})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Not})
 	default:
 		panic(fmt.Errorf("Unknown operator %+v", expr.Op))
 	}
 }
 
 func (visitor *CodegenVisitor) visitInt(expr Int) {
-	visitor.addInstruction(instruction.ConstInt{
+	visitor.addInstruction(vm.ConstInt{
 		Arg: expr.Integer,
 	})
 }
 
 func (visitor *CodegenVisitor) visitFloat(expr Float) {
-	visitor.addInstruction(instruction.ConstFloat{
+	visitor.addInstruction(vm.ConstFloat{
 		Arg: expr.Float,
 	})
 }
 
 func (visitor *CodegenVisitor) visitBool(expr Bool) {
 	if expr.Value {
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushTrue})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.PushTrue})
 	} else {
-		visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushFalse})
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.PushFalse})
 	}
 }
 
 func (visitor *CodegenVisitor) visitVar(expr Var) {
-	visitor.addInstruction(instruction.LoadVar{
+	visitor.addInstruction(vm.LoadVar{
 		Arg: expr.Var,
 	})
 }
 
 func (visitor *CodegenVisitor) visitNone(expr None) {
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.PushNone})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.PushNone})
 }
 
 func (visitor *CodegenVisitor) visitString(expr String) {
-	visitor.addInstruction(instruction.PushString{
+	visitor.addInstruction(vm.PushString{
 		Arg: expr.Str,
 	})
 }
@@ -437,7 +436,7 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 		argument.Accept(visitor)
 	}
 
-	visitor.addInstruction(instruction.ConstInt{
+	visitor.addInstruction(vm.ConstInt{
 		Arg: len(expr.Args),
 	})
 
@@ -445,13 +444,13 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 		// todo switch on native functions
 		insnOpcode, ok := visitor.reservedFunctionNames[variable.Var]
 		if ok {
-			visitor.addInstruction(instruction.InstructionNoOperands{OpCode: insnOpcode})
+			visitor.addInstruction(vm.InstructionNoOperands{OpCode: insnOpcode})
 			return
 		}
 
 		// check if given variable is present in function defs and do direct call instead.
 		if _, ok := visitor.Ast.FunctionDefs[variable.Var]; ok {
-			visitor.addInstruction(instruction.NewCall(variable.Var))
+			visitor.addInstruction(vm.NewCall(variable.Var))
 			return
 		}
 
@@ -459,8 +458,8 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 
 	//  otherwise interpret variable is as a function pointer and try calling that
 	expr.Expr.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{
-		OpCode: instruction.CallVirtual,
+	visitor.addInstruction(vm.InstructionNoOperands{
+		OpCode: vm.CallVirtual,
 	})
 }
 
@@ -475,7 +474,7 @@ func (visitor *CodegenVisitor) visitAddressOfFunction(expr AddressOfFunction) {
 		panic(fmt.Errorf("Pointer to unknown function %+v", expr.Name))
 	}
 
-	visitor.addInstruction(instruction.NewPushFunctionAddr(f.Name))
+	visitor.addInstruction(vm.NewPushFunctionAddr(f.Name))
 }
 
 func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
@@ -485,69 +484,69 @@ func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
 
 	// generate code for condition
 	expr.Cond.Accept(visitor)
-	visitor.addInstruction(instruction.NewBrIf(ifBranchLabel))
-	visitor.addInstruction(instruction.NewBr(elseBranchLabel))
+	visitor.addInstruction(vm.NewBrIf(ifBranchLabel))
+	visitor.addInstruction(vm.NewBr(elseBranchLabel))
 	// emit code for then branch
 
-	visitor.addInstruction(instruction.NewLabel(ifBranchLabel))
+	visitor.addInstruction(vm.NewLabel(ifBranchLabel))
 	expr.ThenExpr.Accept(visitor)
-	visitor.addInstruction(instruction.NewBr(endIfLabel))
+	visitor.addInstruction(vm.NewBr(endIfLabel))
 
 	// emit code for else branch
 
-	visitor.addInstruction(instruction.NewLabel(elseBranchLabel))
+	visitor.addInstruction(vm.NewLabel(elseBranchLabel))
 	expr.ElseExpr.Accept(visitor)
 
-	// slight optimization - we are jumping to the next instruction anyways here.
+	// slight optimization - we are jumping to the next vm.anyways here.
 	/*
-		visitor.addInstruction(instruction.IrBr{
+		visitor.addInstruction(vm.IrBr{
 			Label: endIfLabel,
 		})
 	*/
 
 	// finally add endif label
-	visitor.addInstruction(instruction.NewLabel(endIfLabel))
+	visitor.addInstruction(vm.NewLabel(endIfLabel))
 }
 
 func (visitor *CodegenVisitor) visitNewListExpression(expr NewListExpr) {
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewList})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.NewList})
 }
 
 func (visitor *CodegenVisitor) visitNewObjectExpression(expr NewObjectExpr) {
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.NewObject})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.NewObject})
 }
 
 func (visitor *CodegenVisitor) visitLenExpression(expr LenExpr) {
 	expr.Expr.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.Len})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Len})
 }
 
 func (visitor *CodegenVisitor) visitSubscriptGetExpression(expr SubscriptGet) {
 	expr.Expr.Accept(visitor)
 	expr.Subscript.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptGet})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.SubscriptGet})
 }
 
 func (visitor *CodegenVisitor) visitObjectFieldGetExpression(expr ObjectFieldGet) {
 	expr.Expr.Accept(visitor) // target
-	visitor.addInstruction(instruction.ObjectFieldGet{Field: expr.Field})
+	visitor.addInstruction(vm.ObjectFieldGet{Field: expr.Field})
 }
 
 func (visitor *CodegenVisitor) visitAssignVarExpression(expr AssignVar) {
-	visitor.addInstruction(instruction.StoreVar{Arg: expr.Var})
+	visitor.addInstruction(vm.StoreVar{Arg: expr.Var})
 }
 
 func (visitor *CodegenVisitor) visitSubscriptSetExpression(expr SubscriptSet) {
 	// value we want to store is on top of the stack already
 	expr.Expr.Accept(visitor)
 	expr.Subscript.Accept(visitor)
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.SubscriptSet})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.SubscriptSet})
 }
 
 func (visitor *CodegenVisitor) visitObjectFieldSetExpression(expr ObjectFieldSet) {
 	// value to be stored is on top of the stack
 	expr.Expr.Accept(visitor) // evaluate target of object field set
-	visitor.addInstruction(instruction.ObjectFieldSet{
+	visitor.addInstruction(vm.ObjectFieldSet{
 		Field: expr.Field,
 	})
 }
@@ -557,10 +556,10 @@ func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
 		panic(fmt.Errorf("Global %+v undefined", expr.GlobalName))
 	}
 
-	visitor.addInstruction(instruction.ReadGlobal{Global: expr.GlobalName})
+	visitor.addInstruction(vm.ReadGlobal{Global: expr.GlobalName})
 }
 
 func (visitor *CodegenVisitor) visitCastFloatExpression(expr CastFloat) {
 	expr.Expr.Accept(visitor) // evaluate target castFloat operation
-	visitor.addInstruction(instruction.InstructionNoOperands{OpCode: instruction.CastFloat})
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.CastFloat})
 }
