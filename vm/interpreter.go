@@ -115,6 +115,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlIsKeyReleased()
 			case RlDrawText:
 				interpreter.rlDrawText()
+			case RlBeginMode2D:
+				interpreter.beginMode2D()
+			case RlEndMode2D:
+				interpreter.endMode2D()
 			case GetTime:
 				interpreter.getTime()
 			case CastFloat:
@@ -1006,5 +1010,90 @@ func (interpreter *Interpreter) rlDrawText() {
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
+}
 
+func (interpreter *Interpreter) beginMode2D() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("beginMode2D: invalid number of arguments")
+	}
+
+	v := interpreter.evaluationStack.pop()
+	if !v.IsObject() {
+		panic(fmt.Errorf("beginMode2D: %+v is not object", v))
+	}
+
+	object := v.(ObjectValue)
+	offset, err := rlVector2FromObject(object.GetValue("offset").(ObjectValue))
+	if err != nil {
+		panic(fmt.Errorf("beginMode2D: %+v", err))
+	}
+
+	target, err := rlVector2FromObject(object.GetValue("target").(ObjectValue))
+	if err != nil {
+		panic(fmt.Errorf("beginMode2D: %+v", err))
+	}
+
+	rotation, err := float32FromNumeric(object.GetValue("rotation"))
+	if err != nil {
+		panic(fmt.Errorf("beginMode2D: %+v", err))
+	}
+
+	scale, err := float32FromNumeric(object.GetValue("scale"))
+	if err != nil {
+		panic(fmt.Errorf("beginMode2D: %+v", err))
+	}
+
+	camera := rl.NewCamera2D(offset, target, rotation, scale)
+	rl.BeginMode2D(camera)
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) endMode2D() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 0 {
+		panic("beginMode2D: invalid number of arguments")
+	}
+
+	rl.EndMode2D()
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func rlVector2FromObject(v Value) (rl.Vector2, error) {
+	if !v.IsObject() {
+		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: value %+v is not object", v)
+	}
+
+	object := v.(ObjectValue)
+	x, err := float32FromNumeric(object.GetValue("x"))
+	if err != nil {
+		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: error unpacking contents of %+v as float", object)
+	}
+
+	y, err := float32FromNumeric(object.GetValue("y"))
+	if err != nil {
+		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: error unpacking contents of %+v as float", object)
+	}
+
+	return rl.Vector2{
+		X: x,
+		Y: y,
+	}, nil
+
+}
+
+func float32FromNumeric(v Value) (float32, error) {
+	if !v.IsNumeric() {
+		return 0.0, fmt.Errorf("float32FromNumeric: value %+v is not numeric", v)
+	}
+
+	if v.IsInt() {
+		return float32(v.(IntValue).value), nil
+	}
+
+	return float32(v.(FloatValue).value), nil
 }

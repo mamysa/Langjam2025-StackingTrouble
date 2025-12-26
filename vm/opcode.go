@@ -45,6 +45,8 @@ const (
 	RlIsKeyReleased
 	RlIsKeyDown // is key down
 	RlDrawText  // draw text
+	RlBeginMode2D
+	RlEndMode2D
 
 	// Time
 	GetTime     // returns time since epoch in millisenonds

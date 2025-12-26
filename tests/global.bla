@@ -4,6 +4,16 @@ global C = -15
 
 global D = global(B) - 1
 
+global E = make_object("hello", "world")
+
+def make_object(a, b)  {
+	obj = {};
+	obj.a = a;
+	obj.b = b;
+
+	return obj;
+}
+
 def main() {
 	#? STDOUT 1350
 	print(global(A) + global(B));
@@ -12,4 +22,12 @@ def main() {
 
 	#? STDOUT 1337
 	print(global(D));
+
+	obj = global(E);
+	#? STDOUT hello
+	#? STDOUT world 
+	print(obj.a);
+	print(obj.b);
+
+
 }

@@ -32,6 +32,8 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlIsKeyDown":         vm.RlIsKeyDown,
 			"RlIsKeyReleased":     vm.RlIsKeyReleased,
 			"RlDrawText":          vm.RlDrawText,
+			"RlBeginMode2D":       vm.RlBeginMode2D,
+			"RlEndMode2D":         vm.RlEndMode2D,
 			"time":                vm.GetTime,
 			"random_int":          vm.RandomInt,
 			"random_float":        vm.RandomFloat,

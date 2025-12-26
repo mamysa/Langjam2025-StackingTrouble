@@ -36,6 +36,36 @@ global PLAYER_JUMP_COOLDOWN = 0.56
 global INITIAL_CRATE_SPAWN_TIMER = 5.5
 global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
 
+global SCREEN_WIDTH = 800
+global SCREEN_HEIGHT = 600
+
+global BOARD_CAMERA = make_2d_camera()
+
+def make_2d_camera() {
+	scale = 0.8;
+	# want to achieve equal spacing horizontally. Compute board dimensions along X, subtract from screen width and divide by half.
+	# That will be our horizontal offset.
+	board_size_along_x = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_X) * scale;
+	offset_x = max((global(SCREEN_WIDTH) - board_size_along_x) * 0.5, 0.0);
+	offset_y = global(CELL_SIZE) * scale * 2;
+
+	offset_vector_2d = {};
+	offset_vector_2d.x = offset_x;
+	offset_vector_2d.y = offset_y;
+
+	target_vector_2d = {};
+	target_vector_2d.x = 0;
+	target_vector_2d.y = 0;
+
+	camera = {};
+	camera.offset = offset_vector_2d;
+	camera.target = target_vector_2d;
+	camera.rotation = 0.0;
+	camera.scale = scale;
+
+	return camera;
+}
+
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
 }
@@ -960,7 +990,10 @@ def world_draw(self) {
 
 
 def main() {
-	RlInitWindow(800, 600);
+	print(global(BOARD_CAMERA));
+
+
+	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
 	RlSetTargetFPS(60);
 
 	world = world_new();
@@ -1005,9 +1038,14 @@ def main() {
 		RlBeginDrawing();
 		RlClearBackground(230, 230, 230);
 
+		RlBeginMode2D(global(BOARD_CAMERA));
+
 		world_draw(world);
 
+		RlEndMode2D();
+
 		RlDrawText("Score: " + world.score, 10, 10, 40, 255,0,0);
+
 
 		if world.player.is_dead {
 			RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
