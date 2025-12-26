@@ -2,9 +2,14 @@ global A = 12
 global B = 1338 
 global C = -15
 
+global D = global(B) - 1
+
 def main() {
 	#? STDOUT 1350
 	print(global(A) + global(B));
 	#? STDOUT -14 
 	print(global(C) + 1);
+
+	#? STDOUT 1337
+	print(global(D));
 }

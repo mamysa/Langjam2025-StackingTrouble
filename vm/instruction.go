@@ -218,3 +218,13 @@ func (i ReadGlobal) isInstruction() {}
 func (i ReadGlobal) String() string {
 	return fmt.Sprintf("ReadGlobal GLOBAL=%s", i.Global)
 }
+
+type SetGlobal struct {
+	Global string
+}
+
+func (i SetGlobal) isInstruction() {}
+
+func (i SetGlobal) String() string {
+	return fmt.Sprintf("SetGlobal GLOBAL=%s", i.Global)
+}

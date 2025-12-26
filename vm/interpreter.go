@@ -187,6 +187,10 @@ func (interpreter *Interpreter) Run() {
 		if readGlobal, ok := insn.(ReadGlobal); ok {
 			interpreter.readGlobal(readGlobal)
 		}
+
+		if setGlobal, ok := insn.(SetGlobal); ok {
+			interpreter.setGlobal(setGlobal)
+		}
 	}
 
 	if !interpreter.callStack.isEmpty() {
@@ -724,6 +728,12 @@ func (interpreter *Interpreter) readGlobal(insn ReadGlobal) {
 	}
 
 	interpreter.evaluationStack.pushValue(gl)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) setGlobal(insn SetGlobal) {
+	global := interpreter.evaluationStack.pop()
+	interpreter.program.Globals[insn.Global] = global
 	interpreter.programCounter++
 }
 

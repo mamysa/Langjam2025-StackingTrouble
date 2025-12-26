@@ -123,9 +123,7 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	visitor.Ast = ast
 
 	// process globals first
-	for _, globalDef := range ast.GlobalDefs {
-		globalDef.Accept(visitor)
-	}
+	visitor.generateEntryFunc()
 
 	for _, functionDef := range ast.FunctionDefs {
 		functionDef.Accept(visitor)
@@ -134,30 +132,32 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 	labelOffsets := visitor.generateLabelOffsetMap()
 	visitor.resolveOffsets(labelOffsets)
 
-	mainOffset, ok := labelOffsets["main"]
+	_, ok := labelOffsets["main"]
 	if !ok {
 		panic("could not find offset for main")
 	}
 
 	visitor.Program = &vm.Program{
 		Instructions:            visitor.Instructions,
-		EntryInstructionAddress: mainOffset,
+		EntryInstructionAddress: 0,
 		Globals:                 visitor.Globals,
 	}
 }
 
+// generates entry function that computes and sets all globals.
+func (visitor *CodegenVisitor) generateEntryFunc() {
+	visitor.Instructions = append(visitor.Instructions, vm.NewLabel("$_entry"))
+	for _, globalDef := range visitor.Ast.GlobalDefs.All() {
+		globalDef.Accept(visitor)
+	}
+	visitor.Instructions = append(visitor.Instructions, vm.NewBr("main"))
+}
+
 func (visitor *CodegenVisitor) visitGlobalDef(def GlobalDef) {
-	if def.ValueFloat != nil {
-		visitor.Globals[def.GlobalName] = vm.NewFloatValue(def.ValueFloat.Float)
-		return
-	}
-
-	if def.ValueInt != nil {
-		visitor.Globals[def.GlobalName] = vm.NewInt(int64(def.ValueInt.Integer))
-		return
-	}
-
-	panic("no global constant matched")
+	def.Expr.Accept(visitor)
+	visitor.Instructions = append(visitor.Instructions, vm.SetGlobal{
+		Global: def.GlobalName,
+	})
 }
 
 func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
@@ -552,10 +552,6 @@ func (visitor *CodegenVisitor) visitObjectFieldSetExpression(expr ObjectFieldSet
 }
 
 func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
-	if _, ok := visitor.Globals[expr.GlobalName]; !ok {
-		panic(fmt.Errorf("Global %+v undefined", expr.GlobalName))
-	}
-
 	visitor.addInstruction(vm.ReadGlobal{Global: expr.GlobalName})
 }
 

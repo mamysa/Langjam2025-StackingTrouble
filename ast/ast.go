@@ -1,6 +1,9 @@
 package ast
 
-import "fmt"
+import (
+	"compiler/util"
+	"fmt"
+)
 
 type TopLevelAstNode interface {
 	isTopLevelAstNode()
@@ -24,7 +27,7 @@ func (f FunctionDef) isTopLevelAstNode() {}
 
 type Ast struct {
 	FunctionDefs map[string]FunctionDef
-	GlobalDefs   map[string]GlobalDef
+	GlobalDefs   util.OrderedMap[string, GlobalDef]
 }
 
 func (f Ast) Accept(visitor AstVisitor) {

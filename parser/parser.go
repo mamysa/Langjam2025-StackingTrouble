@@ -3,6 +3,7 @@ package parser
 import (
 	"compiler/ast"
 	"compiler/tokenizer"
+	"compiler/util"
 	"fmt"
 	"slices"
 	"strconv"
@@ -149,12 +150,12 @@ func (p *Parser) expect(expectedTokenKinds ...tokenizer.TokenKind) (tokenizer.To
 	return nil, p.generateErrorLine("unexpected token", expectedTokenKinds...)
 }
 
-func (p *Parser) ensureSymbolNotDefined(functionDefs map[string]ast.FunctionDef, globalDefs map[string]ast.GlobalDef, sym string) error {
+func (p *Parser) ensureSymbolNotDefined(functionDefs map[string]ast.FunctionDef, globalDefs *util.OrderedMap[string, ast.GlobalDef], sym string) error {
 	if _, ok := functionDefs[sym]; ok {
 		return fmt.Errorf("Symbol %+v redefined", sym)
 	}
 
-	if _, ok := globalDefs[sym]; ok {
+	if globalDefs.Contains(sym) {
 		return fmt.Errorf("Symbol %+v redefined", sym)
 	}
 
@@ -165,7 +166,7 @@ func (p *Parser) ensureSymbolNotDefined(functionDefs map[string]ast.FunctionDef,
 func (p *Parser) Parse() (ast.Ast, error) {
 
 	functionDefs := make(map[string]ast.FunctionDef, 0)
-	globalDefs := make(map[string]ast.GlobalDef, 0)
+	globalDefs := util.NewOrderedMap[string, ast.GlobalDef]()
 
 	for p.hasTokens() {
 		if p.nextTokenIs(tokenizer.Token_Global) {
@@ -174,11 +175,11 @@ func (p *Parser) Parse() (ast.Ast, error) {
 				return ast.Ast{}, err
 			}
 
-			if err := p.ensureSymbolNotDefined(functionDefs, globalDefs, globalDef.GlobalName); err != nil {
+			if err := p.ensureSymbolNotDefined(functionDefs, &globalDefs, globalDef.GlobalName); err != nil {
 				return ast.Ast{}, err
 			}
 
-			globalDefs[globalDef.GlobalName] = globalDef
+			globalDefs.Insert(globalDef.GlobalName, globalDef)
 			continue
 		}
 
@@ -188,7 +189,7 @@ func (p *Parser) Parse() (ast.Ast, error) {
 				return ast.Ast{}, err
 			}
 
-			if err := p.ensureSymbolNotDefined(functionDefs, globalDefs, functionDef.Name); err != nil {
+			if err := p.ensureSymbolNotDefined(functionDefs, &globalDefs, functionDef.Name); err != nil {
 				return ast.Ast{}, err
 			}
 
@@ -231,55 +232,15 @@ func (p *Parser) parseGlobalDef() (ast.GlobalDef, error) {
 		return ast.GlobalDef{}, err
 	}
 
-	// quick dirty hack, need to have negative constants.
-	sign := 1
-	if p.nextTokenIs(tokenizer.Token_Minus) {
-		if _, err := p.expect(tokenizer.Token_Minus); err != nil {
-			return ast.GlobalDef{}, err
-		}
-		sign = -1
+	expr, err := p.expression()
+	if err != nil {
+		return ast.GlobalDef{}, err
 	}
 
-	if p.nextTokenIs(tokenizer.Token_Int) {
-		constInt, err := p.expect(tokenizer.Token_Int)
-		if err != nil {
-			return ast.GlobalDef{}, err
-		}
-
-		parsedInt, err := strconv.Atoi(constInt.Value())
-		if err != nil {
-			return ast.GlobalDef{}, err
-		}
-
-		return ast.GlobalDef{
-			GlobalName: globalName.Value(),
-			ValueInt: &ast.Int{
-				Integer: parsedInt * sign,
-			},
-		}, nil
-
-	}
-
-	if p.nextTokenIs(tokenizer.Token_Float) {
-		constFloat, err := p.expect(tokenizer.Token_Float)
-		if err != nil {
-			return ast.GlobalDef{}, err
-		}
-
-		parsedFloat, err := strconv.ParseFloat(constFloat.Value(), 64)
-		if err != nil {
-			return ast.GlobalDef{}, err
-		}
-
-		return ast.GlobalDef{
-			GlobalName: globalName.Value(),
-			ValueFloat: &ast.Float{
-				Float: parsedFloat * float64(sign),
-			},
-		}, nil
-	}
-
-	return ast.GlobalDef{}, p.generateErrorLine("Unable to parse global", tokenizer.Token_Int, tokenizer.Token_Float)
+	return ast.GlobalDef{
+		GlobalName: globalName.Value(),
+		Expr:       expr,
+	}, err
 }
 
 // FUNC_DEF :=  'def' IDENT '(' NON_EMPTY_FUNCTION_PARAMETER_LIST? ')' statement_block
