@@ -418,7 +418,17 @@ func (interpreter *Interpreter) eq() {
 		interpreter.evaluationStack.pushBool(value)
 		interpreter.programCounter++
 		return
+	}
 
+	// pointer comparison for objects.
+	if v1.IsObject() && v2.IsObject() {
+		a := v1.(ObjectValue)
+		b := v2.(ObjectValue)
+
+		result := a.Object == b.Object
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
 	}
 
 	if !(v1.IsNumeric() && v2.IsNumeric()) {
@@ -463,6 +473,17 @@ func (interpreter *Interpreter) notEq() {
 		}
 
 		interpreter.evaluationStack.pushBool(true)
+		interpreter.programCounter++
+		return
+	}
+
+	// pointer comparison for objects.
+	if v1.IsObject() && v2.IsObject() {
+		a := v1.(ObjectValue)
+		b := v2.(ObjectValue)
+
+		result := a.Object != b.Object
+		interpreter.evaluationStack.pushBool(result)
 		interpreter.programCounter++
 		return
 	}

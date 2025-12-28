@@ -1,0 +1,23 @@
+def make_object(x, y) {
+	obj = {};
+	obj.x = x;
+	obj.y = y;
+	return obj;
+}
+
+def main() {
+	a = make_object(1, 2);
+	b = a;
+	#? STDOUT True
+	print (a == b);
+
+	c = make_object(1, 2);
+	#? STDOUT False
+	print (a == c);
+
+	#? STDOUT False
+	print (a != b);
+
+	#? STDOUT True
+	print(a != c);
+}
