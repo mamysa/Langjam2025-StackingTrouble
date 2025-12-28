@@ -42,11 +42,14 @@ const (
 	RlClearBackground   // clear background with colors
 	RlSetTargetFPS      // set target fps
 	RlDrawRectangle     // draw rectangle
+	RlDrawTexture
 	RlIsKeyReleased
 	RlIsKeyDown // is key down
 	RlDrawText  // draw text
 	RlBeginMode2D
 	RlEndMode2D
+	RlLoadTexture
+	RlUnloadTexture
 
 	// Time
 	GetTime     // returns time since epoch in millisenonds

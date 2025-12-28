@@ -109,6 +109,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlSetTargetFps()
 			case RlDrawRectangle:
 				interpreter.rlDrawRectangle()
+			case RlDrawTexture:
+				interpreter.rlDrawTexture()
 			case RlIsKeyDown:
 				interpreter.rlIsKeyDown()
 			case RlIsKeyReleased:
@@ -119,6 +121,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.beginMode2D()
 			case RlEndMode2D:
 				interpreter.endMode2D()
+			case RlLoadTexture:
+				interpreter.rlLoadTexture()
+			case RlUnloadTexture:
+				interpreter.rlUnloadTexture()
 			case GetTime:
 				interpreter.getTime()
 			case CastFloat:
@@ -908,6 +914,40 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) rlDrawTexture() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 3 {
+		panic("rlDrawTexture: invalid number of arguments")
+	}
+
+	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlDrawTexture: error unpacking y: %+v", err))
+	}
+
+	x, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlDrawTexture: error unpacking x: %+v", err))
+	}
+
+	v := interpreter.evaluationStack.pop()
+	if !v.IsTexture() {
+		panic(fmt.Errorf("rlDrawTexture: %+v is not texture", v))
+	}
+
+	texture := v.(TextureValue)
+
+	rl.DrawTexture(texture.Texture, x, y, color.RGBA{
+		R: 255,
+		G: 255,
+		B: 255,
+		A: 255,
+	})
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) getTime() {
 	argCount := interpreter.evaluationStack.pop().(IntValue)
 	if argCount.value != 0 {
@@ -1084,6 +1124,37 @@ func (interpreter *Interpreter) endMode2D() {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) rlLoadTexture() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("loadTexture: invalid number of arguments")
+	}
+
+	texturePath := interpreter.evaluationStack.pop().(StringValue)
+	texture := rl.LoadTexture(texturePath.Str)
+
+	interpreter.evaluationStack.pushValue(TextureValue{Texture: texture})
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlUnloadTexture() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("loadTexture: invalid number of arguments")
+	}
+
+	v := interpreter.evaluationStack.pop()
+	if !v.IsTexture() {
+		panic(fmt.Errorf("unloadTexture: %+v is not a texture", v))
+	}
+
+	texture := v.(TextureValue)
+	rl.UnloadTexture(texture.Texture)
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
 func rlVector2FromObject(v Value) (rl.Vector2, error) {
 	if !v.IsObject() {
 		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: value %+v is not object", v)
@@ -1117,4 +1188,16 @@ func float32FromNumeric(v Value) (float32, error) {
 	}
 
 	return float32(v.(FloatValue).value), nil
+}
+
+func int32FromNumeric(v Value) (int32, error) {
+	if !v.IsNumeric() {
+		return 0.0, fmt.Errorf("int32FromNumeric: value %+v is not numeric", v)
+	}
+
+	if v.IsInt() {
+		return int32(v.(IntValue).value), nil
+	}
+
+	return int32(v.(FloatValue).value), nil
 }

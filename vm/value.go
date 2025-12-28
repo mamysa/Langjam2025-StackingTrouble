@@ -1,6 +1,10 @@
 package vm
 
-import "fmt"
+import (
+	"fmt"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 type ValueKind int
 
@@ -27,6 +31,7 @@ type Value interface {
 	Truthy() bool
 	Copy() Value
 	String() string
+	IsTexture() bool
 }
 
 type IntValue struct {
@@ -92,6 +97,10 @@ func (value IntValue) Copy() Value {
 
 func (value IntValue) String() string {
 	return fmt.Sprintf("%d", value.value)
+}
+
+func (value IntValue) IsTexture() bool {
+	return false
 }
 
 type FloatValue struct {
@@ -160,6 +169,10 @@ func (value FloatValue) String() string {
 	return fmt.Sprintf("%+v", value.value)
 }
 
+func (value FloatValue) IsTexture() bool {
+	return false
+}
+
 type None struct {
 	Kind ValueKind
 }
@@ -226,6 +239,10 @@ func (value None) FunctionAddress() int {
 	panic("Invalid conversion")
 }
 
+func (value None) IsTexture() bool {
+	return false
+}
+
 func NewFunctionAddress(i int) FunctionAddress {
 	return FunctionAddress{
 		Offset: i,
@@ -290,6 +307,10 @@ func (value FunctionAddress) String() string {
 
 func (value FunctionAddress) FunctionAddress() int {
 	return value.Offset
+}
+
+func (value FunctionAddress) IsTexture() bool {
+	return false
 }
 
 type BoolValue struct {
@@ -360,6 +381,10 @@ func (value BoolValue) String() string {
 
 func (value BoolValue) FunctionAddress() int {
 	panic(fmt.Errorf("Invalid conversion"))
+}
+
+func (value BoolValue) IsTexture() bool {
+	return false
 }
 
 type ListValue struct {
@@ -438,6 +463,10 @@ func (value ListValue) Copy() Value {
 			Array:  arrayCopy,
 		},
 	}
+}
+
+func (value ListValue) IsTexture() bool {
+	return false
 }
 
 // creates a new array with value added to it.
@@ -594,6 +623,10 @@ func (list ObjectValue) SetValue(key string, value Value) {
 	list.Object.object[key] = value
 }
 
+func (value ObjectValue) IsTexture() bool {
+	return false
+}
+
 type StringValue struct {
 	Str string
 }
@@ -660,4 +693,74 @@ func (value StringValue) Copy() Value {
 
 func (value StringValue) String() string {
 	return value.Str
+}
+
+func (value StringValue) IsTexture() bool {
+	return false
+}
+
+type TextureValue struct {
+	Texture rl.Texture2D
+}
+
+func (value TextureValue) Int() int64 {
+	panic("invalid conversion")
+}
+
+func (value TextureValue) Float() float64 {
+	panic("invalid conversion")
+}
+
+func (value TextureValue) IsNumeric() bool {
+	return false
+}
+
+func (value TextureValue) IsInt() bool {
+	return false
+}
+
+func (value TextureValue) IsBool() bool {
+	return false
+}
+
+func (value TextureValue) IsFloat() bool {
+	return false
+}
+
+func (value TextureValue) IsNone() bool {
+	return false
+}
+
+func (value TextureValue) IsString() bool {
+	return false
+}
+
+func (value TextureValue) FunctionAddress() int {
+	panic("Invalid conversion")
+}
+
+func (value TextureValue) Truthy() bool {
+	return false
+}
+
+func (value TextureValue) IsList() bool {
+	return false
+}
+
+func (value TextureValue) IsObject() bool {
+	return false
+}
+
+func (value TextureValue) Copy() Value {
+	return TextureValue{
+		Texture: value.Texture,
+	}
+}
+
+func (value TextureValue) String() string {
+	return "Texture"
+}
+
+func (value TextureValue) IsTexture() bool {
+	return true
 }
