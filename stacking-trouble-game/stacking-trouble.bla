@@ -41,13 +41,17 @@ global SCREEN_HEIGHT = 600
 
 global BOARD_CAMERA = make_2d_camera()
 
+
+global ASSET_REGISTRY = {}
+
+
 def make_2d_camera() {
-	scale = 0.8;
+	scale = 1.0;
 	# want to achieve equal spacing horizontally. Compute board dimensions along X, subtract from screen width and divide by half.
 	# That will be our horizontal offset.
 	board_size_along_x = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_X) * scale;
 	offset_x = max((global(SCREEN_WIDTH) - board_size_along_x) * 0.5, 0.0);
-	offset_y = global(CELL_SIZE) * scale * 2;
+	offset_y = 0.0; #global(CELL_SIZE) * scale;
 
 	offset_vector_2d = {};
 	offset_vector_2d.x = offset_x;
@@ -504,12 +508,15 @@ def crate_new(x, y) {
 }
 
 def crate_draw(self) {
+	asset_registry = global(ASSET_REGISTRY);
+
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
 	cellStartX = global(CELL_SIZE) *  self.x;
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
 
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), self.color.r, self.color.g, self.color.b);
+	#RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), self.color.r, self.color.g, self.color.b);
+	RlDrawTexture(asset_registry.crate, cellStartX, cellStartY);
 }
 
 # again, row_index is passed here because object comparisons by reference is borked atm.
@@ -996,6 +1003,15 @@ def main() {
 	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
 	RlSetTargetFPS(60);
 
+	# TODO should introduce load assets function.
+	crate_tex = RlLoadTexture("stacking-trouble-game/assets/crate1.png");
+
+	asset_registry = global(ASSET_REGISTRY);
+
+	asset_registry.crate = crate_tex;
+
+	print(global(ASSET_REGISTRY));
+
 	world = world_new();
 
 	current_time_ms = time();
@@ -1038,6 +1054,7 @@ def main() {
 		RlBeginDrawing();
 		RlClearBackground(230, 230, 230);
 
+
 		RlBeginMode2D(global(BOARD_CAMERA));
 
 		world_draw(world);
@@ -1053,6 +1070,8 @@ def main() {
 		}
 		RlEndDrawing();
 	}
+
+	RlUnloadTexture(crate_tex);
 	RlCloseWindow();
 }
 
