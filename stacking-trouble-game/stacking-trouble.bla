@@ -1,6 +1,6 @@
 global CELL_SIZE = 64
 global BOARD_CELLS_ALONG_X = 12
-global BOARD_CELLS_ALONG_Y = 8
+global BOARD_CELLS_ALONG_Y = 6
 
 
 global HORIZONTAL_MOVEMENT_LEFT = -1
@@ -39,6 +39,8 @@ global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
 global SCREEN_WIDTH = 800
 global SCREEN_HEIGHT = 600
 
+global BOARD_CRATE_EXIT_MARGIN = 2
+
 global BOARD_CAMERA = make_2d_camera()
 
 
@@ -46,12 +48,12 @@ global ASSET_REGISTRY = {}
 
 
 def make_2d_camera() {
-	scale = 1.0;
+	scale = 0.7;
 	# want to achieve equal spacing horizontally. Compute board dimensions along X, subtract from screen width and divide by half.
 	# That will be our horizontal offset.
 	board_size_along_x = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_X) * scale;
 	offset_x = max((global(SCREEN_WIDTH) - board_size_along_x) * 0.5, 0.0);
-	offset_y = 0.0; #global(CELL_SIZE) * scale;
+	offset_y = global(CELL_SIZE) * scale * 2;
 
 	offset_vector_2d = {};
 	offset_vector_2d.x = offset_x;
@@ -72,6 +74,11 @@ def make_2d_camera() {
 
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
+}
+
+def board_x_coordinate_in_bounds_with_margin(x) {
+	margin = global(BOARD_CRATE_EXIT_MARGIN);
+	return x >= -margin and x < global(BOARD_CELLS_ALONG_X) + margin;
 }
 
 def abs(a) {
@@ -615,6 +622,59 @@ def crate_tick_vertical_movement(self, dt, world, crate_index) {
 	}
 }
 
+def crate_tick_horizontal_movement_spawned(self, dt, world, self_index) {
+	if self.horizontal_movement_kind == None {
+		return;
+	}
+
+	horizontal_movement_float = float(self.horizontal_movement_kind);
+	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
+	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
+
+
+	if global(MOVEMENT_EPS) >= distance_from_goal {
+		# check column occupancy
+
+		if not board_x_coordinate_in_bounds(self.current_goal_x) {
+			self.current_goal_x = self.current_goal_x + self.horizontal_movement_kind;
+			return False;
+		}
+
+		# sample the column
+		column = world.columns[self.current_goal_x];
+		able_to_spawn = True;
+
+		if len(column) >= global(BOARD_CELLS_ALONG_Y)  {
+			able_to_spawn = able_to_spawn and False;
+		}
+
+		if len(column) > 0 {
+			last_crate = column[len(column)-1];
+			last_crate_top = last_crate.y + global(CRATE_HEIGHT);
+			if self.y - last_crate_top < 2 {
+				able_to_spawn = able_to_spawn and False;
+			}
+		}
+
+		random_chance = random_float();
+
+		if not able_to_spawn or random_chance > 0.1 {
+			self.current_goal_x = self.current_goal_x + self.horizontal_movement_kind;
+			return False;
+		}
+
+		# update state
+		self.x = float(self.current_goal_x);
+		self.previous_goal_x = self.current_goal_x;
+		self.current_goal_x = None;
+		self.horizontal_movement_kind = None;
+		return True;
+	}
+
+
+	return False;
+}
+
 def crate_tick_horizontal_movement(self, dt, world) {
 	if self.horizontal_movement_kind == None {
 		return;
@@ -660,6 +720,12 @@ def crate_get_y_axis_span(self) {
 	return interval_new(y_start, y_end);
 }
 
+def crate_get_x_axis_span(self) {
+	x_start = self.x;
+	x_end = self.x + global(CRATE_HEIGHT);
+	return interval_new(x_start, x_end);
+}
+
 # gets scaled extent of the box. This one is used when the box is moved. 
 def crate_get_y_span_scaled(self) {
 	y_start = self.y;
@@ -689,7 +755,10 @@ def world_new() {
 	
 	
 	world = {};
+	world.queue = 0; # number of crates that are queued to spawn.
 	world.columns = columns;
+	world.spawned_crates_left = [];
+	world.spawned_crates_right = [];
 	world.player = player_new(0, 0);
 	world.pushed_crate = None;
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
@@ -697,6 +766,10 @@ def world_new() {
 	world.score = 0;
 	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER ));
 	return world;
+}
+
+def world_enqueue_crate_spawn(self) {
+	self.queue = min(self.queue + 1, 14);
 }
 
 def world_try_destroy_bottom_row(self) {
@@ -727,9 +800,34 @@ def world_try_destroy_bottom_row(self) {
 	self.score = self.score + global(SCORE_PER_CRATE_DESTROYED) * global(BOARD_CELLS_ALONG_X);
 }
 
+def _world_tick_spawned_crates(self, spawned_crates, dt) {
+	spawned_crate_index = 0;
+	remaining_spawned_crates = [];
+	while spawned_crate_index < len(spawned_crates) {
+		crate = spawned_crates[spawned_crate_index];
+		if crate_tick_horizontal_movement_spawned(crate, dt, self, spawned_crate_index) {
+			self.columns[crate.previous_goal_x] = self.columns[crate.previous_goal_x] + crate;
+		} else {
+			if board_x_coordinate_in_bounds_with_margin(crate.x) {
+				remaining_spawned_crates = remaining_spawned_crates + crate;
+			}
+		}
+
+		spawned_crate_index = spawned_crate_index + 1;
+	}
+
+	return remaining_spawned_crates;
+}
+
 def world_tick(self, dt) {
+print("Current queue size : " + self.queue);
 	world_try_destroy_bottom_row(self);
 	timer_tick(self.crate_spawn_timer, dt);
+	world_spawn_crate_2(self);
+
+
+	self.spawned_crates_left = _world_tick_spawned_crates(self, self.spawned_crates_left, dt);
+	self.spawned_crates_right = _world_tick_spawned_crates(self, self.spawned_crates_right, dt);
 
 
 	self.player.tick(self.player, dt, self);
@@ -758,7 +856,6 @@ def world_tick(self, dt) {
 	# crate spawning, this is pretty bad though, but not much time left.
 	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE);
 
-
 	if self.score >= 12 {
 		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER ) - 1.0;
 		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.0002;
@@ -774,28 +871,88 @@ def world_tick(self, dt) {
 		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.001;
 	}
 
-	if self.score >=72 {
-	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
-	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
-	}
+	#if self.score >=72 {
+	#self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
+	#initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
+	#}
 
-	if self.score > 96 {
-		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
-		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
-	}
-
-
+	#if self.score > 96 {
+	#	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
+	#	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
+	#}
 
 	crate_spawn_chance = random_float();
 	if not self.crate_spawn_timer.is_applied or crate_spawn_chance < initial_crate_spawn_chance {
-		world_randomly_spawn_crate(self);
+		world_enqueue_crate_spawn(self);
+		timer_arm(self.crate_spawn_timer);
 	}
+}
+
+def _world_can_spawn_crate(self, arr, crate_interval) {
+	i = 0;	
+	while i < len(arr) {
+		spawned_crate_x_span = crate_get_x_axis_span(arr[i]);
+		if intervals_overlap(spawned_crate_x_span, crate_interval) {
+			return False;
+		}
+
+		i = i + 1;
+	}
+
+	return True;
+}
+
+
+def world_spawn_crate_2(self) {
+	if self.queue == 0 {
+		return;
+	}
+
+
+	x = -2;
+	y = global(BOARD_CELLS_ALONG_Y) + 2;
+	crate_left = crate_new(x, y);
+	crate_left.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_RIGHT);
+	crate_left.current_goal_x = x + 1;
+
+	x = global(BOARD_CELLS_ALONG_X) + 2;
+	y = global(BOARD_CELLS_ALONG_Y) + 2;
+	crate_right = crate_new(x, y);
+	crate_right.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_LEFT);
+	crate_right.current_goal_x = x - 1;
+
+	a = _world_can_spawn_crate(self, self.spawned_crates_left, crate_get_x_axis_span(crate_left));
+	b = _world_can_spawn_crate(self, self.spawned_crates_right, crate_get_x_axis_span(crate_right));
+
+	if (a and b) {
+		r = random_float();
+		if r < 0.5 {
+			self.queue = max(self.queue - 1, 0);
+			self.spawned_crates_left = self.spawned_crates_left + crate_left;
+		} else {
+			self.queue = max(self.queue - 1, 0);
+			self.spawned_crates_right =  self.spawned_crates_right + crate_right;
+		}
+		return;
+	}
+
+	if (a) {
+		self.queue = max(self.queue - 1, 0);
+		self.spawned_crates_left = self.spawned_crates_left + crate_left;
+		return;
+	}
+
+	if (b) {
+		self.queue = max(self.queue - 1, 0);
+		self.spawned_crates_right =  self.spawned_crates_right + crate_right;
+		return;
+	}
+
+	# cannot spawn crates here.
 }
 
 def world_randomly_spawn_crate(self) {
 	#print("timer: " + self.crate_spawn_timer + " random_chance: " + self.initial_crate_spawn_chance );
-
-
 
 
 	#  find all columns that a crate can spawn in.
@@ -973,6 +1130,20 @@ def world_remove_crate(self, column_index, crate_index) {
 }
 
 def world_draw(self) {
+	crate_index = 0;
+	while crate_index < len(self.spawned_crates_left) {
+		crate = self.spawned_crates_left[crate_index];
+		crate.draw(crate);
+		crate_index = crate_index + 1;
+	}
+
+	crate_index = 0;
+	while crate_index < len(self.spawned_crates_right) {
+		crate = self.spawned_crates_right[crate_index];
+		crate.draw(crate);
+		crate_index = crate_index + 1;
+	}
+
 	columnIndex = 0;
 	while columnIndex < len(self.columns) {
 		column = self.columns[columnIndex];
@@ -997,9 +1168,6 @@ def world_draw(self) {
 
 
 def main() {
-	print(global(BOARD_CAMERA));
-
-
 	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
 	RlSetTargetFPS(60);
 
@@ -1010,14 +1178,13 @@ def main() {
 
 	asset_registry.crate = crate_tex;
 
-	print(global(ASSET_REGISTRY));
 
 	world = world_new();
 
 	current_time_ms = time();
 	dt  = 0.01;
 	accumulator = 0.0;
-	
+
 
 	while not RlWindowShouldClose() {
 		if RlIsKeyReleased(global(RL_KEY_ENTER)) {
