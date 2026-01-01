@@ -247,6 +247,33 @@ def player_new(x, y) {
 	return player;
 }
 
+# checks if player is crushed by a crate. Destroy crate if player is jumping.
+def player_check_death_condition(self, world) {
+	crates_above = [];
+
+	crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.previous_goal_x); 
+
+	if self.horizontal_movement_kind != None {
+		crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.current_goal_x); 
+	}
+
+	c = 0;
+	while c < len(crates_above) {
+		crate_info = crates_above[c];
+		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
+			if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
+					self.is_dead = True;
+			} else {
+				if not self.is_dead {
+					world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+				}
+			}
+			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
+		}
+		c = c + 1;
+	}
+}
+
 def player_can_push_crate(self, crate) {
 	player_center_y = self.y + 1;
 	crate_top_y = crate.y + 1;
@@ -406,31 +433,6 @@ def player_tick_horizontal_movement(self, dt) {
 # Once destination has been reached, player goes into FALLING state in which case we simulate gravity until player
 # reaches the ground.
 def player_tick_vertical_movement(self, dt, world) {
-	crates_above = [];
-
-	crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.previous_goal_x); 
-
-	if self.horizontal_movement_kind != None {
-		crates_above = crates_above + world_get_lowest_in_column_after(world, self.y + global(PLAYER_HEIGHT), self.current_goal_x); 
-	}
-
-	#print(crates_above);
-
-	c = 0;
-	while c < len(crates_above) {
-		crate_info = crates_above[c];
-		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
-			if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
-					self.is_dead = True;
-			} else {
-				if not self.is_dead {
-					world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
-				}
-			}
-			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
-		}
-		c = c + 1;
-	}
 
 	if self.is_dead {
 		return;
@@ -824,6 +826,7 @@ def _world_tick_spawned_crates(self, spawned_crates, dt) {
 }
 
 def world_tick(self, dt) {
+	player_check_death_condition(self.player, self);
 	world_try_destroy_bottom_row(self);
 	timer_tick(self.crate_spawn_timer, dt);
 	world_spawn_crate_2(self);
