@@ -197,6 +197,19 @@ def intervals_overlap(a, b) {
 	return not ((b.min > a.min and b.min > a.max) or (a.min > b.max and a.max > b.max));
 }
 
+
+def crate_get_offboard_destination(hmv) {
+	if hmv ==  global(HORIZONTAL_MOVEMENT_LEFT) {
+		return (-global(BOARD_CRATE_EXIT_MARGIN) - 1);
+	}
+
+	if hmv ==  global(HORIZONTAL_MOVEMENT_RIGHT) {
+		return (global(BOARD_CELLS_ALONG_X) + global(BOARD_CRATE_EXIT_MARGIN) + 1);
+	}
+
+	assert(False);
+}
+
 # Player object. 
 # (1) Stores (x,y) coodinates of the player. Can be float
 # (2) Stores previousGoalX and currentGoalX int coordinates of target cells on the board.
@@ -633,33 +646,24 @@ def crate_tick_horizontal_movement_spawned(self, dt, world, self_index) {
 
 
 	if global(MOVEMENT_EPS) >= distance_from_goal {
-		# check column occupancy
-
 		if not board_x_coordinate_in_bounds(self.current_goal_x) {
-			self.current_goal_x = self.current_goal_x + self.horizontal_movement_kind;
+			# should despawn the crate at this point.
 			return False;
 		}
 
-		# sample the column
-		column = world.columns[self.current_goal_x];
+
 		able_to_spawn = True;
 
-		if len(column) >= global(BOARD_CELLS_ALONG_Y)  {
+		if world_get_count_in_column(world, self.current_goal_x) >= global(BOARD_CELLS_ALONG_Y)  {
 			able_to_spawn = able_to_spawn and False;
 		}
 
-		if len(column) > 0 {
-			last_crate = column[len(column)-1];
-			last_crate_top = last_crate.y + global(CRATE_HEIGHT);
-			if self.y - last_crate_top < 2 {
-				able_to_spawn = able_to_spawn and False;
-			}
-		}
+		span = self.get_y_axis_span(self);
+		span.min = span.min - 1.5; # should have some space between crates probably.
+		able_to_spawn = able_to_spawn and not world_interval_overlaps_topmost_crate_in_column(world, span, self.current_goal_x);
 
-		random_chance = random_float();
-
-		if not able_to_spawn or random_chance > 0.1 {
-			self.current_goal_x = self.current_goal_x + self.horizontal_movement_kind;
+		if not able_to_spawn {
+			self.current_goal_x = crate_get_offboard_destination(self.horizontal_movement_kind);
 			return False;
 		}
 
@@ -820,11 +824,9 @@ def _world_tick_spawned_crates(self, spawned_crates, dt) {
 }
 
 def world_tick(self, dt) {
-print("Current queue size : " + self.queue);
 	world_try_destroy_bottom_row(self);
 	timer_tick(self.crate_spawn_timer, dt);
 	world_spawn_crate_2(self);
-
 
 	self.spawned_crates_left = _world_tick_spawned_crates(self, self.spawned_crates_left, dt);
 	self.spawned_crates_right = _world_tick_spawned_crates(self, self.spawned_crates_right, dt);
@@ -835,6 +837,7 @@ print("Current queue size : " + self.queue);
 	if self.pushed_crate != None {
 		crate_tick_horizontal_movement(self.pushed_crate, dt, self);
 	}
+
 
 	x  = 0;
 	while x < len(self.columns) {
@@ -908,18 +911,25 @@ def world_spawn_crate_2(self) {
 		return;
 	}
 
+	goal_column = _world_get_column_candidates(self);
+	if goal_column == None {
+		return;
+	}
+
+	print("Destination column " + goal_column);
+
 
 	x = -2;
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
 	crate_left = crate_new(x, y);
 	crate_left.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_RIGHT);
-	crate_left.current_goal_x = x + 1;
+	crate_left.current_goal_x = goal_column;
 
 	x = global(BOARD_CELLS_ALONG_X) + 2;
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
 	crate_right = crate_new(x, y);
 	crate_right.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_LEFT);
-	crate_right.current_goal_x = x - 1;
+	crate_right.current_goal_x = goal_column;
 
 	a = _world_can_spawn_crate(self, self.spawned_crates_left, crate_get_x_axis_span(crate_left));
 	b = _world_can_spawn_crate(self, self.spawned_crates_right, crate_get_x_axis_span(crate_right));
@@ -951,67 +961,59 @@ def world_spawn_crate_2(self) {
 	# cannot spawn crates here.
 }
 
-def world_randomly_spawn_crate(self) {
-	#print("timer: " + self.crate_spawn_timer + " random_chance: " + self.initial_crate_spawn_chance );
-
-
-	#  find all columns that a crate can spawn in.
+# get all crate spawn candidates, this includes the crates that have already spawned.
+# inspect their current_goal_x
+def _world_get_column_candidates(self) {
 	column_index = 0;
-	y = global(BOARD_CELLS_ALONG_Y) + 2;
 
-	spawn_candidates = [];
-
+	# get number of crates in the column 
+	number_of_crates_per_column = [];
 	while column_index < global(BOARD_CELLS_ALONG_X) {
 		column = self.columns[column_index];
-		able_to_spawn = True;
-		if len(column) >= global(BOARD_CELLS_ALONG_Y)  {
-		able_to_spawn = able_to_spawn and False;
-		}
-
-		if len(column) > 0 {
-			last_crate = column[len(column)-1];
-			last_crate_top = last_crate.y + global(CRATE_HEIGHT);
-			if y - last_crate_top < 2 {
-				able_to_spawn = able_to_spawn and False;
-			}
-		}
-
-		if able_to_spawn {
-			spawn_candidates = spawn_candidates + column_index;
-		}
-
+		number_of_crates_per_column  = number_of_crates_per_column  + len(column);
 		column_index = column_index + 1;
 	}
-	
-	#print("Candidates " + spawn_candidates);
 
-	if len(spawn_candidates) == 0 {
-		#print("unable to spawn crates");
-		return;
-
+	# take into account also the ones that have been spawned but yet to be delivered to the destination column
+	ci = 0;
+	while ci < len(self.spawned_crates_left) {
+		crate = self.spawned_crates_left[ci];
+		crate_destination_column = crate.current_goal_x;
+		if board_x_coordinate_in_bounds(crate_destination_column) {
+			number_of_crates_per_column[crate_destination_column] = number_of_crates_per_column[crate_destination_column] + 1;
+		}
+		ci = ci + 1;
 	}
 
-	r = random_int(len(spawn_candidates)); # pick random column
-	x = spawn_candidates[r];
-	crate = crate_new(x, y);
-	self.columns[x] = self.columns[x] + crate;
-	
-	timer_arm(self.crate_spawn_timer);
 
-	#can_spawn = True;
-	#column = self.columns[x];
-	# inspect topmost element of the column
-	#if len(column) > 0 {
-	#	last_crate = column[len(column)-1];
-		
-	#	if intervals_overlap(crate.get_y_axis_span(crate), last_crate.get_y_axis_span(last_crate)) {
-	#		can_spawn = False;
-	#	}
-	#}
+	ci = 0;
+	while ci < len(self.spawned_crates_right) {
+		crate = self.spawned_crates_right[ci];
+		crate_destination_column = crate.current_goal_x;
+		if board_x_coordinate_in_bounds(crate_destination_column) {
+			number_of_crates_per_column[crate_destination_column] = number_of_crates_per_column[crate_destination_column] + 1;
+		}
+		ci = ci + 1;
+	}
 
-	#if can_spawn {
-	#}
+	# now, get an array of column indices that does not exceed CELLS_ALONG_Y_AXIS
 
+	candidate_column_indices = [];
+
+	ci = 0;
+	while ci < len(number_of_crates_per_column) {
+		if number_of_crates_per_column[ci] < global(BOARD_CELLS_ALONG_Y) {
+			candidate_column_indices = candidate_column_indices + ci;
+		}
+		ci = ci + 1;
+	}
+
+	if len(candidate_column_indices) == 0 {
+		return None;
+	}
+
+	r = random_int(len(candidate_column_indices));
+	return candidate_column_indices[r];
 }
 
 # returns a list of crates that overlap provided interval in a column with columnIndex.
@@ -1037,6 +1039,21 @@ def world_interval_overlaps_any_in_column(self, interval, column_index) {
 	}
 
 	return overlapping_crates;
+}
+
+def world_get_count_in_column(self, column_index) {
+	return len(self.columns[column_index]);
+}
+
+def world_interval_overlaps_topmost_crate_in_column(self, interval, column_index) {
+	column = self.columns[column_index];
+	if len(column) == 0 {
+		return False;
+	}
+
+	last_crate = column[len(column)-1];
+	last_crate_interval = last_crate.get_y_axis_span(last_crate);
+	return intervals_overlap(interval, last_crate_interval);
 }
 
 # returns y-coordinate of the crate is highest y below supplied y.
