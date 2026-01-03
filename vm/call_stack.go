@@ -9,6 +9,7 @@ type InstructionOffset int
 type CallStackEntry struct {
 	locals        map[string]Value
 	returnAddress InstructionOffset
+	label         string
 }
 
 type CallStack struct {
@@ -28,6 +29,7 @@ func (stack *CallStack) pushStackFrame(returnAddress InstructionOffset) {
 	stack.stack[stack.top] = CallStackEntry{
 		locals:        map[string]Value{},
 		returnAddress: returnAddress,
+		label:         "no-label",
 	}
 }
 
@@ -35,6 +37,10 @@ func (stack *CallStack) popStackFrame() InstructionOffset {
 	returnAddress := stack.stack[stack.top].returnAddress
 	stack.top -= 1
 	return returnAddress
+}
+
+func (stack *CallStack) setLabel(label string) {
+	stack.stack[stack.top].label = label
 }
 
 func (stack *CallStack) putLocal(sym string, value Value) {
@@ -52,4 +58,17 @@ func (stack *CallStack) getLocal(sym string) (Value, error) {
 
 func (stack *CallStack) isEmpty() bool {
 	return stack.top == -1
+}
+
+func (stack *CallStack) Dump() string {
+	if stack.isEmpty() {
+		return "empty"
+	}
+
+	accum := ""
+	for i := 0; i <= stack.top; i++ {
+		accum = fmt.Sprintf("%s, %+v", accum, stack.stack[i])
+	}
+
+	return fmt.Sprintf("[%+v]", accum)
 }

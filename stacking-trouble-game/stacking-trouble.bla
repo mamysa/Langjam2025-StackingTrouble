@@ -46,6 +46,10 @@ global BOARD_CAMERA = make_2d_camera()
 
 global ASSET_REGISTRY = {}
 
+# defines what happens when a player and crate interact along the y axis (due to gravity and what not).
+# Normal behaviour would be to crush the player, but for pickups (such as health) crate should be despawned.
+global CRATE_GRAVITY_BEHAVIOR_CRUSH = 1
+global CRATE_GRAVITY_BEHAVIOR_PICKUP = 2
 
 def make_2d_camera() {
 	scale = 0.7;
@@ -260,13 +264,28 @@ def player_check_death_condition(self, world) {
 	c = 0;
 	while c < len(crates_above) {
 		crate_info = crates_above[c];
+		crate = crate_info.crate;
+
+		crate_gravity_behavior = global(CRATE_GRAVITY_BEHAVIOR_CRUSH);
+
+		if crate != None {
+			crate_gravity_behavior = crate.get_player_gravity_behavior();
+		}
+
+
+
 		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
-			if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
-					self.is_dead = True;
-			} else {
-				if not self.is_dead {
-					world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+			if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_CRUSH) {
+				if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
+						self.is_dead = True;
+				} else {
+					if not self.is_dead {
+						world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+					}
 				}
+			} else {
+				print("CRATE PICKED UP");
+
 			}
 			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
 		}
@@ -332,12 +351,14 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 			}
 
 			overlap_info = overlapping_crates_in_target_column[0];
+			crate = overlap_info.crate;
 
 			if not player_can_push_crate(self, overlap_info.crate) {
 				return False;
 			}
 
-			if not crate_move(overlap_info.crate, desired_horizontal_movement_kind, world, overlap_info.index) {
+
+			if not crate.move(crate, desired_horizontal_movement_kind, world, overlap_info.index) {
 				return False;
 			}
 
@@ -458,19 +479,29 @@ def player_tick_vertical_movement(self, dt, world) {
 		self.vertical_movement_kind = global(VERTICAL_MOVEMENT_FALLING);
 
 
-		ground = world.get_highest_in_column_below(world, self.y, self.previous_goal_x); 
+		ground_info = world.get_highest_in_column_below(world, self.y, self.previous_goal_x); 
 		if self.horizontal_movement_kind != None {
 			# player is moving, we sample current_goal_x as well and return maximum of those 
-			ground = max(ground, world.get_highest_in_column_below(world, self.y, self.current_goal_x)); 
+			ground_info_2 = world.get_highest_in_column_below(world, self.y, self.current_goal_x); 
+			if ground_info_2.crate_y > ground_info.crate_y {
+				ground_info = ground_info_2;
+			}
 		}
 
 		# apply gravity after sampling ground level. Otherwise, we will have a situation when object sinks into a valid crate.
+		ground = ground_info.crate_y;
 		self.y = self.y - global(VELOCITY) * dt;
 
 		# have we reached ground yet?
 		if self.y - ground < global(MOVEMENT_EPS){
 			self.y = ground; 
 			self.vertical_movement_kind = None;  
+
+
+			if ground_info.crate != None and ground_info.crate.get_player_gravity_behavior() == global(CRATE_GRAVITY_BEHAVIOR_PICKUP) {
+				world_remove_crate(world, ground_info.column_index, ground_info.crate_index);
+				print("ITEM PICKED UP");
+			}
 		}
 	}
 }
@@ -519,7 +550,10 @@ def crate_new(x, y) {
 	crate.current_goal_x = None;
 	crate.horizontal_movement_kind = None;
 
+	crate.set_position = &crate_set_position;
 	crate.draw = &crate_draw;
+	crate.move = &crate_move;
+	crate.get_player_gravity_behavior = &crate_get_player_gravity_behavior;
 	crate.get_y_axis_span = &crate_get_y_axis_span;
 	crate.color = {};
 	crate.color.r = random_int(255);
@@ -527,6 +561,15 @@ def crate_new(x, y) {
 	crate.color.b = random_int(255);
 	crate.tick = &crate_tick;
 	return crate;
+}
+
+def crate_set_position(self, x, y) {
+	self.x = x;
+	self.y = y;
+}
+
+def crate_get_player_gravity_behavior() {
+	return global(CRATE_GRAVITY_BEHAVIOR_CRUSH);
 }
 
 def crate_draw(self) {
@@ -567,7 +610,6 @@ def crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 	e = crate_get_y_span_scaled(self);
 
 	overlapping_crates_in_target_column = world.interval_overlaps_any_in_column(world, e, target_goal_x);
-	#print(overlapping_crates_in_target_column);
 	if len(overlapping_crates_in_target_column) > 0 {
 		return False;
 	}
@@ -613,72 +655,10 @@ def crate_tick_vertical_movement(self, dt, world, crate_index) {
 		}
 	}
 
-	# also need to take into account the player, if we hit the player from above.
-	#player = world.player;
-	#if player.previous_goal_x == crate_column_index or player.current_goal_x == crate_column_index {
-	#	crate_interval = crate_get_y_axis_span(self);
-	#	player_interval = player_get_y_span_scaled(player);
-	#	if intervals_overlap(crate_interval, player_interval) {
-	#		if player.vertical_movement_kind == global(VERTICAL_MOVEMENT_JUMPING) {
-	#			return True;
-	#		} else {
-	#			player.is_dead = True;
-	#			return True;
-	#		}
-	#	}
-	#}
-
-
-
 	self.y = self.y - global(VELOCITY) * dt;
-
 	if self.y < target_y {
 		self.y = target_y;
 	}
-}
-
-def crate_tick_horizontal_movement_spawned(self, dt, world, self_index) {
-	if self.horizontal_movement_kind == None {
-		return;
-	}
-
-	horizontal_movement_float = float(self.horizontal_movement_kind);
-	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
-	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
-
-
-	if global(MOVEMENT_EPS) >= distance_from_goal {
-		if not board_x_coordinate_in_bounds(self.current_goal_x) {
-			# should despawn the crate at this point.
-			return False;
-		}
-
-
-		able_to_spawn = True;
-
-		if world_get_count_in_column(world, self.current_goal_x) >= global(BOARD_CELLS_ALONG_Y)  {
-			able_to_spawn = able_to_spawn and False;
-		}
-
-		span = self.get_y_axis_span(self);
-		span.min = span.min - 1.5; # should have some space between crates probably.
-		able_to_spawn = able_to_spawn and not world_interval_overlaps_topmost_crate_in_column(world, span, self.current_goal_x);
-
-		if not able_to_spawn {
-			self.current_goal_x = crate_get_offboard_destination(self.horizontal_movement_kind);
-			return False;
-		}
-
-		# update state
-		self.x = float(self.current_goal_x);
-		self.previous_goal_x = self.current_goal_x;
-		self.current_goal_x = None;
-		self.horizontal_movement_kind = None;
-		return True;
-	}
-
-
-	return False;
 }
 
 def crate_tick_horizontal_movement(self, dt, world) {
@@ -692,22 +672,7 @@ def crate_tick_horizontal_movement(self, dt, world) {
 
 	if global(MOVEMENT_EPS) >= distance_from_goal {
 		# place the crate in the destination column preserving ordering by y 
-		destination_column = world.columns[self.current_goal_x];
-
-		highest = -1;
-		highest_index = -1;
-
-		i = 0;
-		while i < len(destination_column) {
-			crate_in_destination_column = destination_column[i];
-			if self.y > crate_in_destination_column.y and crate_in_destination_column.y > highest {
-				highest = crate_in_destination_column.y;
-				highest_index = i; 
-			}
-			i = i + 1;
-		}
-
-		world.columns[self.current_goal_x] = list_insert_after_index(destination_column, highest_index, self);
+		world_insert_crate_sorted(world, self, self.current_goal_x);
 		
 		# update state
 		self.x = float(self.current_goal_x);
@@ -726,11 +691,6 @@ def crate_get_y_axis_span(self) {
 	return interval_new(y_start, y_end);
 }
 
-def crate_get_x_axis_span(self) {
-	x_start = self.x;
-	x_end = self.x + global(CRATE_HEIGHT);
-	return interval_new(x_start, x_end);
-}
 
 # gets scaled extent of the box. This one is used when the box is moved. 
 def crate_get_y_span_scaled(self) {
@@ -738,6 +698,142 @@ def crate_get_y_span_scaled(self) {
 	y_end = self.y + global(CRATE_HEIGHT);
 	return interval_new(y_start+0.02, y_end-0.02);
 }
+
+
+def movement_speed_multiplier_crate_new(x, y) {
+	crate = crate_new(x, y);
+	crate.move = &movement_speed_multiplier_crate_move;
+	crate.draw = &movement_speed_multiplier_crate_draw;
+	crate.get_player_gravity_behavior = &movement_speed_multiplier_crate_get_player_gravity_behavior;
+	return crate;
+}
+
+
+def movement_speed_multiplier_crate_get_player_gravity_behavior() {
+	return global(CRATE_GRAVITY_BEHAVIOR_PICKUP);
+}
+
+
+# should rename this to interact
+def movement_speed_multiplier_crate_move(self, desired_horizontal_movement_kind, world, row_index) {
+	# crate is already moving.
+	if self.horizontal_movement_kind != None {
+		return False;
+	}
+
+	# some crate is being pushed already,.
+	if world.pushed_crate != None {
+		return False;
+	}
+
+
+	world.columns[self.previous_goal_x] = list_remove_at_index(world.columns[self.previous_goal_x], row_index);
+
+	print("ITEM PICKED UP");
+
+	return False;	
+}
+
+def movement_speed_multiplier_crate_draw(self) {
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+	cellStartX = global(CELL_SIZE) *  self.x;
+	cellStartY = board_height - (global(CELL_SIZE) * self.y);
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
+}
+
+
+# CRANE DISPENSER 
+def crane_new(x, y, goal_x, horizontal_movement_kind, crate) {
+	crane = {};
+	crane.x = x;
+	crane.y = y;
+	crane.previous_goal_x = x; 
+	crane.current_goal_x = goal_x;
+	crane.horizontal_movement_kind = horizontal_movement_kind;
+	crane.crate = crate;
+
+	crane.tick = &crane_tick;
+	crane.draw = &crane_draw;
+	crane.get_x_axis_span = &crane_get_x_axis_span;
+	return crane;
+}
+
+def crane_get_x_axis_span(self) {
+	x_start = self.x;
+	x_end = self.x + global(CRATE_HEIGHT);
+	return interval_new(x_start, x_end);
+}
+
+# self = crane.
+def crane_tick(self, dt, world) {
+	horizontal_movement_float = float(self.horizontal_movement_kind);
+	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
+	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
+
+	if self.crate != None {
+		self.crate.set_position(self.crate, self.x, self.y);
+	}
+
+
+	if global(MOVEMENT_EPS) >= distance_from_goal {
+		if not board_x_coordinate_in_bounds(self.current_goal_x) {
+			# should despawn the crate at this point.
+			return False;
+		}
+
+		# do 
+		if self.crate == None {
+			return False;
+		}
+
+		able_to_spawn = True;
+
+		# have the column reached its maximum occupancy?
+		if world_get_count_in_column(world, self.current_goal_x) >= global(BOARD_CELLS_ALONG_Y)  {
+			able_to_spawn = able_to_spawn and False;
+		}
+
+		# does it overlap any crates?
+		span = self.crate.get_y_axis_span(self);
+		span.min = span.min - 1.5; # should have some space between crates probably.
+		able_to_spawn = able_to_spawn and not world_interval_overlaps_topmost_crate_in_column(world, span, self.current_goal_x);
+
+		if not able_to_spawn {
+			self.current_goal_x = crate_get_offboard_destination(self.horizontal_movement_kind);
+			return False;
+		}
+
+		crate = self.crate; 
+		crate.x = float(self.current_goal_x);
+		crate.previous_goal_x = self.current_goal_x;
+		self.crate = None;
+
+		# get the crane off the board.
+		self.current_goal_x = crate_get_offboard_destination(self.horizontal_movement_kind);
+
+		world_append_crate(world, crate.previous_goal_x, crate);
+	}
+}
+
+def crane_draw(self) {
+
+	if self.crate != None {
+		self.crate.draw(self.crate);
+	}
+
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+	cell_start_x = global(CELL_SIZE) *  self.x;
+	cell_start_y = board_height - (global(CELL_SIZE) * self.y); 
+
+	width = global(CELL_SIZE);
+	height = 32; 
+
+	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255);
+
+
+}
+
+
 
 # WORLD object.
 # Is a collection of columns containing crates.
@@ -763,14 +859,14 @@ def world_new() {
 	world = {};
 	world.queue = 0; # number of crates that are queued to spawn.
 	world.columns = columns;
-	world.spawned_crates_left = [];
-	world.spawned_crates_right = [];
+	world.cranes_left= [];
+	world.cranes_right = [];
 	world.player = player_new(0, 0);
 	world.pushed_crate = None;
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	world.score = 0;
-	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER ));
+	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
 	return world;
 }
 
@@ -806,23 +902,21 @@ def world_try_destroy_bottom_row(self) {
 	self.score = self.score + global(SCORE_PER_CRATE_DESTROYED) * global(BOARD_CELLS_ALONG_X);
 }
 
-def _world_tick_spawned_crates(self, spawned_crates, dt) {
-	spawned_crate_index = 0;
-	remaining_spawned_crates = [];
-	while spawned_crate_index < len(spawned_crates) {
-		crate = spawned_crates[spawned_crate_index];
-		if crate_tick_horizontal_movement_spawned(crate, dt, self, spawned_crate_index) {
-			self.columns[crate.previous_goal_x] = self.columns[crate.previous_goal_x] + crate;
-		} else {
-			if board_x_coordinate_in_bounds_with_margin(crate.x) {
-				remaining_spawned_crates = remaining_spawned_crates + crate;
-			}
+def _world_tick_cranes(self, cranes, dt) {
+	remaining_cranes = [];
+	c = 0; 
+	while c < len(cranes) {
+		crane = cranes[c];
+		crane.tick(crane, dt, self);
+
+		if board_x_coordinate_in_bounds_with_margin(crane.x) {
+			remaining_cranes = remaining_cranes + crane;
 		}
 
-		spawned_crate_index = spawned_crate_index + 1;
+		c = c + 1;
 	}
 
-	return remaining_spawned_crates;
+	return remaining_cranes;
 }
 
 def world_tick(self, dt) {
@@ -831,9 +925,8 @@ def world_tick(self, dt) {
 	timer_tick(self.crate_spawn_timer, dt);
 	world_spawn_crate_2(self);
 
-	self.spawned_crates_left = _world_tick_spawned_crates(self, self.spawned_crates_left, dt);
-	self.spawned_crates_right = _world_tick_spawned_crates(self, self.spawned_crates_right, dt);
-
+	self.cranes_left = _world_tick_cranes(self, self.cranes_left, dt);
+	self.cranes_right = _world_tick_cranes(self, self.cranes_right, dt);
 
 	self.player.tick(self.player, dt, self);
 
@@ -842,7 +935,8 @@ def world_tick(self, dt) {
 	}
 
 
-	x  = 0;
+	# tick crates in all columns
+	x = 0;
 	while x < len(self.columns) {
 		column = self.columns[x];
 		y = 0;
@@ -894,20 +988,27 @@ def world_tick(self, dt) {
 	}
 }
 
-def _world_can_spawn_crate(self, arr, crate_interval) {
+def _world_can_spawn_crane(self, arr, new_crane_span) {
 	i = 0;	
 	while i < len(arr) {
-		spawned_crate_x_span = crate_get_x_axis_span(arr[i]);
-		if intervals_overlap(spawned_crate_x_span, crate_interval) {
+		crane = arr[i];
+		crane_span = crane.get_x_axis_span(crane);
+		if intervals_overlap(new_crane_span, crane_span) {
 			return False;
 		}
-
 		i = i + 1;
 	}
 
 	return True;
 }
 
+def _world_pick_crate_kind_to_spawn(x, y) {
+	if random_float() < 0.5 {
+		#return movement_speed_multiplier_crate_new(x, y);
+	}
+
+	return crate_new(x, y);
+}
 
 def world_spawn_crate_2(self) {
 	if self.queue == 0 {
@@ -919,45 +1020,43 @@ def world_spawn_crate_2(self) {
 		return;
 	}
 
-	print("Destination column " + goal_column);
 
-
-	x = -2;
+	x = -global(BOARD_CRATE_EXIT_MARGIN);
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
-	crate_left = crate_new(x, y);
-	crate_left.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_RIGHT);
-	crate_left.current_goal_x = goal_column;
 
-	x = global(BOARD_CELLS_ALONG_X) + 2;
+	crane_left  = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_RIGHT), _world_pick_crate_kind_to_spawn(x, y));
+
+	x = global(BOARD_CELLS_ALONG_X) + global(BOARD_CRATE_EXIT_MARGIN);
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
-	crate_right = crate_new(x, y);
-	crate_right.horizontal_movement_kind = global(HORIZONTAL_MOVEMENT_LEFT);
-	crate_right.current_goal_x = goal_column;
+	crane_right = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_LEFT), _world_pick_crate_kind_to_spawn(x, y));
 
-	a = _world_can_spawn_crate(self, self.spawned_crates_left, crate_get_x_axis_span(crate_left));
-	b = _world_can_spawn_crate(self, self.spawned_crates_right, crate_get_x_axis_span(crate_right));
+
+	a = _world_can_spawn_crane(self, self.cranes_left, crane_left.get_x_axis_span(crane_left));
+	b = _world_can_spawn_crane(self, self.cranes_right, crane_right.get_x_axis_span(crane_right));
+
+	print("GOAL " + goal_column);
 
 	if (a and b) {
 		r = random_float();
 		if r < 0.5 {
 			self.queue = max(self.queue - 1, 0);
-			self.spawned_crates_left = self.spawned_crates_left + crate_left;
+			self.cranes_left = self.cranes_left + crane_left;
 		} else {
 			self.queue = max(self.queue - 1, 0);
-			self.spawned_crates_right =  self.spawned_crates_right + crate_right;
+			self.cranes_right =  self.cranes_right + crane_right;
 		}
 		return;
 	}
 
 	if (a) {
 		self.queue = max(self.queue - 1, 0);
-		self.spawned_crates_left = self.spawned_crates_left + crate_left;
+		self.cranes_left = self.cranes_left + crane_left;
 		return;
 	}
 
 	if (b) {
 		self.queue = max(self.queue - 1, 0);
-		self.spawned_crates_right =  self.spawned_crates_right + crate_right;
+		self.cranes_right = self.cranes_right + crane_right;
 		return;
 	}
 
@@ -979,9 +1078,9 @@ def _world_get_column_candidates(self) {
 
 	# take into account also the ones that have been spawned but yet to be delivered to the destination column
 	ci = 0;
-	while ci < len(self.spawned_crates_left) {
-		crate = self.spawned_crates_left[ci];
-		crate_destination_column = crate.current_goal_x;
+	while ci < len(self.cranes_left) {
+		crane = self.cranes_left[ci];
+		crate_destination_column = crane.current_goal_x;
 		if board_x_coordinate_in_bounds(crate_destination_column) {
 			number_of_crates_per_column[crate_destination_column] = number_of_crates_per_column[crate_destination_column] + 1;
 		}
@@ -990,9 +1089,9 @@ def _world_get_column_candidates(self) {
 
 
 	ci = 0;
-	while ci < len(self.spawned_crates_right) {
-		crate = self.spawned_crates_right[ci];
-		crate_destination_column = crate.current_goal_x;
+	while ci < len(self.cranes_right) {
+		crane = self.cranes_right[ci];
+		crate_destination_column = crane.current_goal_x;
 		if board_x_coordinate_in_bounds(crate_destination_column) {
 			number_of_crates_per_column[crate_destination_column] = number_of_crates_per_column[crate_destination_column] + 1;
 		}
@@ -1059,6 +1158,25 @@ def world_interval_overlaps_topmost_crate_in_column(self, interval, column_index
 	return intervals_overlap(interval, last_crate_interval);
 }
 
+def world_insert_crate_sorted(self, crate, column_index) {
+	destination_column = self.columns[column_index];
+
+		highest = -1;
+		highest_index = -1;
+		i = 0;
+		while i < len(destination_column) {
+			crate_in_destination_column = destination_column[i];
+			if crate.y > crate_in_destination_column.y and crate_in_destination_column.y > highest {
+				highest = crate_in_destination_column.y;
+				highest_index = i; 
+			}
+			i = i + 1;
+		}
+
+		self.columns[column_index] = list_insert_after_index(destination_column, highest_index, crate);
+		# TODO fix y coordinates after insertion?
+}
+
 # returns y-coordinate of the crate is highest y below supplied y.
 # For example, given below_y = 5 and ys = [7, 4, 3, 1], 4 should be returned
 # TODO this name is confusing AF.
@@ -1070,13 +1188,20 @@ def world_get_highest_in_column_below(self, below_y, column_index) {
 	column = self.columns[column_index];
 
 	highest = 0;
+	highest_index = -1;
+	highest_crate = None;
 
 	i = 0;
 	while i < len(column) {
-		box_bottom_y = column[i].y;
-		box_top_y = column[i].y + global(CRATE_HEIGHT);
+		crate = column[i];
+		box_bottom_y = crate.y;
+		box_top_y = crate.y + global(CRATE_HEIGHT);
 		if below_y >= box_top_y {
-			highest = max(highest, box_top_y);
+			if box_top_y > highest {
+				highest = box_top_y;
+				highest_index = i;
+				highest_crate = crate;
+			}
 		}
 
 		# So this whole thing is used to prevent objects from sinking into each other
@@ -1088,16 +1213,24 @@ def world_get_highest_in_column_below(self, below_y, column_index) {
 			l = lerp_find_t(box_bottom_y, box_top_y, below_y); # in [0, 1] range
 			margin_from_top = 1 - global(MOVEMENT_EPS) * 10;
 			if l > margin_from_top  {
-				highest = max(highest, box_top_y);
+				if box_top_y > highest {
+					highest = box_top_y;
+					highest_index = i;
+					highest_crate = crate;
+				}
 			}
 		}
 
 		i = i + 1;
 	}
 
-	#print(highest);
+	ret = {};
+	ret.crate_index = highest_index;
+	ret.column_index = column_index;
+	ret.crate_y = highest;
+	ret.crate = highest_crate;
+	return ret;
 
-	return highest;
 }
 
 
@@ -1109,6 +1242,7 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 
 	lowest = 9999.0; #yuck
 	lowest_index = -1;
+	lowest_crate = None;
 
 	i = len(column) - 1; 
 	while i >= 0 {
@@ -1120,6 +1254,7 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 			if crate_bottom_y < lowest {
 				lowest = crate_bottom_y; 
 				lowest_index = i;
+				lowest_crate = crate;	
 			}
 		}
 
@@ -1128,6 +1263,7 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 			if crate_bottom_y < lowest {
 				lowest = crate_bottom_y; 
 				lowest_index = i;
+				lowest_crate = crate;	
 			}
 			#l = lerp_find_t(crate_bottom_y, crate_top_y, after_y); # in [0, 1] range
 			#margin_from_bottom = global(MOVEMENT_EPS) * 10;
@@ -1142,6 +1278,7 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 	ret.crate_index = lowest_index;
 	ret.column_index = column_index;
 	ret.crate_y = lowest;
+	ret.crate = lowest_crate;
 	return ret;
 }
 
@@ -1149,19 +1286,27 @@ def world_remove_crate(self, column_index, crate_index) {
 	self.columns[column_index] = list_remove_at_index(self.columns[column_index], crate_index);
 }
 
-def world_draw(self) {
-	crate_index = 0;
-	while crate_index < len(self.spawned_crates_left) {
-		crate = self.spawned_crates_left[crate_index];
-		crate.draw(crate);
-		crate_index = crate_index + 1;
+def world_append_crate(self, column_index, crate) {
+	if not board_x_coordinate_in_bounds(column_index) {
+		assert(False);
 	}
 
-	crate_index = 0;
-	while crate_index < len(self.spawned_crates_right) {
-		crate = self.spawned_crates_right[crate_index];
-		crate.draw(crate);
-		crate_index = crate_index + 1;
+	self.columns[column_index] = self.columns[column_index] + crate;
+}
+
+def world_draw(self) {
+	c = 0;
+	while c < len(self.cranes_left) {
+		crane = self.cranes_left[c];
+		crane.draw(crane);
+		c = c + 1;
+	}
+
+	c = 0;
+	while c < len(self.cranes_right) {
+		crane = self.cranes_right[c];
+		crane.draw(crane);
+		c = c + 1;
 	}
 
 	columnIndex = 0;

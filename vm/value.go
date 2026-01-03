@@ -610,13 +610,13 @@ func (value ObjectValue) FunctionAddress() int {
 	panic("Invalid conversion")
 }
 
-func (list ObjectValue) GetValue(key string) Value {
-	value, ok := list.Object.object[key]
+func (value ObjectValue) GetValue(key string) Value {
+	v, ok := value.Object.object[key]
 	if !ok {
-		panic(fmt.Errorf("Field %+v not present in the object", key))
+		panic(fmt.Errorf("Field %+v not present in the object %+v", key, value))
 	}
 
-	return value
+	return v
 }
 
 func (list ObjectValue) SetValue(key string, value Value) {

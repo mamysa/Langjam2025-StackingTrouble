@@ -253,7 +253,7 @@ func (interpreter *Interpreter) storeVar(insn StoreVar) {
 func (interpreter *Interpreter) loadVar(insn LoadVar) {
 	local, err := interpreter.callStack.getLocal(insn.Arg)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%+v, call stack: %+v", err, interpreter.callStack.Dump()))
 	}
 
 	interpreter.evaluationStack.pushValue(local)
@@ -264,6 +264,14 @@ func (interpreter *Interpreter) call(insn Call) {
 	nextInstructionOffset := interpreter.programCounter + 1
 	interpreter.callStack.pushStackFrame(nextInstructionOffset)
 	interpreter.programCounter = InstructionOffset(insn.Offset)
+
+	// sample instruction at new programCounter;
+	label, ok := interpreter.program.Instructions[interpreter.programCounter].(Label)
+	if !ok {
+		panic("Not label")
+	}
+
+	interpreter.callStack.setLabel(label.Label)
 }
 
 func (interpreter *Interpreter) callVirtual() {
@@ -273,6 +281,14 @@ func (interpreter *Interpreter) callVirtual() {
 	nextInstructionOffset := interpreter.programCounter + 1
 	interpreter.callStack.pushStackFrame(nextInstructionOffset)
 	interpreter.programCounter = InstructionOffset(addr)
+
+	// sample instruction at new programCounter;
+	label, ok := interpreter.program.Instructions[interpreter.programCounter].(Label)
+	if !ok {
+		panic("Not label")
+	}
+
+	interpreter.callStack.setLabel(label.Label)
 }
 
 func (interpreter *Interpreter) add() {
@@ -616,6 +632,7 @@ func (interpreter *Interpreter) br(insn Br) {
 }
 
 func (interpreter *Interpreter) label(insn Label) {
+	//interpreter.callStack.setLabel(insn.Label)
 	interpreter.programCounter++
 }
 
@@ -988,7 +1005,7 @@ func (interpreter *Interpreter) rlIsKeyReleased() {
 func (interpreter *Interpreter) castFloat() {
 	value := interpreter.evaluationStack.pop()
 	if !value.IsNumeric() {
-		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float", value))
+		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float. callstack: %+v", value, interpreter.callStack.Dump()))
 	}
 
 	var (
