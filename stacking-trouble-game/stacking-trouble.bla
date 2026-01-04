@@ -36,6 +36,9 @@ global PLAYER_JUMP_COOLDOWN = 0.56
 global INITIAL_CRATE_SPAWN_TIMER = 5.5
 global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
 
+global DOUBLE_SPEED_DURATION = 4
+global DOUBLE_SPEED_VELOCITY_MULTIPLIER = 1.5
+
 global SCREEN_WIDTH = 800
 global SCREEN_HEIGHT = 600
 
@@ -272,8 +275,6 @@ def player_check_death_condition(self, world) {
 			crate_gravity_behavior = crate.get_player_gravity_behavior();
 		}
 
-
-
 		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
 			if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_CRUSH) {
 				if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
@@ -284,8 +285,10 @@ def player_check_death_condition(self, world) {
 					}
 				}
 			} else {
-				print("CRATE PICKED UP");
-
+			# TODO if player is dead/respawning, this should have no effect.
+				if crate != None {
+					crate.pick_up_behavior_func(world);
+				}
 			}
 			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
 		}
@@ -422,19 +425,21 @@ def player_jump(self) {
 def player_tick(self, dt, world) {
 	timer_tick(self.movement_cooldown_timer, dt);
 	timer_tick(self.jump_cooldown_timer, dt);
-	player_tick_horizontal_movement(self, dt);
+	player_tick_horizontal_movement(self, dt, world);
 	player_tick_vertical_movement(self, dt, world);
 }
 
 # self = player
-def player_tick_horizontal_movement(self, dt) {
+def player_tick_horizontal_movement(self, dt, world) {
 	if self.horizontal_movement_kind == None {
 		return;
 	}
 
 	horizontal_movement_float = float(self.horizontal_movement_kind);
 
-	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
+	velocity = global(VELOCITY) * global(DOUBLE_SPEED_VELOCITY_MULTIPLIER) if world.double_speed_timer.is_applied else global(VELOCITY);
+
+	self.x = self.x + horizontal_movement_float * velocity * dt;
 
 	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
 
@@ -500,7 +505,7 @@ def player_tick_vertical_movement(self, dt, world) {
 
 			if ground_info.crate != None and ground_info.crate.get_player_gravity_behavior() == global(CRATE_GRAVITY_BEHAVIOR_PICKUP) {
 				world_remove_crate(world, ground_info.column_index, ground_info.crate_index);
-				print("ITEM PICKED UP");
+				ground_info.crate.pick_up_behavior_func(world);
 			}
 		}
 	}
@@ -666,8 +671,10 @@ def crate_tick_horizontal_movement(self, dt, world) {
 		return;
 	}
 
+	velocity = global(VELOCITY) * global(DOUBLE_SPEED_VELOCITY_MULTIPLIER) if world.double_speed_timer.is_applied else global(VELOCITY);
+
 	horizontal_movement_float = float(self.horizontal_movement_kind);
-	self.x = self.x + horizontal_movement_float * global(VELOCITY) * dt;
+	self.x = self.x + horizontal_movement_float * velocity * dt;
 	distance_from_goal = (float(self.current_goal_x) - self.x) * horizontal_movement_float;
 
 	if global(MOVEMENT_EPS) >= distance_from_goal {
@@ -700,22 +707,28 @@ def crate_get_y_span_scaled(self) {
 }
 
 
-def movement_speed_multiplier_crate_new(x, y) {
+def pick_up_crate_behavior_double_speed(world) {
+	print("DOUBLE SPEED ACTIVE");
+	world_on_double_speed_activated(world);
+}
+
+def pick_up_crate_new(x, y, pick_up_behavior_func) {
 	crate = crate_new(x, y);
-	crate.move = &movement_speed_multiplier_crate_move;
-	crate.draw = &movement_speed_multiplier_crate_draw;
-	crate.get_player_gravity_behavior = &movement_speed_multiplier_crate_get_player_gravity_behavior;
+	crate.move = &pick_up_crate_move;
+	crate.draw = &pick_up_crate_draw;
+	crate.get_player_gravity_behavior = &pick_up_crate_get_player_gravity_behavior;
+	crate.pick_up_behavior_func = pick_up_behavior_func;
 	return crate;
 }
 
 
-def movement_speed_multiplier_crate_get_player_gravity_behavior() {
+def pick_up_crate_get_player_gravity_behavior() {
 	return global(CRATE_GRAVITY_BEHAVIOR_PICKUP);
 }
 
 
 # should rename this to interact
-def movement_speed_multiplier_crate_move(self, desired_horizontal_movement_kind, world, row_index) {
+def pick_up_crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 	# crate is already moving.
 	if self.horizontal_movement_kind != None {
 		return False;
@@ -729,12 +742,12 @@ def movement_speed_multiplier_crate_move(self, desired_horizontal_movement_kind,
 
 	world.columns[self.previous_goal_x] = list_remove_at_index(world.columns[self.previous_goal_x], row_index);
 
-	print("ITEM PICKED UP");
+	self.pick_up_behavior_func(world);
 
 	return False;	
 }
 
-def movement_speed_multiplier_crate_draw(self) {
+def pick_up_crate_draw(self) {
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 	cellStartX = global(CELL_SIZE) *  self.x;
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
@@ -742,7 +755,7 @@ def movement_speed_multiplier_crate_draw(self) {
 }
 
 
-# CRANE DISPENSER 
+# CRANE  
 def crane_new(x, y, goal_x, horizontal_movement_kind, crate) {
 	crane = {};
 	crane.x = x;
@@ -867,6 +880,7 @@ def world_new() {
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	world.score = 0;
 	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
+	world.double_speed_timer = timer_new(global(DOUBLE_SPEED_DURATION));
 	return world;
 }
 
@@ -902,6 +916,10 @@ def world_try_destroy_bottom_row(self) {
 	self.score = self.score + global(SCORE_PER_CRATE_DESTROYED) * global(BOARD_CELLS_ALONG_X);
 }
 
+def world_on_double_speed_activated(self) {
+	timer_arm(self.double_speed_timer);
+}
+
 def _world_tick_cranes(self, cranes, dt) {
 	remaining_cranes = [];
 	c = 0; 
@@ -920,9 +938,11 @@ def _world_tick_cranes(self, cranes, dt) {
 }
 
 def world_tick(self, dt) {
+
 	player_check_death_condition(self.player, self);
 	world_try_destroy_bottom_row(self);
 	timer_tick(self.crate_spawn_timer, dt);
+	timer_tick(self.double_speed_timer, dt);
 	world_spawn_crate_2(self);
 
 	self.cranes_left = _world_tick_cranes(self, self.cranes_left, dt);
@@ -1004,7 +1024,7 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 
 def _world_pick_crate_kind_to_spawn(x, y) {
 	if random_float() < 0.5 {
-		#return movement_speed_multiplier_crate_new(x, y);
+		return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
 	}
 
 	return crate_new(x, y);
