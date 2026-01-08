@@ -30,6 +30,12 @@ global SCORE_PER_CRATE_DESTROYED = 1
 # if player tries to move during this cooldown, input is not applied.
 global PLAYER_MOVEMENT_COOLDOWN = 0.02
 
+# for how long player will stay incapacitated?
+global PLAYER_INCAPACITATION_COOLDOWN = 2
+
+global PLAYER_LIVENESS_DEAD = 1 # player is dead-dead, no lives remaining.
+global PLAYER_LIVENESS_INCAPACITATED = 2 # player dead but has lives remaining.
+
 # if player tries to jump during this cooldown, input is not applied.
 global PLAYER_JUMP_COOLDOWN = 0.56
 
@@ -53,6 +59,7 @@ global ASSET_REGISTRY = {}
 # Normal behaviour would be to crush the player, but for pickups (such as health) crate should be despawned.
 global CRATE_GRAVITY_BEHAVIOR_CRUSH = 1
 global CRATE_GRAVITY_BEHAVIOR_PICKUP = 2
+
 
 def make_2d_camera() {
 	scale = 0.7;
@@ -182,6 +189,10 @@ def timer_arm(self) {
 
 # ticks the timer :)
 def timer_tick(self, dt) {
+	if not self.is_applied  {
+		return;
+	}
+
 	self.counter = self.counter - dt;
 
 	if self.counter < 0 {
@@ -189,7 +200,6 @@ def timer_tick(self, dt) {
 		self.counter = 0.0;
 	}
 }
-
 
 # Interval represents line segment.
 def interval_new(a, b) {
@@ -248,10 +258,26 @@ def player_new(x, y) {
 
 	player.movement_cooldown_timer = timer_new(global(PLAYER_MOVEMENT_COOLDOWN));
 	player.jump_cooldown_timer = timer_new(global(PLAYER_JUMP_COOLDOWN));
+	player.incapacitation_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN));
+	player.respawn_invulnerability_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN) + 2);
 	player.is_pushing = False;
-	player.is_dead = False;
+	player.liveness = None; # none if player is alive and okay.
+	player.lives = 3; # number of lives the player has
 
 	return player;
+}
+
+
+def _player_lose_life(self) {
+print("PLAYER_LOSE_LIFE");
+	self.lives = max(0, self.lives - 1);
+	self.liveness = global(PLAYER_LIVENESS_DEAD);
+	
+	if self.lives > 0 {
+		self.liveness = global(PLAYER_LIVENESS_INCAPACITATED);
+		timer_arm(self.incapacitation_cooldown_timer);
+		timer_arm(self.respawn_invulnerability_cooldown_timer);
+	}
 }
 
 # checks if player is crushed by a crate. Destroy crate if player is jumping.
@@ -277,10 +303,11 @@ def player_check_death_condition(self, world) {
 
 		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
 			if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_CRUSH) {
-				if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) {
-						self.is_dead = True;
+				if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) 
+				and not self.respawn_invulnerability_cooldown_timer.is_applied {
+					_player_lose_life(self);
 				} else {
-					if not self.is_dead {
+					if self.liveness == None {
 						world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
 					}
 				}
@@ -308,7 +335,7 @@ def player_can_push_crate(self, crate) {
 }
 
 def player_move(self, desired_horizontal_movement_kind, world) {
-	if self.is_dead {
+	if self.liveness != None {
 			return False;
 	}
 
@@ -400,7 +427,7 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 }
 
 def player_jump(self) {
-	if self.is_dead {
+	if self.liveness != None {
 			return False;
 	}
 
@@ -425,6 +452,15 @@ def player_jump(self) {
 def player_tick(self, dt, world) {
 	timer_tick(self.movement_cooldown_timer, dt);
 	timer_tick(self.jump_cooldown_timer, dt);
+	timer_tick(self.incapacitation_cooldown_timer, dt);
+	timer_tick(self.respawn_invulnerability_cooldown_timer, dt);
+
+	if self.liveness != global(PLAYER_LIVENESS_DEAD) {
+		if not self.incapacitation_cooldown_timer.is_applied {
+			self.liveness = None;
+		}
+	}
+
 	player_tick_horizontal_movement(self, dt, world);
 	player_tick_vertical_movement(self, dt, world);
 }
@@ -460,7 +496,7 @@ def player_tick_horizontal_movement(self, dt, world) {
 # reaches the ground.
 def player_tick_vertical_movement(self, dt, world) {
 
-	if self.is_dead {
+	if self.liveness != None {
 		return;
 	}
 
@@ -522,7 +558,12 @@ def player_draw(self) {
 	width = global(CELL_SIZE);
 	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
 
-	if self.is_dead {
+	if self.respawn_invulnerability_cooldown_timer.is_applied {
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255);
+		return;
+	}
+
+	if self.liveness != None{
 		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0);
 	} else {
 		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
@@ -969,7 +1010,7 @@ def world_tick(self, dt) {
 	}
 
 
-	if self.player.is_dead {
+	if self.player.liveness != None {
 		return;
 	}
 
@@ -1024,7 +1065,7 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 
 def _world_pick_crate_kind_to_spawn(x, y) {
 	if random_float() < 0.5 {
-		return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
+		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
 	}
 
 	return crate_new(x, y);
@@ -1416,7 +1457,7 @@ def main() {
 		RlDrawText("Score: " + world.score, 10, 10, 40, 255,0,0);
 
 
-		if world.player.is_dead {
+		if world.player.liveness == global(PLAYER_LIVENESS_DEAD){
 			RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
 			RlDrawText("(press enter to restart)" , 300, 350, 20, 255,0,0);
 		}
