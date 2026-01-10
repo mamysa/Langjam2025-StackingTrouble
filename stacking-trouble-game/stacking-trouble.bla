@@ -25,6 +25,8 @@ global PLAYER_HEIGHT = 2
 
 global PUSHING_DISTANCE = 0.05
 
+global PICK_UP_CRATE_DESPAWN_AFTER = 16
+
 global SCORE_PER_CRATE_DESTROYED = 1
 
 # if player tries to move during this cooldown, input is not applied.
@@ -262,18 +264,17 @@ def player_new(x, y) {
 	player.respawn_invulnerability_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN) + 2);
 	player.is_pushing = False;
 	player.liveness = None; # none if player is alive and okay.
-	player.lives = 3; # number of lives the player has
+	player.health = 3; # number of lives the player has
 
 	return player;
 }
 
 
 def _player_lose_life(self) {
-print("PLAYER_LOSE_LIFE");
-	self.lives = max(0, self.lives - 1);
+	self.health = max(0, self.health - 1);
 	self.liveness = global(PLAYER_LIVENESS_DEAD);
 	
-	if self.lives > 0 {
+	if self.health > 0 {
 		self.liveness = global(PLAYER_LIVENESS_INCAPACITATED);
 		timer_arm(self.incapacitation_cooldown_timer);
 		timer_arm(self.respawn_invulnerability_cooldown_timer);
@@ -601,12 +602,22 @@ def crate_new(x, y) {
 	crate.move = &crate_move;
 	crate.get_player_gravity_behavior = &crate_get_player_gravity_behavior;
 	crate.get_y_axis_span = &crate_get_y_axis_span;
+	crate.on_added_to_board = &crate_on_added_to_board;
+	crate.should_despawn = &crate_should_despawn;
 	crate.color = {};
 	crate.color.r = random_int(255);
 	crate.color.g = random_int(100);
 	crate.color.b = random_int(255);
 	crate.tick = &crate_tick;
 	return crate;
+}
+
+def crate_should_despawn(self) {
+	return False;
+}
+
+def crate_on_added_to_board(self) {
+	# no op for regular crates.
 }
 
 def crate_set_position(self, x, y) {
@@ -753,18 +764,39 @@ def pick_up_crate_behavior_double_speed(world) {
 	world_on_double_speed_activated(world);
 }
 
-def pick_up_crate_new(x, y, pick_up_behavior_func) {
-	crate = crate_new(x, y);
-	crate.move = &pick_up_crate_move;
-	crate.draw = &pick_up_crate_draw;
-	crate.get_player_gravity_behavior = &pick_up_crate_get_player_gravity_behavior;
-	crate.pick_up_behavior_func = pick_up_behavior_func;
-	return crate;
+def pick_up_crate_behavior_give_health(world) {
+	world.player.health = min(world.player.health + 1, 3);
 }
 
 
+def pick_up_crate_new(x, y, pick_up_behavior_func) {
+	crate = crate_new(x, y);
+	crate.on_added_to_board = &pick_up_crate_on_added_to_board;
+	crate.move = &pick_up_crate_move;
+	crate.draw = &pick_up_crate_draw;
+	crate.tick = &pick_up_crate_tick;
+	crate.should_despawn = &pick_up_crate_should_despawn;
+	crate.get_player_gravity_behavior = &pick_up_crate_get_player_gravity_behavior;
+	crate.pick_up_behavior_func = pick_up_behavior_func;
+	crate.pick_up_despawn_timer = timer_new(global(PICK_UP_CRATE_DESPAWN_AFTER));
+	return crate;
+}
+
+def pick_up_crate_should_despawn(self) {
+	return not self.pick_up_despawn_timer.is_applied;
+}
+
+def pick_up_crate_on_added_to_board(self) {
+	timer_arm(self.pick_up_despawn_timer);
+}
+
 def pick_up_crate_get_player_gravity_behavior() {
 	return global(CRATE_GRAVITY_BEHAVIOR_PICKUP);
+}
+
+def pick_up_crate_tick(self, dt, world, crate_index) {
+	timer_tick(self.pick_up_despawn_timer, dt);
+	crate_tick(self, dt, world, crate_index);
 }
 
 
@@ -866,11 +898,11 @@ def crane_tick(self, dt, world) {
 		self.current_goal_x = crate_get_offboard_destination(self.horizontal_movement_kind);
 
 		world_append_crate(world, crate.previous_goal_x, crate);
+		crate.on_added_to_board(crate);
 	}
 }
 
 def crane_draw(self) {
-
 	if self.crate != None {
 		self.crate.draw(self.crate);
 	}
@@ -883,8 +915,6 @@ def crane_draw(self) {
 	height = 32; 
 
 	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255);
-
-
 }
 
 
@@ -1000,12 +1030,17 @@ def world_tick(self, dt) {
 	x = 0;
 	while x < len(self.columns) {
 		column = self.columns[x];
+		new_column = [];
 		y = 0;
 		while y < len(column) {
 			crate = column[y];
 			crate.tick(crate, dt, self, y);
+			if not crate.should_despawn(crate) {
+				new_column = new_column + crate;
+			}
 			y = y + 1;
 		}
+		self.columns[x] = new_column;
 		x = x + 1;
 	}
 
@@ -1066,6 +1101,7 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 def _world_pick_crate_kind_to_spawn(x, y) {
 	if random_float() < 0.5 {
 		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
+		return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health);
 	}
 
 	return crate_new(x, y);
@@ -1455,6 +1491,7 @@ def main() {
 		RlEndMode2D();
 
 		RlDrawText("Score: " + world.score, 10, 10, 40, 255,0,0);
+		RlDrawText("Healh: " + world.player.health, 300, 10, 40, 255,0,0);
 
 
 		if world.player.liveness == global(PLAYER_LIVENESS_DEAD){
