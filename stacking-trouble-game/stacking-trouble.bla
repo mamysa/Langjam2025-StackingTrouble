@@ -26,6 +26,9 @@ global PLAYER_HEIGHT = 2
 global PUSHING_DISTANCE = 0.05
 
 global PICK_UP_CRATE_DESPAWN_AFTER = 16
+global EXPLODER_CRATE_EXPLODE_AFTER = 5 
+
+global EXPLODER_CRATE_EXPLOSION_RADIUS = 2
 
 global SCORE_PER_CRATE_DESTROYED = 1
 
@@ -216,6 +219,9 @@ def intervals_overlap(a, b) {
 	return not ((b.min > a.min and b.min > a.max) or (a.min > b.max and a.max > b.max));
 }
 
+def interval_contains_point(interval, a) {
+	return interval.min <= a and a <= interval.max;
+}
 
 def crate_get_offboard_destination(hmv) {
 	if hmv ==  global(HORIZONTAL_MOVEMENT_LEFT) {
@@ -318,6 +324,7 @@ def player_check_death_condition(self, world) {
 					crate.pick_up_behavior_func(world);
 				}
 			}
+			# TODO since we will be playing exploding animation, we should change state of the crate to EXPLODING + arm the explosion duration timer.
 			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
 		}
 		c = c + 1;
@@ -596,12 +603,15 @@ def crate_new(x, y) {
 	crate.previous_goal_x = x; 
 	crate.current_goal_x = None;
 	crate.horizontal_movement_kind = None;
+	crate.has_exploded = False;
 
 	crate.set_position = &crate_set_position;
 	crate.draw = &crate_draw;
 	crate.move = &crate_move;
 	crate.get_player_gravity_behavior = &crate_get_player_gravity_behavior;
 	crate.get_y_axis_span = &crate_get_y_axis_span;
+	crate.get_center = &crate_get_center;
+	crate.explode = &crate_explode;
 	crate.on_added_to_board = &crate_on_added_to_board;
 	crate.should_despawn = &crate_should_despawn;
 	crate.color = {};
@@ -613,7 +623,7 @@ def crate_new(x, y) {
 }
 
 def crate_should_despawn(self) {
-	return False;
+	return self.has_exploded;
 }
 
 def crate_on_added_to_board(self) {
@@ -679,6 +689,15 @@ def crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 	return True;
 }
 
+def crate_explode(self) {
+	if self.has_exploded {
+		# do not retrigger explosion.
+		return;
+	}
+
+	self.has_exploded = True;
+}
+
 def crate_tick(self, dt, world, crate_index) {
 	crate_tick_vertical_movement(self, dt, world, crate_index);
 }
@@ -742,6 +761,12 @@ def crate_tick_horizontal_movement(self, dt, world) {
 	}
 }
 
+def crate_get_center(self) {
+	vec = {};
+	vec.x = self.x + 0.5;
+	vec.y = self.y + 0.5;
+	return vec;
+}
 
 # computes minY, maxY of the crate on the board and returns Interval instance.
 def crate_get_y_axis_span(self) {
@@ -749,7 +774,6 @@ def crate_get_y_axis_span(self) {
 	y_end = self.y + global(CRATE_HEIGHT);
 	return interval_new(y_start, y_end);
 }
-
 
 # gets scaled extent of the box. This one is used when the box is moved. 
 def crate_get_y_span_scaled(self) {
@@ -767,7 +791,6 @@ def pick_up_crate_behavior_double_speed(world) {
 def pick_up_crate_behavior_give_health(world) {
 	world.player.health = min(world.player.health + 1, 3);
 }
-
 
 def pick_up_crate_new(x, y, pick_up_behavior_func) {
 	crate = crate_new(x, y);
@@ -827,6 +850,46 @@ def pick_up_crate_draw(self) {
 	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
 }
 
+# EXPLODER CRATE
+def exploder_crate_new(x, y) {
+	crate = crate_new(x, y);
+	crate.on_added_to_board = &exploder_crate_on_added_to_board;
+	crate.draw = &exploder_crate_draw;
+	crate.tick = &exploder_crate_tick;
+
+	crate.exploder_timer = timer_new(global(EXPLODER_CRATE_EXPLODE_AFTER));
+	return crate;
+}
+
+def exploder_crate_on_added_to_board(self) {
+	timer_arm(self.exploder_timer);
+}
+
+def exploder_crate_draw(self) {
+	# should probably extract this coordinates computation to a function. TODO
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+	cellStartX = global(CELL_SIZE) *  self.x;
+	cellStartY = board_height - (global(CELL_SIZE) * self.y);
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 255);
+}
+
+def exploder_crate_tick(self, dt, world, crate_index) {
+	timer_tick(self.exploder_timer, dt);
+	if not self.exploder_timer.is_applied and not self.has_exploded {
+		print("Exploder crate exploded! boom!");
+		
+		r = global(EXPLODER_CRATE_EXPLOSION_RADIUS);
+		x_span = interval_new(self.x - r, self.x + r);
+		y_span = interval_new(self.y - r, self.y + r);
+
+		self.explode(self);
+		world_explode_all_in_bounding_box(world, x_span, y_span);
+		#self.explode(self);
+	}
+
+	crate_tick(self, dt, world, crate_index);
+}
+
 
 # CRANE  
 def crane_new(x, y, goal_x, horizontal_movement_kind, crate) {
@@ -867,7 +930,6 @@ def crane_tick(self, dt, world) {
 			return False;
 		}
 
-		# do 
 		if self.crate == None {
 			return False;
 		}
@@ -1067,15 +1129,15 @@ def world_tick(self, dt) {
 		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.001;
 	}
 
-	#if self.score >=72 {
-	#self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
-	#initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
-	#}
+	if self.score >=72 {
+	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
+	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
+	}
 
-	#if self.score > 96 {
-	#	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
-	#	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
-	#}
+	if self.score > 96 {
+		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
+		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
+	}
 
 	crate_spawn_chance = random_float();
 	if not self.crate_spawn_timer.is_applied or crate_spawn_chance < initial_crate_spawn_chance {
@@ -1099,9 +1161,10 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 }
 
 def _world_pick_crate_kind_to_spawn(x, y) {
-	if random_float() < 0.5 {
+	if random_float() < 0.05 {
 		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
-		return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health);
+		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health);
+		return exploder_crate_new(x, y);
 	}
 
 	return crate_new(x, y);
@@ -1377,6 +1440,31 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 	ret.crate_y = lowest;
 	ret.crate = lowest_crate;
 	return ret;
+}
+
+def world_explode_all_in_bounding_box(self, x_span, y_span) {
+	xmin = max(floor(x_span.min), 0);
+	xmax = min(ceil(x_span.max), global(BOARD_CELLS_ALONG_X) - 1);
+	print("Exploding stuff in columns " + xmin + " " + xmax);
+
+	x = xmin;
+	while x <= xmax {
+		column = self.columns[x];
+
+		y = 0;
+		while y < len(column) {
+			crate = column[y];
+			crate_center = crate.get_center(crate);
+			print("Interval " + y_span + " " + crate_center.y);
+			if interval_contains_point(y_span, crate_center.y) {
+				crate.explode(crate);
+			}
+
+			y = y + 1;
+		}
+
+		x = x + 1;
+	}
 }
 
 def world_remove_crate(self, column_index, crate_index) {
