@@ -379,6 +379,8 @@ func (visitor *CodegenVisitor) visitBinaryExpression(expr BinaryExpr) {
 		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Gt})
 	case BinOp_GrEq:
 		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.GrEq})
+	case BinOp_LtEq:
+		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.LtEq})
 	case BinOp_EqEq:
 		visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Eq})
 	case BinOp_NotEq:

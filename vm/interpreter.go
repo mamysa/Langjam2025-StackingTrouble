@@ -54,6 +54,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.gt()
 			case GrEq:
 				interpreter.grEq()
+			case LtEq:
+				interpreter.ltEq()
 			case Add:
 				interpreter.add()
 			case Sub:
@@ -587,6 +589,26 @@ func (interpreter *Interpreter) grEq() {
 	}
 
 	result := v1.Int() >= v2.Int()
+	interpreter.evaluationStack.pushBool(result)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) ltEq() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+
+	if !(v1.IsNumeric() && v2.IsNumeric()) {
+		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	}
+
+	if v1.IsFloat() || v2.IsFloat() {
+		result := v1.Float() <= v2.Float()
+		interpreter.evaluationStack.pushBool(result)
+		interpreter.programCounter++
+		return
+	}
+
+	result := v1.Int() <= v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }

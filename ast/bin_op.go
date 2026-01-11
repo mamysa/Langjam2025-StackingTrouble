@@ -12,6 +12,7 @@ const (
 	BinOp_Lt    BinOp = "<"
 	BinOp_Gt    BinOp = ">"
 	BinOp_GrEq  BinOp = ">="
+	BinOp_LtEq  BinOp = "<="
 	BinOp_EqEq  BinOp = "=="
 	BinOp_NotEq BinOp = "!="
 	BinOp_Or    BinOp = "or"

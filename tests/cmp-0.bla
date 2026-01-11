@@ -5,6 +5,7 @@ def main() {
 	_ = eq_None();
 	_ = eq_True();
 	_ = notequal_True();
+	lteq();
 
 
 }
@@ -89,4 +90,11 @@ def notequal_True() {
 
 	#? STDOUT True 
 	print([] != True);
+}
+
+#? STDOUT True
+#? STDOUT False 
+def lteq() {
+	print(4 <= 5);
+	print(5 <= 4);
 }

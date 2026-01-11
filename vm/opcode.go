@@ -11,6 +11,7 @@ const (
 	Lt                  // less than
 	Gt                  // greater than
 	GrEq                // greater equal
+	LtEq                // less than equal
 	Add
 	Sub
 	Mul
@@ -74,6 +75,8 @@ func (o OpCode_NoArgs) String() string {
 		return "Gt"
 	case GrEq:
 		return "GrEq"
+	case LtEq:
+		return "LtEq"
 	case Add:
 		return "Add"
 	case Sub:
@@ -140,12 +143,16 @@ func (o OpCode_NoArgs) String() string {
 		return "CastFloat"
 	case RandomInt:
 		return "RandomInt"
+	case Floor:
+		return "Floor"
+	case Ceil:
+		return "Ceil"
 	case RandomFloat:
 		return "RandomFloat"
 	case RlIsKeyReleased:
 		return "RlIsKeyReleased"
 	default:
-		panic(fmt.Errorf("Unknown opcode %d", o))
+		return fmt.Sprintf("Unknown opcode %d", o)
 	}
 
 }

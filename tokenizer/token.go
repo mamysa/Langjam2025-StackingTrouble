@@ -15,6 +15,7 @@ const (
 	Token_Lt       TokenKind = "<"
 	Token_Gt       TokenKind = ">"
 	Token_GrEq     TokenKind = ">="
+	Token_LtEq     TokenKind = "<="
 	Token_EqEq     TokenKind = "=="
 	Token_NotEq    TokenKind = "!="
 	Token_Plus     TokenKind = "+"
@@ -86,6 +87,7 @@ var operators = map[string]TokenKind{
 	"==": Token_EqEq,
 	"!=": Token_NotEq,
 	">=": Token_GrEq,
+	"<=": Token_LtEq,
 }
 
 var braces = map[string]TokenKind{
