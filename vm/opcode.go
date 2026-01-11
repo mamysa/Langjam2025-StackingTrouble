@@ -55,7 +55,8 @@ const (
 	GetTime     // returns time since epoch in millisenonds
 	RandomInt   // returns random int in range 0 <= supplied int
 	RandomFloat //  returns random float in [0, 1)
-
+	Floor       // floors a number.
+	Ceil
 )
 
 func (o OpCode_NoArgs) String() string {

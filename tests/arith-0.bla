@@ -5,6 +5,11 @@ def main() {
 	_ = arith_long_add();
 	_ = arith_mul_precedence();
 	_ = arith_float_conversion();
+	arith_floor_int();
+	arith_floor_float();
+
+	arith_ceil_int();
+	arith_ceil_float();
 }
 
 
@@ -43,3 +48,32 @@ def arith_float_conversion(){
 	b = 2.4;
 	print(a + b);
 }
+
+#? STDOUT 1
+#? STDOUT -1
+def arith_floor_int() {
+	print(floor(1));
+	print(floor(-1));
+}
+
+#? STDOUT 2
+#? STDOUT -3
+def arith_floor_float() {
+	print(floor(2.4));
+	print(floor(-2.4));
+}
+
+#? STDOUT 1
+#? STDOUT -1
+def arith_ceil_int() {
+	print(ceil(1));
+	print(ceil(-1));
+}
+
+#? STDOUT 3
+#? STDOUT -2
+def arith_ceil_float() {
+	print(ceil(2.4));
+	print(ceil(-2.4));
+}
+

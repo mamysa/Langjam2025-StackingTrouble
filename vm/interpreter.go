@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -133,6 +134,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.randomInt()
 			case RandomFloat:
 				interpreter.randomFloat()
+			case Floor:
+				interpreter.floor()
+			case Ceil:
+				interpreter.ceil()
 			default:
 				panic(fmt.Errorf("Unhandled %+v", simple))
 			}
@@ -1031,6 +1036,56 @@ func (interpreter *Interpreter) castFloat() {
 	interpreter.programCounter++
 }
 
+func (interpreter *Interpreter) floor() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("floor: invalid number of arguments")
+	}
+
+	value := interpreter.evaluationStack.pop()
+
+	fl, err := float64FromNumeric(value)
+	if err != nil {
+		panic(fmt.Errorf("floor: %+v, call stack: %+v ", err, interpreter.callStack.Dump()))
+	}
+
+	if value.IsInt() {
+		// already int
+		interpreter.evaluationStack.pushValue(value)
+		interpreter.programCounter++
+		return
+	}
+
+	floored := int64(math.Floor(fl))
+	interpreter.evaluationStack.pushInt(floored)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) ceil() {
+	argCount := interpreter.evaluationStack.pop().(IntValue)
+	if argCount.value != 1 {
+		panic("ceil: invalid number of arguments")
+	}
+
+	value := interpreter.evaluationStack.pop()
+
+	fl, err := float64FromNumeric(value)
+	if err != nil {
+		panic(fmt.Errorf("ceil: %+v, call stack: %+v ", err, interpreter.callStack.Dump()))
+	}
+
+	if value.IsInt() {
+		// already int
+		interpreter.evaluationStack.pushValue(value)
+		interpreter.programCounter++
+		return
+	}
+
+	ceil := int64(math.Ceil(fl))
+	interpreter.evaluationStack.pushInt(ceil)
+	interpreter.programCounter++
+}
+
 func (interpreter *Interpreter) randomInt() {
 	argCount := interpreter.evaluationStack.pop().(IntValue)
 	if argCount.value != 1 {
@@ -1205,6 +1260,18 @@ func float32FromNumeric(v Value) (float32, error) {
 	}
 
 	return float32(v.(FloatValue).value), nil
+}
+
+func float64FromNumeric(v Value) (float64, error) {
+	if !v.IsNumeric() {
+		return 0.0, fmt.Errorf("float64FromNumeric: value %+v is not numeric", v)
+	}
+
+	if v.IsInt() {
+		return float64(v.(IntValue).value), nil
+	}
+
+	return float64(v.(FloatValue).value), nil
 }
 
 func int32FromNumeric(v Value) (int32, error) {
