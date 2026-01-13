@@ -164,19 +164,6 @@ def list_insert_after_index(a, index, elem) {
 	return new_list;
 }
 
-# pops first element of the list and returns a new list. 
-def list_pop_front(l) {
-	lst = [];
-
-	i = 1;
-	while i < len(l) {
-		lst = lst + l[i];
-		i = i + 1;
-	}
-
-	return lst;
-}
-
 # Timer. To be used for to prevent user from applying too many move/jump commands. 
 def timer_new(default_duration) {
  	timer = {};
@@ -318,14 +305,14 @@ def player_check_death_condition(self, world) {
 						world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
 					}
 				}
+				crate.explode(crate);
 			} else {
 			# TODO if player is dead/respawning, this should have no effect.
 				if crate != None {
 					crate.pick_up_behavior_func(world);
+					crate.on_picked_up(crate);
 				}
 			}
-			# TODO since we will be playing exploding animation, we should change state of the crate to EXPLODING + arm the explosion duration timer.
-			world_remove_crate(world, crate_info.column_index, crate_info.crate_index);
 		}
 		c = c + 1;
 	}
@@ -548,8 +535,8 @@ def player_tick_vertical_movement(self, dt, world) {
 
 
 			if ground_info.crate != None and ground_info.crate.get_player_gravity_behavior() == global(CRATE_GRAVITY_BEHAVIOR_PICKUP) {
-				world_remove_crate(world, ground_info.column_index, ground_info.crate_index);
 				ground_info.crate.pick_up_behavior_func(world);
+				ground_info.crate.on_picked_up(ground_info.crate);
 			}
 		}
 	}
@@ -699,6 +686,11 @@ def crate_explode(self) {
 }
 
 def crate_tick(self, dt, world, crate_index) {
+	if self == world.pushed_crate {
+		crate_tick_horizontal_movement(self, dt, world);
+		return;
+	}
+
 	crate_tick_vertical_movement(self, dt, world, crate_index);
 }
 
@@ -708,28 +700,7 @@ def crate_tick(self, dt, world, crate_index) {
 # TODO refactor to compare objects and lists by reference.
 def crate_tick_vertical_movement(self, dt, world, crate_index) {
 	crate_column_index = self.previous_goal_x;
-	column = world.columns[crate_column_index];
-
-	assert(crate_index >= 0);
-
-	target_y = 0.0;
-	if crate_index > 0 {
-		previous_crate = column[crate_index-1];
-		target_y = previous_crate.y + 1.0;
-	}
-
-	# need to take pushed crate into account
-	pushed_crate = world.pushed_crate;
-	if pushed_crate != None {
-		if pushed_crate.previous_goal_x == self.previous_goal_x or pushed_crate.current_goal_x == self.previous_goal_x {
-			pushed_crate_top = pushed_crate.y + global(CRATE_HEIGHT);
-			#adjust target of any colliding box from above so that it stacks on top of the box that is being pushed
-			# This ensures that if either self-crate is above or overlapping the pushed_box, we treat the pushed box as a ground.
-			if pushed_crate_top < self.y or pushed_crate_top < self.y+global(CRATE_HEIGHT) {
-				target_y = max(target_y, pushed_crate_top);
-			}
-		}
-	}
+	target_y = world_get_floor_level(world, crate_column_index, crate_index);
 
 	self.y = self.y - global(VELOCITY) * dt;
 	if self.y < target_y {
@@ -799,14 +770,25 @@ def pick_up_crate_new(x, y, pick_up_behavior_func) {
 	crate.draw = &pick_up_crate_draw;
 	crate.tick = &pick_up_crate_tick;
 	crate.should_despawn = &pick_up_crate_should_despawn;
+	crate.on_picked_up = &pick_up_crate_on_picked_up;
+
 	crate.get_player_gravity_behavior = &pick_up_crate_get_player_gravity_behavior;
 	crate.pick_up_behavior_func = pick_up_behavior_func;
 	crate.pick_up_despawn_timer = timer_new(global(PICK_UP_CRATE_DESPAWN_AFTER));
+	crate.picked_up = False;
 	return crate;
 }
 
 def pick_up_crate_should_despawn(self) {
-	return not self.pick_up_despawn_timer.is_applied;
+	return not self.pick_up_despawn_timer.is_applied or crate_should_despawn(self) or self.picked_up;
+}
+
+def pick_up_crate_on_picked_up(self) {
+	if self.picked_up {
+		return;
+	}
+
+	self.picked_up = True;
 }
 
 def pick_up_crate_on_added_to_board(self) {
@@ -835,9 +817,7 @@ def pick_up_crate_move(self, desired_horizontal_movement_kind, world, row_index)
 		return False;
 	}
 
-
-	world.columns[self.previous_goal_x] = list_remove_at_index(world.columns[self.previous_goal_x], row_index);
-
+	pick_up_crate_on_picked_up(self);
 	self.pick_up_behavior_func(world);
 
 	return False;	
@@ -1042,7 +1022,9 @@ def world_try_destroy_bottom_row(self) {
 	# looking good, can remove row
 	x = 0;
 	while x < len(self.columns) {
-		self.columns[x] = list_pop_front(self.columns[x]);
+		column = self.columns[x];
+		crate = column[0];
+		crate.explode(crate);
 		x = x + 1;
 	}
 
@@ -1084,7 +1066,13 @@ def world_tick(self, dt) {
 	self.player.tick(self.player, dt, self);
 
 	if self.pushed_crate != None {
-		crate_tick_horizontal_movement(self.pushed_crate, dt, self);
+		if self.pushed_crate.should_despawn(self.pushed_crate) {
+			self.pushed_crate = None;
+		}
+	}
+
+	if self.pushed_crate != None {
+		self.pushed_crate.tick(self.pushed_crate, dt, self, -1);
 	}
 
 
@@ -1442,6 +1430,37 @@ def world_get_lowest_in_column_after(self, after_y, column_index) {
 	return ret;
 }
 
+# get floor level for crate in column x at index crate_index.
+# This takes pushed crate into account.
+def world_get_floor_level(self, x, crate_index)  {
+	assert(crate_index >= 0);
+	column = self.columns[x];
+	this_crate = column[crate_index];
+
+	target_y = 0.0;
+	if crate_index > 0 {
+		previous_crate = column[crate_index-1];
+		target_y = previous_crate.y + global(CRATE_HEIGHT);
+	}
+
+	# need to take pushed crate into account
+	pushed_crate = self.pushed_crate;
+	if pushed_crate == None {
+		return target_y;
+	}
+
+	if pushed_crate.previous_goal_x == x or pushed_crate.current_goal_x == x {
+		# TODO this crate_top thing should be extracted into its own function.
+		# (although we don't really change crate size ever.)
+		pushed_crate_top = pushed_crate.y + global(CRATE_HEIGHT); 
+		if pushed_crate_top < this_crate.y or pushed_crate_top < this_crate.y+global(CRATE_HEIGHT) {
+			target_y = max(target_y, pushed_crate_top);
+		}
+	}
+
+	return target_y;
+}
+
 def world_explode_all_in_bounding_box(self, x_span, y_span) {
 	xmin = max(floor(x_span.min), 0);
 	xmax = min(ceil(x_span.max), global(BOARD_CELLS_ALONG_X) - 1);
@@ -1465,10 +1484,6 @@ def world_explode_all_in_bounding_box(self, x_span, y_span) {
 
 		x = x + 1;
 	}
-}
-
-def world_remove_crate(self, column_index, crate_index) {
-	self.columns[column_index] = list_remove_at_index(self.columns[column_index], crate_index);
 }
 
 def world_append_crate(self, column_index, crate) {
