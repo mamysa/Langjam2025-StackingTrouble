@@ -301,89 +301,44 @@ func (interpreter *Interpreter) callVirtual() {
 func (interpreter *Interpreter) add() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	//  copy the list and append
-	if v1.IsList() {
-		originalList := v1.(ListValue)
-		newList := originalList.AddValue(v2)
-		interpreter.evaluationStack.pushValue(newList)
-		interpreter.programCounter++
-		return
+	v, err := applyAdd(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsString() {
-		x := fmt.Sprintf("%s%s", v1.String(), v2.String())
-		interpreter.evaluationStack.pushString(x)
-		interpreter.programCounter++
-		return
-	}
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("add: incompatible addition of %+v and %+v", v1, v2))
-	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() + v2.Float()
-		interpreter.evaluationStack.pushFloat(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() + v2.Int()
-	interpreter.evaluationStack.pushInt(result)
+	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) sub() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("sub: incompatible subtraction of %+v and %+v", v1, v2))
+	v, err := applySub(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() - v2.Float()
-		interpreter.evaluationStack.pushFloat(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() - v2.Int()
-	interpreter.evaluationStack.pushInt(result)
+	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) mul() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("mul: incompatible multiplication of %+v and %+v", v1, v2))
+	v, err := applyMul(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() * v2.Float()
-		interpreter.evaluationStack.pushFloat(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() * v2.Int()
-	interpreter.evaluationStack.pushInt(result)
+	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) div() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("div: incompatible division of %+v and %+v", v1, v2))
+	v, err := applyDiv(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	result := v1.Float() / v2.Float()
-	interpreter.evaluationStack.pushFloat(result)
+	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
 }
 
@@ -422,56 +377,7 @@ func (interpreter *Interpreter) not() {
 func (interpreter *Interpreter) eq() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	// ok this is really stupid. Should be refactored somehow.
-	if v1.IsNone() || v2.IsNone() {
-		if v1.IsNone() && v2.IsNone() {
-			interpreter.evaluationStack.pushBool(true)
-			interpreter.programCounter++
-			return
-		}
-
-		interpreter.evaluationStack.pushBool(false)
-		interpreter.programCounter++
-		return
-	}
-
-	if v1.IsBool() || v2.IsBool() {
-		if v1.IsNone() || v2.IsNone() {
-			interpreter.evaluationStack.pushBool(false)
-			interpreter.programCounter++
-			return
-		}
-
-		value := v1.Truthy() == v2.Truthy()
-		interpreter.evaluationStack.pushBool(value)
-		interpreter.programCounter++
-		return
-	}
-
-	// pointer comparison for objects.
-	if v1.IsObject() && v2.IsObject() {
-		a := v1.(ObjectValue)
-		b := v2.(ObjectValue)
-
-		result := a.Object == b.Object
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
-	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() == v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() == v2.Int()
+	result := applyEq(v1, v2)
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -479,56 +385,7 @@ func (interpreter *Interpreter) eq() {
 func (interpreter *Interpreter) notEq() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if v1.IsBool() || v2.IsBool() {
-		if v1.IsNone() || v2.IsNone() {
-			interpreter.evaluationStack.pushBool(true)
-			interpreter.programCounter++
-			return
-		}
-
-		value := v1.Truthy() != v2.Truthy()
-		interpreter.evaluationStack.pushBool(value)
-		interpreter.programCounter++
-		return
-	}
-
-	// ok this is really stupid. Should be optimized somehow.
-	if v1.IsNone() || v2.IsNone() {
-		if v1.IsNone() && v2.IsNone() {
-			interpreter.evaluationStack.pushBool(false)
-			interpreter.programCounter++
-			return
-		}
-
-		interpreter.evaluationStack.pushBool(true)
-		interpreter.programCounter++
-		return
-	}
-
-	// pointer comparison for objects.
-	if v1.IsObject() && v2.IsObject() {
-		a := v1.(ObjectValue)
-		b := v2.(ObjectValue)
-
-		result := a.Object != b.Object
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("noteq: incompatible comparison of %+v and %+v", v1, v2))
-	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() != v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() != v2.Int()
+	result := applyNeq(v1, v2)
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -536,19 +393,10 @@ func (interpreter *Interpreter) notEq() {
 func (interpreter *Interpreter) lt() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	result, err := applyLt(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() < v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() < v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -556,19 +404,10 @@ func (interpreter *Interpreter) lt() {
 func (interpreter *Interpreter) gt() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	result, err := applyGt(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() > v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() > v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -576,19 +415,10 @@ func (interpreter *Interpreter) gt() {
 func (interpreter *Interpreter) grEq() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	result, err := applyGtEq(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() >= v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() >= v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -596,19 +426,10 @@ func (interpreter *Interpreter) grEq() {
 func (interpreter *Interpreter) ltEq() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
-
-	if !(v1.IsNumeric() && v2.IsNumeric()) {
-		panic(fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2))
+	result, err := applyLtEq(v1, v2)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v1.IsFloat() || v2.IsFloat() {
-		result := v1.Float() <= v2.Float()
-		interpreter.evaluationStack.pushBool(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := v1.Int() <= v2.Int()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }

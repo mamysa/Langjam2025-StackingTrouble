@@ -1,0 +1,72 @@
+def main() {
+	lists_cmp();
+	lists_nested_cmp();
+	lists_nested_neq();
+}
+
+
+def lists_cmp() {
+	 a = [];
+	 b = [];
+
+	 a = a + 1;
+	 a = a + 2.5;
+
+	 b = b + 1;
+	 b = b + 2.5;
+	
+	#? STDOUT True
+	print(a == b);
+
+	#? STDOUT False 
+	print(a != b);
+}
+
+def lists_nested_cmp() {
+	 a = [];
+	 b = [];
+
+	 a_nested = [];
+	 a_nested = a_nested + 1337;
+	 a_nested = a_nested + 1338;
+
+	 a = a + 1;
+	 a = a + a_nested;
+
+
+	 b_nested = [];
+	 b_nested = b_nested + 1337;
+	 b_nested = b_nested + 1338;
+
+	 b = b + 1;
+	 b = b + b_nested;
+
+	#? STDOUT True
+	 print(a == b);
+}
+
+def lists_nested_neq() {
+	 a = [];
+	 b = [];
+
+	 a_nested = [];
+	 a_nested = a_nested + 1337;
+	 a_nested = a_nested + 1338;
+
+	 a = a + 1;
+	 a = a + a_nested;
+
+
+	 b_nested = [];
+	 b_nested = b_nested + 1337;
+	 b_nested = b_nested + 1339;
+
+	 b = b + 1;
+	 b = b + b_nested;
+
+	#? STDOUT False 
+	 print(a == b);
+
+	#? STDOUT True 
+	 print(a != b);
+}

@@ -12,12 +12,18 @@ const (
 	Value_None ValueKind = iota
 	Value_Bool
 	Value_Int
+	Value_Float
 	Value_FunctionAddress
+	Value_String
+	Value_List
+	Value_Object
+	Value_Texture
 )
 
 // represents value on the stack.
 type Value interface {
 	IsList() bool
+	kind() ValueKind
 	IsObject() bool
 	IsNumeric() bool
 	IsInt() bool
@@ -44,6 +50,10 @@ func NewInt(i int64) IntValue {
 	}
 }
 
+func (v IntValue) kind() ValueKind {
+	return Value_Int
+}
+
 func (value IntValue) Int() int64 {
 	return value.value
 }
@@ -54,6 +64,10 @@ func (value IntValue) Float() float64 {
 
 func (value IntValue) IsNumeric() bool {
 	return true
+}
+
+func (v IntValue) toFloat64() float64 {
+	return float64(v.value)
 }
 
 func (value IntValue) IsInt() bool {
@@ -111,6 +125,14 @@ func NewFloatValue(value float64) FloatValue {
 	return FloatValue{
 		value: value,
 	}
+}
+
+func (v FloatValue) kind() ValueKind {
+	return Value_Float
+}
+
+func (v FloatValue) toInt64() int64 {
+	return int64(v.value)
 }
 
 func (value FloatValue) Int() int64 {
@@ -183,6 +205,10 @@ func NewNone() None {
 	}
 }
 
+func (None) kind() ValueKind {
+	return Value_None
+}
+
 func (value None) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
@@ -253,6 +279,10 @@ type FunctionAddress struct {
 	Offset int
 }
 
+func (FunctionAddress) kind() ValueKind {
+	return Value_FunctionAddress
+}
+
 func (value FunctionAddress) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
@@ -321,6 +351,10 @@ func NewBool(b bool) BoolValue {
 	return BoolValue{
 		value: b,
 	}
+}
+
+func (BoolValue) kind() ValueKind {
+	return Value_Bool
 }
 
 func (value BoolValue) Int() int64 {
@@ -405,6 +439,10 @@ func NewListValue() ListValue {
 	}
 }
 
+func (ListValue) kind() ValueKind {
+	return Value_List
+}
+
 func (value ListValue) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
@@ -438,7 +476,7 @@ func (value ListValue) IsString() bool {
 }
 
 func (value ListValue) Truthy() bool {
-	return false
+	return len(value.array.Array) > 0
 }
 
 func (value ListValue) IsList() bool {
@@ -449,19 +487,10 @@ func (value ListValue) IsObject() bool {
 	return false
 }
 
-// Shallow copy?
+// Copy reference
 func (value ListValue) Copy() Value {
-	arrayCopy := []Value{}
-
-	for i := 0; i < value.array.Length; i++ {
-		arrayCopy = append(arrayCopy, value.array.Array[i])
-	}
-
 	return ListValue{
-		array: &array{
-			Length: value.array.Length,
-			Array:  arrayCopy,
-		},
+		array: value.array,
 	}
 }
 
@@ -469,8 +498,25 @@ func (value ListValue) IsTexture() bool {
 	return false
 }
 
+// Lists are equal if they are of the same length and all elements of the list are pairwise equal.
+func (list ListValue) compare(other ListValue) bool {
+	if len(list.array.Array) != len(other.array.Array) {
+		return false
+	}
+
+	for i := 0; i < len(list.array.Array); i++ {
+		v1 := list.array.Array[i]
+		v2 := other.array.Array[i]
+		if !applyEq(v1, v2) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // creates a new array with value added to it.
-func (list ListValue) AddValue(value Value) ListValue {
+func (list ListValue) append(value Value) ListValue {
 
 	originalLength := list.array.Length
 	originalList := list.array.Array
@@ -541,6 +587,10 @@ func NewObjectValue() ObjectValue {
 	}
 }
 
+func (ObjectValue) kind() ValueKind {
+	return Value_Object
+}
+
 func (value ObjectValue) Int() int64 {
 	panic(fmt.Errorf("Invalid conversion"))
 }
@@ -574,7 +624,7 @@ func (value ObjectValue) IsString() bool {
 }
 
 func (value ObjectValue) Truthy() bool {
-	return false
+	return len(value.Object.object) > 0
 }
 
 func (value ObjectValue) IsList() bool {
@@ -635,7 +685,15 @@ func NewStringValue(s string) StringValue {
 	return StringValue{
 		Str: s,
 	}
+}
 
+func (sv StringValue) concat(v Value) StringValue {
+	s := fmt.Sprintf("%s%s", sv.String(), v.String())
+	return NewStringValue(s)
+}
+
+func (StringValue) kind() ValueKind {
+	return Value_String
 }
 
 func (value StringValue) Int() int64 {
@@ -701,6 +759,10 @@ func (value StringValue) IsTexture() bool {
 
 type TextureValue struct {
 	Texture rl.Texture2D
+}
+
+func (TextureValue) kind() ValueKind {
+	return Value_Texture
 }
 
 func (value TextureValue) Int() int64 {

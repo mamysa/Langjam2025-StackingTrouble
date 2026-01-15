@@ -506,13 +506,6 @@ func (visitor *CodegenVisitor) visitTernaryExpression(expr TernaryExpr) {
 	visitor.addInstruction(vm.NewLabel(elseBranchLabel))
 	expr.ElseExpr.Accept(visitor)
 
-	// slight optimization - we are jumping to the next vm.anyways here.
-	/*
-		visitor.addInstruction(vm.IrBr{
-			Label: endIfLabel,
-		})
-	*/
-
 	// finally add endif label
 	visitor.addInstruction(vm.NewLabel(endIfLabel))
 }

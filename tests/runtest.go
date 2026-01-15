@@ -13,6 +13,7 @@ var TESTS_PASSING []string = []string{
 	"arith-0.bla",
 	"cmp-0.bla",
 	"boolean-short-circuit.bla",
+	"list-cmp.bla",
 	"object-0.bla",
 	"object-cmp.bla",
 	"void-fn-call.bla",
