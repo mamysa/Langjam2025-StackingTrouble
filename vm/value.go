@@ -20,6 +20,32 @@ const (
 	Value_Texture
 )
 
+func (v ValueKind) String() string {
+	switch v {
+	case Value_None:
+		return "None"
+	case Value_Bool:
+		return "Bool"
+	case Value_Int:
+		return "Int"
+	case Value_Float:
+		return "Float"
+	case Value_FunctionAddress:
+		return "FunctionAddress"
+	case Value_String:
+		return "String"
+	case Value_List:
+		return "List"
+	case Value_Object:
+		return "Object"
+	case Value_Texture:
+		return "Texture"
+	default:
+		return "Unknown"
+	}
+
+}
+
 // represents value on the stack.
 type Value interface {
 	IsList() bool

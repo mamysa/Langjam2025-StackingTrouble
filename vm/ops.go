@@ -1,7 +1,5 @@
 package vm
 
-import "fmt"
-
 // None & None => true
 // None & _    => False
 
@@ -195,8 +193,6 @@ func applyNeq(v1, v2 Value) bool {
 
 // TODO relative operators should be injected somehow.
 func applyLt(v1, v2 Value) (bool, error) {
-	incompatibleComparisonError := fmt.Errorf("lt: incompatible comparison of %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -211,7 +207,7 @@ func applyLt(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(Lt, v1, v2)
 				}
 			}
 		}
@@ -228,18 +224,16 @@ func applyLt(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(Lt, v1, v2)
 				}
 			}
 		}
 	default:
-		return false, incompatibleComparisonError
+		return false, newBinaryOperatorError(Lt, v1, v2)
 	}
 }
 
 func applyLtEq(v1, v2 Value) (bool, error) {
-	incompatibleComparisonError := fmt.Errorf("ltEq: incompatible comparison of %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -254,7 +248,7 @@ func applyLtEq(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(LtEq, v1, v2)
 				}
 			}
 		}
@@ -271,18 +265,16 @@ func applyLtEq(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(LtEq, v1, v2)
 				}
 			}
 		}
 	default:
-		return false, incompatibleComparisonError
+		return false, newBinaryOperatorError(LtEq, v1, v2)
 	}
 }
 
 func applyGt(v1, v2 Value) (bool, error) {
-	incompatibleComparisonError := fmt.Errorf("gt: incompatible comparison of %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -297,7 +289,7 @@ func applyGt(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(Gt, v1, v2)
 				}
 			}
 		}
@@ -314,18 +306,16 @@ func applyGt(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(Gt, v1, v2)
 				}
 			}
 		}
 	default:
-		return false, incompatibleComparisonError
+		return false, newBinaryOperatorError(Gt, v1, v2)
 	}
 }
 
 func applyGtEq(v1, v2 Value) (bool, error) {
-	incompatibleComparisonError := fmt.Errorf("gtEq: incompatible comparison of %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -340,7 +330,7 @@ func applyGtEq(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(GrEq, v1, v2)
 				}
 			}
 		}
@@ -357,12 +347,12 @@ func applyGtEq(v1, v2 Value) (bool, error) {
 				}
 			default:
 				{
-					return false, incompatibleComparisonError
+					return false, newBinaryOperatorError(GrEq, v1, v2)
 				}
 			}
 		}
 	default:
-		return false, incompatibleComparisonError
+		return false, newBinaryOperatorError(GrEq, v1, v2)
 	}
 }
 
@@ -380,8 +370,6 @@ func applyGtEq(v1, v2 Value) (bool, error) {
 
 // _ & _ => error
 func applyAdd(v1, v2 Value) (Value, error) {
-	incompatibleAdditionError := fmt.Errorf("add: addition of incompatible %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -396,7 +384,7 @@ func applyAdd(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleAdditionError
+					return nil, newBinaryOperatorError(Add, v1, v2)
 				}
 			}
 		}
@@ -413,7 +401,7 @@ func applyAdd(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleAdditionError
+					return nil, newBinaryOperatorError(Add, v1, v2)
 				}
 			}
 		}
@@ -427,7 +415,7 @@ func applyAdd(v1, v2 Value) (Value, error) {
 		}
 	default:
 		{
-			return nil, incompatibleAdditionError
+			return nil, newBinaryOperatorError(Add, v1, v2)
 		}
 
 	}
@@ -443,8 +431,6 @@ func applyAdd(v1, v2 Value) (Value, error) {
 
 // _ & _ => error
 func applySub(v1, v2 Value) (Value, error) {
-	incompatibleError := fmt.Errorf("sub: subtraction of incompatible %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -459,7 +445,7 @@ func applySub(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Sub, v1, v2)
 				}
 			}
 		}
@@ -476,13 +462,13 @@ func applySub(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Sub, v1, v2)
 				}
 			}
 		}
 	default:
 		{
-			return nil, incompatibleError
+			return nil, newBinaryOperatorError(Sub, v1, v2)
 		}
 	}
 }
@@ -497,8 +483,6 @@ func applySub(v1, v2 Value) (Value, error) {
 
 // _ & _ => error
 func applyMul(v1, v2 Value) (Value, error) {
-	incompatibleError := fmt.Errorf("mul: multiplication of incompatible %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -513,7 +497,7 @@ func applyMul(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Mul, v1, v2)
 				}
 			}
 		}
@@ -530,13 +514,13 @@ func applyMul(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Mul, v1, v2)
 				}
 			}
 		}
 	default:
 		{
-			return nil, incompatibleError
+			return nil, newBinaryOperatorError(Mul, v1, v2)
 		}
 	}
 }
@@ -551,8 +535,6 @@ func applyMul(v1, v2 Value) (Value, error) {
 
 // _ & _ => error
 func applyDiv(v1, v2 Value) (Value, error) {
-	incompatibleError := fmt.Errorf("div: division of incompatible %+v and %+v", v1, v2)
-
 	switch v1.kind() {
 	case Value_Int:
 		{
@@ -567,7 +549,7 @@ func applyDiv(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Div, v1, v2)
 				}
 			}
 		}
@@ -584,13 +566,47 @@ func applyDiv(v1, v2 Value) (Value, error) {
 				}
 			default:
 				{
-					return nil, incompatibleError
+					return nil, newBinaryOperatorError(Div, v1, v2)
 				}
 			}
 		}
 	default:
 		{
-			return nil, incompatibleError
+			return nil, newBinaryOperatorError(Div, v1, v2)
+		}
+	}
+}
+
+func applyNeg(v Value) (Value, error) {
+	switch v.kind() {
+	case Value_Int:
+		{
+			return NewInt(-v.(IntValue).value), nil
+		}
+	case Value_Float:
+		{
+			return NewFloatValue(-v.(FloatValue).value), nil
+		}
+	default:
+		{
+			return nil, newUnaryOperatorError(Neg, v)
+		}
+	}
+}
+
+func applyLen(v Value) (Value, error) {
+	switch v.kind() {
+	case Value_List:
+		{
+			return NewInt(int64(v.(ListValue).array.Length)), nil
+		}
+	case Value_String:
+		{
+			return NewInt(int64(len(v.(StringValue).Str))), nil
+		}
+	default:
+		{
+			return nil, newUnaryOperatorError(Len, v)
 		}
 	}
 }

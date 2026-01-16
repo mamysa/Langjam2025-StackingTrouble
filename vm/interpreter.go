@@ -214,6 +214,7 @@ func (interpreter *Interpreter) Run() {
 		panic("callstack not empty")
 	}
 
+	// Stack top is zero because None is pushed at the end of _start func.
 	if interpreter.evaluationStack.getStackTop() != 0 {
 		panic(fmt.Errorf("Evaluation stack is not empty: %+v, %+v\n", interpreter.evaluationStack.top, interpreter.evaluationStack.stack))
 	}
@@ -344,31 +345,17 @@ func (interpreter *Interpreter) div() {
 
 func (interpreter *Interpreter) neg() {
 	v := interpreter.evaluationStack.pop()
-
-	if !v.IsNumeric() {
-		panic(fmt.Errorf("neg: incompatible negation of %+v", v))
+	vn, err := applyNeg(v)
+	if err != nil {
+		panic(err) // TODO callstack trace.
 	}
-
-	if v.IsFloat() {
-		result := -v.Float()
-		interpreter.evaluationStack.pushFloat(result)
-		interpreter.programCounter++
-		return
-	}
-
-	result := -v.Int()
-	interpreter.evaluationStack.pushInt(result)
+	interpreter.evaluationStack.pushValue(vn)
 	interpreter.programCounter++
 }
 
-// simplify this from what python does, not-operator can only be applied to booleans for now.
+// Not applied to truthy
 func (interpreter *Interpreter) not() {
 	v := interpreter.evaluationStack.pop()
-
-	if !v.IsBool() {
-		panic("not: not operator on non-boolean value")
-	}
-
 	result := !v.Truthy()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
@@ -507,23 +494,16 @@ func (interpreter *Interpreter) newObject() {
 }
 
 func (interpreter *Interpreter) len() {
+	// PERFORMANCE: terrible CPU usage when not inlined?
 	value := interpreter.evaluationStack.pop()
-	if value.IsList() {
-		list := value.(ListValue)
 
-		interpreter.evaluationStack.pushInt(int64(list.array.Length))
-		interpreter.programCounter++
-		return
+	l, err := applyLen(value)
+	if err != nil {
+		panic(err)
 	}
 
-	if value.IsString() {
-		list := value.(StringValue)
-		interpreter.evaluationStack.pushInt(int64(len(list.Str)))
-		interpreter.programCounter++
-		return
-	}
-
-	panic(fmt.Errorf("len: unsupported argument %+v", value))
+	interpreter.evaluationStack.pushValue(l)
+	interpreter.programCounter++
 }
 
 // pops two entries off the stack, topmost being subscript and bottommost being the target.
@@ -533,28 +513,26 @@ func (interpreter *Interpreter) subscriptGet() {
 	subscript := interpreter.evaluationStack.pop()
 	target := interpreter.evaluationStack.pop()
 
-	if target.IsList() {
-		if !subscript.IsInt() {
-			panic("non-integer subscript to list")
-		}
-
-		index := subscript.Int()
-		value := target.(ListValue).GetValue(int(index))
-
-		interpreter.evaluationStack.pushValue(value)
-		interpreter.programCounter++
-
-		return
+	if target.kind() != Value_List {
+		panic("subscriptGet: subscript operator on non-list")
 	}
 
-	panic("subscript operator on non-list")
+	if subscript.kind() != Value_Int {
+		panic("subscriptGet: non-integer subscript to list")
+	}
+
+	index := subscript.Int()
+	value := target.(ListValue).GetValue(int(index))
+
+	interpreter.evaluationStack.pushValue(value)
+	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) objectFieldGet(insn ObjectFieldGet) {
 	target := interpreter.evaluationStack.pop()
 
-	if !target.IsObject() {
-		panic(fmt.Errorf("objectFieldSet: target %+v is not object", target))
+	if target.kind() != Value_Object {
+		panic(fmt.Errorf("objectFieldGet: target %+v is not object", target))
 	}
 
 	value := target.(ObjectValue).GetValue(insn.Field)
@@ -569,20 +547,17 @@ func (interpreter *Interpreter) subscriptSet() {
 	target := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
 
-	if target.IsList() {
-		if !subscript.IsInt() {
-			panic("non-integer subscript to list")
-		}
-
-		index := subscript.Int()
-		target.(ListValue).SetValue(int(index), value)
-
-		interpreter.programCounter++
-
-		return
+	if target.kind() != Value_List {
+		panic("subscriptSet: subscript operator on non-list")
 	}
 
-	panic("subscript operator on non-list")
+	if subscript.kind() != Value_Int {
+		panic("subscriptSet: non-integer subscript to list")
+	}
+
+	index := subscript.Int()
+	target.(ListValue).SetValue(int(index), value)
+	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
