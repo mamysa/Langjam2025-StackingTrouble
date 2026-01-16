@@ -96,6 +96,10 @@ func (v IntValue) toFloat64() float64 {
 	return float64(v.value)
 }
 
+func (v IntValue) toInt32() int32 {
+	return int32(v.value)
+}
+
 func (value IntValue) IsInt() bool {
 	return true
 }

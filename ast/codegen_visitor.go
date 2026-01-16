@@ -554,7 +554,7 @@ func (visitor *CodegenVisitor) visitObjectFieldSetExpression(expr ObjectFieldSet
 }
 
 func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
-	visitor.addInstruction(vm.ReadGlobal{Global: expr.GlobalName})
+	visitor.addInstruction(vm.GetGlobal{Global: expr.GlobalName})
 }
 
 func (visitor *CodegenVisitor) visitCastFloatExpression(expr CastFloat) {

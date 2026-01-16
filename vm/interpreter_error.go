@@ -2,6 +2,30 @@ package vm
 
 import "fmt"
 
+type PrimitiveConversionError struct {
+	where        string
+	v            Value
+	expectedType string
+}
+
+func newPrimitiveConversionError(where string, v Value, expectedType string) PrimitiveConversionError {
+	return PrimitiveConversionError{
+		where:        where,
+		v:            v,
+		expectedType: expectedType,
+	}
+}
+
+func (e PrimitiveConversionError) Error() string {
+	return fmt.Sprintf(
+		"%s: error converting operand %+v of dynamic type %+v to %s",
+		e.where,
+		e.v.String(),
+		e.v.kind().String(),
+		e.expectedType,
+	)
+}
+
 type UnaryOperatorError struct {
 	opcode OpCode_NoArgs
 	v      Value

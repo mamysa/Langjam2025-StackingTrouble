@@ -209,14 +209,14 @@ func (i ObjectFieldSet) String() string {
 	return fmt.Sprintf("ObjectFieldSet FIELD=%s", i.Field)
 }
 
-type ReadGlobal struct {
+type GetGlobal struct {
 	Global string
 }
 
-func (i ReadGlobal) isInstruction() {}
+func (i GetGlobal) isInstruction() {}
 
-func (i ReadGlobal) String() string {
-	return fmt.Sprintf("ReadGlobal GLOBAL=%s", i.Global)
+func (i GetGlobal) String() string {
+	return fmt.Sprintf("GetGlobal GLOBAL=%s", i.Global)
 }
 
 type SetGlobal struct {

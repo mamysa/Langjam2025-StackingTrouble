@@ -201,8 +201,8 @@ func (interpreter *Interpreter) Run() {
 			interpreter.objectFieldSet(fieldSet)
 		}
 
-		if readGlobal, ok := insn.(ReadGlobal); ok {
-			interpreter.readGlobal(readGlobal)
+		if readGlobal, ok := insn.(GetGlobal); ok {
+			interpreter.getGlobal(readGlobal)
 		}
 
 		if setGlobal, ok := insn.(SetGlobal); ok {
@@ -226,12 +226,8 @@ func (interpreter *Interpreter) Run() {
 }
 
 func (interpreter *Interpreter) assertArgCount(insn AssertArgCount) {
-	value := interpreter.evaluationStack.pop()
-
-	intValue := value.Int()
-
-	if int(intValue) != insn.ArgCount {
-		panic(fmt.Errorf("assertArgCount: unexpected function argument count: expected %d, actual %d, PC=%+v", insn.ArgCount, intValue, interpreter.programCounter))
+	if err := unwrapArgCount(insn.ArgCount, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("assertArgCount: %+v", err.Error()))
 	}
 
 	interpreter.programCounter++
@@ -555,7 +551,7 @@ func (interpreter *Interpreter) subscriptSet() {
 		panic("subscriptSet: non-integer subscript to list")
 	}
 
-	index := subscript.Int()
+	index := subscript.(IntValue).value
 	target.(ListValue).SetValue(int(index), value)
 	interpreter.programCounter++
 }
@@ -564,7 +560,7 @@ func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 	target := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
 
-	if !target.IsObject() {
+	if target.kind() != Value_Object {
 		panic(fmt.Errorf("objectFieldSet: target %+v is not object", target))
 	}
 
@@ -576,6 +572,7 @@ func (interpreter *Interpreter) assert() {
 	value := interpreter.evaluationStack.pop()
 	if !value.Truthy() {
 		fmt.Printf("Assertion failed, PC=%d", interpreter.programCounter)
+		// TODO dump call stack
 		os.Exit(1)
 	}
 
@@ -592,7 +589,7 @@ func (interpreter *Interpreter) pushFalse() {
 	interpreter.programCounter++
 }
 
-func (interpreter *Interpreter) readGlobal(insn ReadGlobal) {
+func (interpreter *Interpreter) getGlobal(insn GetGlobal) {
 	gl, ok := interpreter.program.Globals[insn.Global]
 	if !ok {
 		panic(fmt.Errorf("readGlobal: global %+v not present in environment", insn.Global))
@@ -609,15 +606,19 @@ func (interpreter *Interpreter) setGlobal(insn SetGlobal) {
 }
 
 func (interpreter *Interpreter) rlInitWindow() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 2 {
-		panic("rlInitWindow: invalid number of arguments")
+	if err := unwrapArgCount(2, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlInitWindow: %+v", err.Error()))
 	}
 
-	height := interpreter.evaluationStack.pop().(IntValue).value
-	width := interpreter.evaluationStack.pop().(IntValue).value
-	fmt.Println(width)
-	fmt.Println(height)
+	height, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlInitWindow: %+v", err))
+	}
+
+	width, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlInitWindow: %+v", err))
+	}
 
 	rl.InitWindow(int32(width), int32(height), "raylib")
 
@@ -626,9 +627,8 @@ func (interpreter *Interpreter) rlInitWindow() {
 }
 
 func (interpreter *Interpreter) rlCloseWindow() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("rlCloseWindow: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlCloseWindow: %+v", err.Error()))
 	}
 
 	rl.CloseWindow()
@@ -638,9 +638,8 @@ func (interpreter *Interpreter) rlCloseWindow() {
 }
 
 func (interpreter *Interpreter) rlWindowShouldClose() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("rlWindowShouldClose: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlWindowShouldClose: %+v", err.Error()))
 	}
 
 	v := rl.WindowShouldClose()
@@ -650,9 +649,8 @@ func (interpreter *Interpreter) rlWindowShouldClose() {
 }
 
 func (interpreter *Interpreter) rlBeginDrawing() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("rlBeginDrawing: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlBeginDrawing: %+v", err.Error()))
 	}
 
 	rl.BeginDrawing()
@@ -662,9 +660,8 @@ func (interpreter *Interpreter) rlBeginDrawing() {
 }
 
 func (interpreter *Interpreter) rlEndDrawing() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("rlEndDrawing: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlEndDrawing: %+v", err.Error()))
 	}
 
 	rl.EndDrawing()
@@ -674,19 +671,29 @@ func (interpreter *Interpreter) rlEndDrawing() {
 }
 
 func (interpreter *Interpreter) rlClearBackground() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 3 {
-		panic("rlClearBackground: invalid number of arguments")
+	if err := unwrapArgCount(3, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
 	}
 
-	b := interpreter.evaluationStack.pop().(IntValue).value
-	g := interpreter.evaluationStack.pop().(IntValue).value
-	r := interpreter.evaluationStack.pop().(IntValue).value
+	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+	}
+
+	g, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+	}
+
+	r, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+	}
 
 	rl.ClearBackground(color.RGBA{
-		R: uint8(r),
-		G: uint8(g),
-		B: uint8(b),
+		R: r,
+		G: g,
+		B: b,
 		A: 255,
 	})
 
@@ -695,14 +702,17 @@ func (interpreter *Interpreter) rlClearBackground() {
 }
 
 func (interpreter *Interpreter) rlSetTargetFps() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("rlSetTargetFps: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlSetTargetFps: %+v", err.Error()))
 	}
 
-	b := interpreter.evaluationStack.pop().(IntValue).value
+	v := interpreter.evaluationStack.pop()
+	if v.kind() != Value_Int {
+		panic(newPrimitiveConversionError("rlSetTargetFps", v, "int")) // TODO bad error
+	}
 
-	rl.SetTargetFPS(int32(b))
+	fps := v.(IntValue).toInt32()
+	rl.SetTargetFPS(int32(fps))
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
@@ -710,9 +720,8 @@ func (interpreter *Interpreter) rlSetTargetFps() {
 
 // (x, y, width, height, r, g, b)
 func (interpreter *Interpreter) rlDrawRectangle() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 7 {
-		panic("rlDrawRectangle: invalid number of arguments")
+	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlDrawRectangle: %+v", err.Error()))
 	}
 
 	var (
@@ -755,9 +764,8 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 }
 
 func (interpreter *Interpreter) rlDrawTexture() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 3 {
-		panic("rlDrawTexture: invalid number of arguments")
+	if err := unwrapArgCount(3, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlDrawTexture: %+v", err.Error()))
 	}
 
 	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
@@ -789,9 +797,8 @@ func (interpreter *Interpreter) rlDrawTexture() {
 }
 
 func (interpreter *Interpreter) getTime() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("rlDrawRectangle: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("getTime: %+v", err.Error()))
 	}
 
 	t := time.Now().UnixMilli()
@@ -800,9 +807,8 @@ func (interpreter *Interpreter) getTime() {
 }
 
 func (interpreter *Interpreter) rlIsKeyDown() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("rlIsKeyDown: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlIsKeyDown: %+v", err.Error()))
 	}
 
 	key := interpreter.evaluationStack.pop().(IntValue).value
@@ -813,9 +819,8 @@ func (interpreter *Interpreter) rlIsKeyDown() {
 }
 
 func (interpreter *Interpreter) rlIsKeyReleased() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("rlIsKeyReleased: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlIsKeyReleased: %+v", err.Error()))
 	}
 
 	key := interpreter.evaluationStack.pop().(IntValue).value
@@ -855,9 +860,8 @@ func (interpreter *Interpreter) castFloat() {
 }
 
 func (interpreter *Interpreter) floor() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("floor: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("floor: %+v", err.Error()))
 	}
 
 	value := interpreter.evaluationStack.pop()
@@ -880,9 +884,8 @@ func (interpreter *Interpreter) floor() {
 }
 
 func (interpreter *Interpreter) ceil() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("ceil: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("ceil: %+v", err.Error()))
 	}
 
 	value := interpreter.evaluationStack.pop()
@@ -905,9 +908,8 @@ func (interpreter *Interpreter) ceil() {
 }
 
 func (interpreter *Interpreter) randomInt() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("randomInt: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("randomInt: %+v", err.Error()))
 	}
 
 	value := interpreter.evaluationStack.pop()
@@ -927,19 +929,18 @@ func (interpreter *Interpreter) randomInt() {
 }
 
 func (interpreter *Interpreter) randomFloat() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("randomFloat: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("randomFloat: %+v", err.Error()))
 	}
+
 	randomValue := rand.Float64()
 	interpreter.evaluationStack.pushFloat(randomValue)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) rlDrawText() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 7 {
-		panic("rlDrawText: invalid number of arguments")
+	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlDrawText: %+v", err.Error()))
 	}
 
 	var (
@@ -964,9 +965,8 @@ func (interpreter *Interpreter) rlDrawText() {
 }
 
 func (interpreter *Interpreter) beginMode2D() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("beginMode2D: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("beginMode2D: %+v", err.Error()))
 	}
 
 	v := interpreter.evaluationStack.pop()
@@ -1003,9 +1003,8 @@ func (interpreter *Interpreter) beginMode2D() {
 }
 
 func (interpreter *Interpreter) endMode2D() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 0 {
-		panic("beginMode2D: invalid number of arguments")
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("endMode2D: %+v", err.Error()))
 	}
 
 	rl.EndMode2D()
@@ -1015,9 +1014,8 @@ func (interpreter *Interpreter) endMode2D() {
 }
 
 func (interpreter *Interpreter) rlLoadTexture() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("loadTexture: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlLoadTexture: %+v", err.Error()))
 	}
 
 	texturePath := interpreter.evaluationStack.pop().(StringValue)
@@ -1028,9 +1026,8 @@ func (interpreter *Interpreter) rlLoadTexture() {
 }
 
 func (interpreter *Interpreter) rlUnloadTexture() {
-	argCount := interpreter.evaluationStack.pop().(IntValue)
-	if argCount.value != 1 {
-		panic("loadTexture: invalid number of arguments")
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		panic(fmt.Errorf("rlUnloadTexture: %+v", err.Error()))
 	}
 
 	v := interpreter.evaluationStack.pop()
@@ -1092,6 +1089,32 @@ func float64FromNumeric(v Value) (float64, error) {
 	return float64(v.(FloatValue).value), nil
 }
 
+func uint8FromNumeric(v Value) (uint8, error) {
+	switch v.kind() {
+	case Value_Int:
+		{
+			i := v.(IntValue).value
+			if i < 0 || i > 255 {
+				return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
+			}
+			return uint8(i), nil
+		}
+	case Value_Float:
+		{
+			i := int(math.Floor(v.(FloatValue).value))
+			if i < 0 || i > 255 {
+				return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
+			}
+			return uint8(i), nil
+		}
+	default:
+		{
+			return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
+		}
+
+	}
+}
+
 func int32FromNumeric(v Value) (int32, error) {
 	if !v.IsNumeric() {
 		return 0.0, fmt.Errorf("int32FromNumeric: value %+v is not numeric", v)
@@ -1102,4 +1125,17 @@ func int32FromNumeric(v Value) (int32, error) {
 	}
 
 	return int32(v.(FloatValue).value), nil
+}
+
+func unwrapArgCount(expectedArgCount int, v Value) error {
+	if v.kind() != Value_Int {
+		return fmt.Errorf("error unwrapping arg count: value %+v of dynamic type %+v is not Int", v, v.kind())
+	}
+
+	actualArgCount := v.(IntValue).value
+	if actualArgCount != int64(expectedArgCount) {
+		return fmt.Errorf("error unwrapping arg count: expected %d, got %d arguments", expectedArgCount, actualArgCount)
+	}
+
+	return nil
 }
