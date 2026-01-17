@@ -2,6 +2,48 @@ package vm
 
 import "fmt"
 
+type UnexpectedValueError struct {
+	v        Value
+	expected ValueKind
+}
+
+func newUnexpectedValueError(v Value, expected ValueKind) UnexpectedValueError {
+	return UnexpectedValueError{
+		v:        v,
+		expected: expected,
+	}
+}
+
+func (e UnexpectedValueError) Error() string {
+	return fmt.Sprintf(
+		"operand %+v of dynamic type %s is not %s",
+		e.v.String(),
+		e.v.kind().String(),
+		e.expected.String(),
+	)
+}
+
+type NotNumericError struct {
+	v Value
+	p string
+}
+
+func newNotNumericError(v Value, primitiveType string) NotNumericError {
+	return NotNumericError{
+		v: v,
+		p: primitiveType,
+	}
+}
+
+func (e NotNumericError) Error() string {
+	return fmt.Sprintf(
+		"error converting operand %+v of dynamic type %+v to number of type %s",
+		e.v.String(),
+		e.v.kind().String(),
+		e.p,
+	)
+}
+
 type PrimitiveConversionError struct {
 	where        string
 	v            Value

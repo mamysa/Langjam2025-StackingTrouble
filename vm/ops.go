@@ -1,5 +1,7 @@
 package vm
 
+import "math"
+
 // None & None => true
 // None & _    => False
 
@@ -607,6 +609,42 @@ func applyLen(v Value) (Value, error) {
 	default:
 		{
 			return nil, newUnaryOperatorError(Len, v)
+		}
+	}
+}
+
+func applyFloor(v Value) (Value, error) {
+	switch v.kind() {
+	case Value_Int:
+		{
+			return NewInt(v.(IntValue).value), nil
+		}
+	case Value_Float:
+		{
+			floored := math.Floor(v.(FloatValue).value)
+			return NewInt(int64(floored)), nil
+		}
+	default:
+		{
+			return nil, newUnaryOperatorError(Floor, v)
+		}
+	}
+}
+
+func applyCeil(v Value) (Value, error) {
+	switch v.kind() {
+	case Value_Int:
+		{
+			return NewInt(v.(IntValue).value), nil
+		}
+	case Value_Float:
+		{
+			ceiled := math.Ceil(v.(FloatValue).value)
+			return NewInt(int64(ceiled)), nil
+		}
+	default:
+		{
+			return nil, newUnaryOperatorError(Floor, v)
 		}
 	}
 }

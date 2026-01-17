@@ -1,9 +1,9 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
-	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -707,12 +707,12 @@ func (interpreter *Interpreter) rlSetTargetFps() {
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if v.kind() != Value_Int {
-		panic(newPrimitiveConversionError("rlSetTargetFps", v, "int")) // TODO bad error
+	numeric, ok := v.(Numeric)
+	if !ok {
+		exitWithContext("rlSetTargetFps", errors.New("not numeric error"))
 	}
 
-	fps := v.(IntValue).toInt32()
-	rl.SetTargetFPS(int32(fps))
+	rl.SetTargetFPS(numeric.toInt32())
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
@@ -724,35 +724,42 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 		panic(fmt.Errorf("rlDrawRectangle: %+v", err.Error()))
 	}
 
-	var (
-		b      = interpreter.evaluationStack.pop().(IntValue).value
-		g      = interpreter.evaluationStack.pop().(IntValue).value
-		r      = interpreter.evaluationStack.pop().(IntValue).value
-		height = interpreter.evaluationStack.pop().(IntValue).value
-		width  = interpreter.evaluationStack.pop().(IntValue).value
-
-		x int32
-		y int32
-	)
-
-	// should be abstacted
-	yValue := interpreter.evaluationStack.pop()
-	if yIsInt, ok := yValue.(IntValue); ok {
-		y = int32(yIsInt.value)
-	} else {
-		yIsFloat := yValue.(FloatValue)
-		y = int32(yIsFloat.value)
+	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
 	}
 
-	xValue := interpreter.evaluationStack.pop()
-	if xIsInt, ok := xValue.(IntValue); ok {
-		x = int32(xIsInt.value)
-	} else {
-		xIsFloat := xValue.(FloatValue)
-		x = int32(xIsFloat.value)
+	g, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
 	}
 
-	rl.DrawRectangle(x, y, int32(width), int32(height), color.RGBA{
+	r, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	h, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	w, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	x, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	rl.DrawRectangle(x, y, w, h, color.RGBA{
 		R: uint8(r),
 		G: uint8(g),
 		B: uint8(b),
@@ -765,27 +772,25 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 
 func (interpreter *Interpreter) rlDrawTexture() {
 	if err := unwrapArgCount(3, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlDrawTexture: %+v", err.Error()))
+		exitWithContext("rlDrawTexture", err)
 	}
 
 	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlDrawTexture: error unpacking y: %+v", err))
+		exitWithContext("rlDrawTexture", err)
 	}
 
 	x, err := int32FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlDrawTexture: error unpacking x: %+v", err))
+		exitWithContext("rlDrawTexture", err)
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if !v.IsTexture() {
-		panic(fmt.Errorf("rlDrawTexture: %+v is not texture", v))
+	if v.kind() != Value_Texture {
+		exitWithContext("rlDrawTexture", newUnexpectedValueError(v, Value_Texture))
 	}
 
-	texture := v.(TextureValue)
-
-	rl.DrawTexture(texture.Texture, x, y, color.RGBA{
+	rl.DrawTexture(v.(TextureValue).Texture, x, y, color.RGBA{
 		R: 255,
 		G: 255,
 		B: 255,
@@ -798,7 +803,7 @@ func (interpreter *Interpreter) rlDrawTexture() {
 
 func (interpreter *Interpreter) getTime() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("getTime: %+v", err.Error()))
+		exitWithContext("getTime", err)
 	}
 
 	t := time.Now().UnixMilli()
@@ -808,129 +813,95 @@ func (interpreter *Interpreter) getTime() {
 
 func (interpreter *Interpreter) rlIsKeyDown() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlIsKeyDown: %+v", err.Error()))
+		exitWithContext("rlIsKeyDown", err)
 	}
 
-	key := interpreter.evaluationStack.pop().(IntValue).value
+	key, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlIsKeyDown", err)
+	}
 
-	b := rl.IsKeyDown(int32(key))
+	b := rl.IsKeyDown(key)
 	interpreter.evaluationStack.pushBool(b)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) rlIsKeyReleased() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlIsKeyReleased: %+v", err.Error()))
+		exitWithContext("rlIsKeyReleased", err)
 	}
 
-	key := interpreter.evaluationStack.pop().(IntValue).value
+	key, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlIsKeyReleased", err)
+	}
 
-	b := rl.IsKeyReleased(int32(key))
+	b := rl.IsKeyReleased(key)
 	interpreter.evaluationStack.pushBool(b)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) castFloat() {
-	value := interpreter.evaluationStack.pop()
-	if !value.IsNumeric() {
-		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float. callstack: %+v", value, interpreter.callStack.Dump()))
+	f, err := float64FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("castFloat", err)
 	}
 
-	var (
-		fl          float64
-		castSuccess bool = false
-	)
-
-	if intValue, ok := value.(IntValue); ok {
-		fl = float64(intValue.value)
-		castSuccess = true
-	}
-
-	if floatValue, ok := value.(FloatValue); ok {
-		fl = floatValue.value
-		castSuccess = true
-	}
-
-	if !castSuccess {
-		panic(fmt.Errorf("castFloat: casting non-numeric value %+v to float", value))
-	}
-
-	interpreter.evaluationStack.pushFloat(fl)
+	interpreter.evaluationStack.pushFloat(f)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) floor() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("floor: %+v", err.Error()))
+		exitWithContext("floor", err)
 	}
 
-	value := interpreter.evaluationStack.pop()
-
-	fl, err := float64FromNumeric(value)
+	f, err := applyFloor(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("floor: %+v, call stack: %+v ", err, interpreter.callStack.Dump()))
+		exitWithContext("floor", err)
 	}
 
-	if value.IsInt() {
-		// already int
-		interpreter.evaluationStack.pushValue(value)
-		interpreter.programCounter++
-		return
-	}
-
-	floored := int64(math.Floor(fl))
-	interpreter.evaluationStack.pushInt(floored)
+	interpreter.evaluationStack.pushValue(f)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) ceil() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("ceil: %+v", err.Error()))
+		exitWithContext("ceil", err)
 	}
 
-	value := interpreter.evaluationStack.pop()
-
-	fl, err := float64FromNumeric(value)
+	c, err := applyCeil(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("ceil: %+v, call stack: %+v ", err, interpreter.callStack.Dump()))
+		exitWithContext("ceil", err)
 	}
 
-	if value.IsInt() {
-		// already int
-		interpreter.evaluationStack.pushValue(value)
-		interpreter.programCounter++
-		return
-	}
-
-	ceil := int64(math.Ceil(fl))
-	interpreter.evaluationStack.pushInt(ceil)
+	interpreter.evaluationStack.pushValue(c)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) randomInt() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("randomInt: %+v", err.Error()))
+		exitWithContext("randomInt", err)
 	}
 
 	value := interpreter.evaluationStack.pop()
-	if !value.IsInt() {
-		panic(fmt.Errorf("randomInt: non-integer value %+v", value))
+	if value.kind() != Value_Int {
+		exitWithContext("randomInt", newUnexpectedValueError(value, Value_Int))
 	}
 
 	intValue := value.(IntValue)
 	if intValue.value <= 0 {
-		panic(fmt.Errorf("randomInt: negative or zero value %+v", value))
-
+		exitWithContext("randomInt", errors.New("argument must be greater than zero"))
 	}
-	randomValue := rand.Intn(int(intValue.value))
 
+	randomValue := rand.Intn(int(intValue.value))
 	interpreter.evaluationStack.pushInt(int64(randomValue))
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) randomFloat() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("randomFloat: %+v", err.Error()))
+		exitWithContext("randomInt", err)
 	}
 
 	randomValue := rand.Float64()
@@ -940,25 +911,55 @@ func (interpreter *Interpreter) randomFloat() {
 
 func (interpreter *Interpreter) rlDrawText() {
 	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlDrawText: %+v", err.Error()))
+		exitWithContext("rlDrawText", err)
 	}
 
-	var (
-		b        = interpreter.evaluationStack.pop().(IntValue).value
-		g        = interpreter.evaluationStack.pop().(IntValue).value
-		r        = interpreter.evaluationStack.pop().(IntValue).value
-		fontSize = interpreter.evaluationStack.pop().(IntValue).value
-		y        = interpreter.evaluationStack.pop().(IntValue).value
-		x        = interpreter.evaluationStack.pop().(IntValue).value
-		text     = interpreter.evaluationStack.pop().(StringValue).Str
-	)
+	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
 
-	rl.DrawText(text, int32(x), int32(y), int32(fontSize), color.RGBA{
-		R: uint8(r),
-		G: uint8(g),
-		B: uint8(b),
-		A: 255,
-	})
+	g, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
+
+	r, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
+
+	fontSize, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
+
+	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
+
+	x, err := int32FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawText", err)
+	}
+
+	t := interpreter.evaluationStack.pop()
+	if t.kind() != Value_String {
+		exitWithContext("rlDrawText", newUnexpectedValueError(t, Value_Texture))
+	}
+
+	rl.DrawText(
+		t.(StringValue).Str,
+		x,
+		y,
+		fontSize,
+		color.RGBA{
+			R: r,
+			G: g,
+			B: b,
+			A: 255,
+		})
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
@@ -966,45 +967,22 @@ func (interpreter *Interpreter) rlDrawText() {
 
 func (interpreter *Interpreter) beginMode2D() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("beginMode2D: %+v", err.Error()))
+		exitWithContext("beginMode2D", err)
 	}
 
-	v := interpreter.evaluationStack.pop()
-	if !v.IsObject() {
-		panic(fmt.Errorf("beginMode2D: %+v is not object", v))
-	}
-
-	object := v.(ObjectValue)
-	offset, err := rlVector2FromObject(object.GetValue("offset").(ObjectValue))
+	camera, err := rlCamera2DFromObject(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("beginMode2D: %+v", err))
+		exitWithContext("beginMode2D", err)
 	}
 
-	target, err := rlVector2FromObject(object.GetValue("target").(ObjectValue))
-	if err != nil {
-		panic(fmt.Errorf("beginMode2D: %+v", err))
-	}
-
-	rotation, err := float32FromNumeric(object.GetValue("rotation"))
-	if err != nil {
-		panic(fmt.Errorf("beginMode2D: %+v", err))
-	}
-
-	scale, err := float32FromNumeric(object.GetValue("scale"))
-	if err != nil {
-		panic(fmt.Errorf("beginMode2D: %+v", err))
-	}
-
-	camera := rl.NewCamera2D(offset, target, rotation, scale)
 	rl.BeginMode2D(camera)
-
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) endMode2D() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("endMode2D: %+v", err.Error()))
+		exitWithContext("endMode2D", err)
 	}
 
 	rl.EndMode2D()
@@ -1015,116 +993,32 @@ func (interpreter *Interpreter) endMode2D() {
 
 func (interpreter *Interpreter) rlLoadTexture() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlLoadTexture: %+v", err.Error()))
+		exitWithContext("rlLoadTexture", err)
 	}
 
-	texturePath := interpreter.evaluationStack.pop().(StringValue)
-	texture := rl.LoadTexture(texturePath.Str)
+	v := interpreter.evaluationStack.pop()
+	if v.kind() != Value_String {
+		exitWithContext("rlLoadTexture", newUnexpectedValueError(v, Value_String))
+	}
 
+	texture := rl.LoadTexture(v.(StringValue).Str)
 	interpreter.evaluationStack.pushValue(TextureValue{Texture: texture})
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) rlUnloadTexture() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlUnloadTexture: %+v", err.Error()))
+		exitWithContext("rlUnloadTexture", err)
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if !v.IsTexture() {
-		panic(fmt.Errorf("unloadTexture: %+v is not a texture", v))
+	if v.kind() != Value_Texture {
+		exitWithContext("rlUnloadTexture", newUnexpectedValueError(v, Value_String))
 	}
 
-	texture := v.(TextureValue)
-	rl.UnloadTexture(texture.Texture)
-
+	rl.UnloadTexture(v.(TextureValue).Texture)
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
-}
-
-func rlVector2FromObject(v Value) (rl.Vector2, error) {
-	if !v.IsObject() {
-		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: value %+v is not object", v)
-	}
-
-	object := v.(ObjectValue)
-	x, err := float32FromNumeric(object.GetValue("x"))
-	if err != nil {
-		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: error unpacking contents of %+v as float", object)
-	}
-
-	y, err := float32FromNumeric(object.GetValue("y"))
-	if err != nil {
-		return rl.Vector2{}, fmt.Errorf("rlVector2FromObject: error unpacking contents of %+v as float", object)
-	}
-
-	return rl.Vector2{
-		X: x,
-		Y: y,
-	}, nil
-
-}
-
-func float32FromNumeric(v Value) (float32, error) {
-	if !v.IsNumeric() {
-		return 0.0, fmt.Errorf("float32FromNumeric: value %+v is not numeric", v)
-	}
-
-	if v.IsInt() {
-		return float32(v.(IntValue).value), nil
-	}
-
-	return float32(v.(FloatValue).value), nil
-}
-
-func float64FromNumeric(v Value) (float64, error) {
-	if !v.IsNumeric() {
-		return 0.0, fmt.Errorf("float64FromNumeric: value %+v is not numeric", v)
-	}
-
-	if v.IsInt() {
-		return float64(v.(IntValue).value), nil
-	}
-
-	return float64(v.(FloatValue).value), nil
-}
-
-func uint8FromNumeric(v Value) (uint8, error) {
-	switch v.kind() {
-	case Value_Int:
-		{
-			i := v.(IntValue).value
-			if i < 0 || i > 255 {
-				return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
-			}
-			return uint8(i), nil
-		}
-	case Value_Float:
-		{
-			i := int(math.Floor(v.(FloatValue).value))
-			if i < 0 || i > 255 {
-				return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
-			}
-			return uint8(i), nil
-		}
-	default:
-		{
-			return 0, newPrimitiveConversionError("uint8FromNumeric", v, "uint8")
-		}
-
-	}
-}
-
-func int32FromNumeric(v Value) (int32, error) {
-	if !v.IsNumeric() {
-		return 0.0, fmt.Errorf("int32FromNumeric: value %+v is not numeric", v)
-	}
-
-	if v.IsInt() {
-		return int32(v.(IntValue).value), nil
-	}
-
-	return int32(v.(FloatValue).value), nil
 }
 
 func unwrapArgCount(expectedArgCount int, v Value) error {
@@ -1138,4 +1032,10 @@ func unwrapArgCount(expectedArgCount int, v Value) error {
 	}
 
 	return nil
+}
+
+// probably poor naming (since ctx.Context is nowhere to be seen), but we do need to report failing instruction.
+func exitWithContext(context string, err error) {
+	fmt.Println(fmt.Errorf("%s: %s", context, err.Error()))
+	os.Exit(1)
 }

@@ -1,9 +1,23 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
+	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+const (
+	// for handling int64 to float64 conversions.
+	float64_minSafeInteger int64 = -((1 << 53) - 1)
+	float64_maxSafeInteger int64 = +((1 << 53) - 1)
+)
+
+var (
+	int32CastError   = errors.New("int32 out of range")
+	float64CastError = errors.New("float64 out of range")
+	uint8CastError   = errors.New("uint8 out of range")
 )
 
 type ValueKind int
@@ -44,6 +58,15 @@ func (v ValueKind) String() string {
 		return "Unknown"
 	}
 
+}
+
+// IntValue/FloatValue implement this interface.
+type Numeric interface {
+	toInt64() int64
+	toInt32() int32
+	toUint8() uint8
+	toFloat32() float32
+	toFloat64() float64
 }
 
 // represents value on the stack.
@@ -92,12 +115,33 @@ func (value IntValue) IsNumeric() bool {
 	return true
 }
 
-func (v IntValue) toFloat64() float64 {
-	return float64(v.value)
+func (v IntValue) toInt64() int64 {
+	return v.value
 }
 
 func (v IntValue) toInt32() int32 {
+	if v.value < math.MinInt32 || v.value > math.MaxInt32 {
+		panic(int32CastError)
+	}
 	return int32(v.value)
+}
+
+func (v IntValue) toUint8() uint8 {
+	if v.value < 0 || v.value > math.MaxUint8 {
+		panic(uint8CastError)
+	}
+	return uint8(v.value)
+}
+
+func (v IntValue) toFloat32() float32 {
+	return float32(v.value)
+}
+
+func (v IntValue) toFloat64() float64 {
+	if v.value < float64_minSafeInteger || v.value > float64_maxSafeInteger {
+		panic(float64CastError)
+	}
+	return float64(v.value)
 }
 
 func (value IntValue) IsInt() bool {
@@ -163,6 +207,22 @@ func (v FloatValue) kind() ValueKind {
 
 func (v FloatValue) toInt64() int64 {
 	return int64(v.value)
+}
+
+func (v FloatValue) toInt32() int32 {
+	return int32(v.value)
+}
+
+func (v FloatValue) toUint8() uint8 {
+	return uint8(v.value)
+}
+
+func (v FloatValue) toFloat32() float32 {
+	return float32(v.value)
+}
+
+func (v FloatValue) toFloat64() float64 {
+	return v.value
 }
 
 func (value FloatValue) Int() int64 {
