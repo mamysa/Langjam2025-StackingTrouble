@@ -40,8 +40,6 @@ func (interpreter *Interpreter) Run() {
 
 		insn := interpreter.program.GetInstruction(int(interpreter.programCounter))
 
-		//fmt.Printf("%d, %+v %+v\n", interpreter.programCounter, insn, interpreter.evaluationStack)
-
 		if simple, ok := insn.(InstructionNoOperands); ok {
 			switch simple.OpCode {
 			case Eq:
@@ -141,7 +139,7 @@ func (interpreter *Interpreter) Run() {
 			case Ceil:
 				interpreter.ceil()
 			default:
-				panic(fmt.Errorf("Unhandled %+v", simple))
+				exit(fmt.Errorf("Unhandled %+v", simple))
 			}
 		}
 
@@ -211,23 +209,23 @@ func (interpreter *Interpreter) Run() {
 	}
 
 	if !interpreter.callStack.isEmpty() {
-		panic("callstack not empty")
+		exit(errors.New("callstack not empty"))
 	}
 
 	// Stack top is zero because None is pushed at the end of _start func.
 	if interpreter.evaluationStack.getStackTop() != 0 {
-		panic(fmt.Errorf("Evaluation stack is not empty: %+v, %+v\n", interpreter.evaluationStack.top, interpreter.evaluationStack.stack))
+		exit(fmt.Errorf("Evaluation stack is not empty: %+v, %+v\n", interpreter.evaluationStack.top, interpreter.evaluationStack.stack))
 	}
 
 	value := interpreter.evaluationStack.peek()
-	if !value.IsNone() {
-		panic("evaluation stack should contain None after execution")
+	if value.kind() != Value_None {
+		exit(errors.New("evaluation stack should contain None after execution"))
 	}
 }
 
 func (interpreter *Interpreter) assertArgCount(insn AssertArgCount) {
 	if err := unwrapArgCount(insn.ArgCount, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("assertArgCount: %+v", err.Error()))
+		exit(fmt.Errorf("assertArgCount: %+v", err.Error()))
 	}
 
 	interpreter.programCounter++
@@ -257,7 +255,7 @@ func (interpreter *Interpreter) storeVar(insn StoreVar) {
 func (interpreter *Interpreter) loadVar(insn LoadVar) {
 	local, err := interpreter.callStack.getLocal(insn.Arg)
 	if err != nil {
-		panic(fmt.Sprintf("%+v, call stack: %+v", err, interpreter.callStack.Dump()))
+		exit(fmt.Errorf("local %s is not present in the environment", insn.Arg))
 	}
 
 	interpreter.evaluationStack.pushValue(local)
@@ -272,7 +270,7 @@ func (interpreter *Interpreter) call(insn Call) {
 	// sample instruction at new programCounter;
 	label, ok := interpreter.program.Instructions[interpreter.programCounter].(Label)
 	if !ok {
-		panic("Not label")
+		exit(errors.New("Label expected"))
 	}
 
 	interpreter.callStack.setLabel(label.Label)
@@ -280,7 +278,10 @@ func (interpreter *Interpreter) call(insn Call) {
 
 func (interpreter *Interpreter) callVirtual() {
 	value := interpreter.evaluationStack.pop()
-	addr := value.FunctionAddress()
+	if value.kind() != Value_FunctionAddress {
+		exitWithContext("callVirtual", newUnexpectedValueError(value, Value_FunctionAddress))
+	}
+	addr := value.(FunctionAddress).Offset
 
 	nextInstructionOffset := interpreter.programCounter + 1
 	interpreter.callStack.pushStackFrame(nextInstructionOffset)
@@ -289,7 +290,7 @@ func (interpreter *Interpreter) callVirtual() {
 	// sample instruction at new programCounter;
 	label, ok := interpreter.program.Instructions[interpreter.programCounter].(Label)
 	if !ok {
-		panic("Not label")
+		exit(errors.New("Label expected"))
 	}
 
 	interpreter.callStack.setLabel(label.Label)
@@ -300,7 +301,7 @@ func (interpreter *Interpreter) add() {
 	v1 := interpreter.evaluationStack.pop()
 	v, err := applyAdd(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
@@ -311,7 +312,7 @@ func (interpreter *Interpreter) sub() {
 	v1 := interpreter.evaluationStack.pop()
 	v, err := applySub(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
@@ -322,7 +323,7 @@ func (interpreter *Interpreter) mul() {
 	v1 := interpreter.evaluationStack.pop()
 	v, err := applyMul(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
@@ -333,7 +334,7 @@ func (interpreter *Interpreter) div() {
 	v1 := interpreter.evaluationStack.pop()
 	v, err := applyDiv(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushValue(v)
 	interpreter.programCounter++
@@ -343,7 +344,7 @@ func (interpreter *Interpreter) neg() {
 	v := interpreter.evaluationStack.pop()
 	vn, err := applyNeg(v)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushValue(vn)
 	interpreter.programCounter++
@@ -378,7 +379,7 @@ func (interpreter *Interpreter) lt() {
 	v1 := interpreter.evaluationStack.pop()
 	result, err := applyLt(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
@@ -389,7 +390,7 @@ func (interpreter *Interpreter) gt() {
 	v1 := interpreter.evaluationStack.pop()
 	result, err := applyGt(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
@@ -400,7 +401,7 @@ func (interpreter *Interpreter) grEq() {
 	v1 := interpreter.evaluationStack.pop()
 	result, err := applyGtEq(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err)
 	}
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
@@ -411,7 +412,7 @@ func (interpreter *Interpreter) ltEq() {
 	v1 := interpreter.evaluationStack.pop()
 	result, err := applyLtEq(v1, v2)
 	if err != nil {
-		panic(err) // TODO callstack trace.
+		exit(err) // TODO callstack trace.
 	}
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
@@ -495,7 +496,7 @@ func (interpreter *Interpreter) len() {
 
 	l, err := applyLen(value)
 	if err != nil {
-		panic(err)
+		exit(err)
 	}
 
 	interpreter.evaluationStack.pushValue(l)
@@ -510,14 +511,14 @@ func (interpreter *Interpreter) subscriptGet() {
 	target := interpreter.evaluationStack.pop()
 
 	if target.kind() != Value_List {
-		panic("subscriptGet: subscript operator on non-list")
+		exit(errors.New("subscriptGet: target is not a list"))
 	}
 
 	if subscript.kind() != Value_Int {
-		panic("subscriptGet: non-integer subscript to list")
+		exit(errors.New("subscriptGet: non-integer subscript to list"))
 	}
 
-	index := subscript.Int()
+	index := subscript.(IntValue).value
 	value := target.(ListValue).GetValue(int(index))
 
 	interpreter.evaluationStack.pushValue(value)
@@ -528,7 +529,7 @@ func (interpreter *Interpreter) objectFieldGet(insn ObjectFieldGet) {
 	target := interpreter.evaluationStack.pop()
 
 	if target.kind() != Value_Object {
-		panic(fmt.Errorf("objectFieldGet: target %+v is not object", target))
+		exit(fmt.Errorf("objectFieldGet: target %+v is not object", target))
 	}
 
 	value := target.(ObjectValue).GetValue(insn.Field)
@@ -544,11 +545,11 @@ func (interpreter *Interpreter) subscriptSet() {
 	value := interpreter.evaluationStack.pop()
 
 	if target.kind() != Value_List {
-		panic("subscriptSet: subscript operator on non-list")
+		exit(errors.New("subscriptSet: target is not a list"))
 	}
 
 	if subscript.kind() != Value_Int {
-		panic("subscriptSet: non-integer subscript to list")
+		exit(errors.New("subscriptSet: non-integer subscript to list"))
 	}
 
 	index := subscript.(IntValue).value
@@ -561,7 +562,7 @@ func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 	value := interpreter.evaluationStack.pop()
 
 	if target.kind() != Value_Object {
-		panic(fmt.Errorf("objectFieldSet: target %+v is not object", target))
+		exit(fmt.Errorf("objectFieldSet: target %+v is not object", target))
 	}
 
 	target.(ObjectValue).SetValue(insn.Field, value)
@@ -592,7 +593,7 @@ func (interpreter *Interpreter) pushFalse() {
 func (interpreter *Interpreter) getGlobal(insn GetGlobal) {
 	gl, ok := interpreter.program.Globals[insn.Global]
 	if !ok {
-		panic(fmt.Errorf("readGlobal: global %+v not present in environment", insn.Global))
+		exit(fmt.Errorf("readGlobal: global %+v not present in environment", insn.Global))
 	}
 
 	interpreter.evaluationStack.pushValue(gl)
@@ -607,17 +608,17 @@ func (interpreter *Interpreter) setGlobal(insn SetGlobal) {
 
 func (interpreter *Interpreter) rlInitWindow() {
 	if err := unwrapArgCount(2, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlInitWindow: %+v", err.Error()))
+		exitWithContext("rlInitWindow", err)
 	}
 
 	height, err := int32FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlInitWindow: %+v", err))
+		exitWithContext("rlInitWindow", err)
 	}
 
 	width, err := int32FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlInitWindow: %+v", err))
+		exitWithContext("rlInitWindow", err)
 	}
 
 	rl.InitWindow(int32(width), int32(height), "raylib")
@@ -628,7 +629,7 @@ func (interpreter *Interpreter) rlInitWindow() {
 
 func (interpreter *Interpreter) rlCloseWindow() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlCloseWindow: %+v", err.Error()))
+		exitWithContext("rlCloseWindow", err)
 	}
 
 	rl.CloseWindow()
@@ -639,7 +640,7 @@ func (interpreter *Interpreter) rlCloseWindow() {
 
 func (interpreter *Interpreter) rlWindowShouldClose() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlWindowShouldClose: %+v", err.Error()))
+		exitWithContext("rlWindowShouldClose", err)
 	}
 
 	v := rl.WindowShouldClose()
@@ -650,7 +651,7 @@ func (interpreter *Interpreter) rlWindowShouldClose() {
 
 func (interpreter *Interpreter) rlBeginDrawing() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlBeginDrawing: %+v", err.Error()))
+		exitWithContext("beginDrawing", err)
 	}
 
 	rl.BeginDrawing()
@@ -661,7 +662,7 @@ func (interpreter *Interpreter) rlBeginDrawing() {
 
 func (interpreter *Interpreter) rlEndDrawing() {
 	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlEndDrawing: %+v", err.Error()))
+		exitWithContext("rlEndDrawing", err)
 	}
 
 	rl.EndDrawing()
@@ -672,22 +673,22 @@ func (interpreter *Interpreter) rlEndDrawing() {
 
 func (interpreter *Interpreter) rlClearBackground() {
 	if err := unwrapArgCount(3, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+		exitWithContext("rlClearBackground", err)
 	}
 
 	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+		exitWithContext("rlClearBackground", err)
 	}
 
 	g, err := uint8FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+		exitWithContext("rlClearBackground", err)
 	}
 
 	r, err := uint8FromNumeric(interpreter.evaluationStack.pop())
 	if err != nil {
-		panic(fmt.Errorf("rlClearBackground: %+v", err.Error()))
+		exitWithContext("rlClearBackground", err)
 	}
 
 	rl.ClearBackground(color.RGBA{
@@ -703,7 +704,7 @@ func (interpreter *Interpreter) rlClearBackground() {
 
 func (interpreter *Interpreter) rlSetTargetFps() {
 	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlSetTargetFps: %+v", err.Error()))
+		exitWithContext("rlSetTargetFps", err)
 	}
 
 	v := interpreter.evaluationStack.pop()
@@ -721,7 +722,7 @@ func (interpreter *Interpreter) rlSetTargetFps() {
 // (x, y, width, height, r, g, b)
 func (interpreter *Interpreter) rlDrawRectangle() {
 	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
-		panic(fmt.Errorf("rlDrawRectangle: %+v", err.Error()))
+		exitWithContext("rlDrawRectangle", err)
 	}
 
 	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
@@ -1037,5 +1038,10 @@ func unwrapArgCount(expectedArgCount int, v Value) error {
 // probably poor naming (since ctx.Context is nowhere to be seen), but we do need to report failing instruction.
 func exitWithContext(context string, err error) {
 	fmt.Println(fmt.Errorf("%s: %s", context, err.Error()))
+	os.Exit(1)
+}
+
+func exit(err error) {
+	fmt.Println(err)
 	os.Exit(1)
 }

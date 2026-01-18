@@ -71,22 +71,10 @@ type Numeric interface {
 
 // represents value on the stack.
 type Value interface {
-	IsList() bool
 	kind() ValueKind
-	IsObject() bool
-	IsNumeric() bool
-	IsInt() bool
-	IsBool() bool
-	IsFloat() bool
-	IsNone() bool
-	IsString() bool
-	Int() int64
-	Float() float64
-	FunctionAddress() int
 	Truthy() bool
 	Copy() Value
 	String() string
-	IsTexture() bool
 }
 
 type IntValue struct {
@@ -103,32 +91,20 @@ func (v IntValue) kind() ValueKind {
 	return Value_Int
 }
 
-func (value IntValue) Int() int64 {
-	return value.value
-}
-
-func (value IntValue) Float() float64 {
-	return float64(value.value)
-}
-
-func (value IntValue) IsNumeric() bool {
-	return true
-}
-
 func (v IntValue) toInt64() int64 {
 	return v.value
 }
 
 func (v IntValue) toInt32() int32 {
 	if v.value < math.MinInt32 || v.value > math.MaxInt32 {
-		panic(int32CastError)
+		exit(int32CastError)
 	}
 	return int32(v.value)
 }
 
 func (v IntValue) toUint8() uint8 {
 	if v.value < 0 || v.value > math.MaxUint8 {
-		panic(uint8CastError)
+		exit(uint8CastError)
 	}
 	return uint8(v.value)
 }
@@ -139,44 +115,13 @@ func (v IntValue) toFloat32() float32 {
 
 func (v IntValue) toFloat64() float64 {
 	if v.value < float64_minSafeInteger || v.value > float64_maxSafeInteger {
-		panic(float64CastError)
+		exit(float64CastError)
 	}
 	return float64(v.value)
 }
 
-func (value IntValue) IsInt() bool {
-	return true
-}
-
-func (value IntValue) IsBool() bool {
-	return false
-}
-func (value IntValue) IsFloat() bool {
-	return false
-}
-
-func (value IntValue) IsNone() bool {
-	return false
-}
-
-func (value IntValue) IsString() bool {
-	return false
-}
-
-func (value IntValue) FunctionAddress() int {
-	panic("Invalid conversion")
-}
-
 func (value IntValue) Truthy() bool {
 	return value.value == 1
-}
-
-func (value IntValue) IsList() bool {
-	return false
-}
-
-func (value IntValue) IsObject() bool {
-	return false
 }
 
 func (value IntValue) Copy() Value {
@@ -185,10 +130,6 @@ func (value IntValue) Copy() Value {
 
 func (value IntValue) String() string {
 	return fmt.Sprintf("%d", value.value)
-}
-
-func (value IntValue) IsTexture() bool {
-	return false
 }
 
 type FloatValue struct {
@@ -225,52 +166,8 @@ func (v FloatValue) toFloat64() float64 {
 	return v.value
 }
 
-func (value FloatValue) Int() int64 {
-	panic("invalid conversion")
-}
-
-func (value FloatValue) Float() float64 {
-	return value.value
-}
-
-func (value FloatValue) IsNumeric() bool {
-	return true
-}
-
-func (value FloatValue) IsInt() bool {
-	return false
-}
-
-func (value FloatValue) IsBool() bool {
-	return false
-}
-
-func (value FloatValue) IsFloat() bool {
-	return true
-}
-
-func (value FloatValue) IsNone() bool {
-	return false
-}
-
-func (value FloatValue) IsString() bool {
-	return false
-}
-
-func (value FloatValue) FunctionAddress() int {
-	panic("Invalid conversion")
-}
-
 func (value FloatValue) Truthy() bool {
 	return value.value == 1.0
-}
-
-func (value FloatValue) IsList() bool {
-	return false
-}
-
-func (value FloatValue) IsObject() bool {
-	return false
 }
 
 func (value FloatValue) Copy() Value {
@@ -279,10 +176,6 @@ func (value FloatValue) Copy() Value {
 
 func (value FloatValue) String() string {
 	return fmt.Sprintf("%+v", value.value)
-}
-
-func (value FloatValue) IsTexture() bool {
-	return false
 }
 
 type None struct {
@@ -299,47 +192,7 @@ func (None) kind() ValueKind {
 	return Value_None
 }
 
-func (value None) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value None) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value None) IsNumeric() bool {
-	return false
-}
-
-func (value None) IsInt() bool {
-	return false
-}
-
-func (value None) IsBool() bool {
-	return false
-}
-
-func (value None) IsFloat() bool {
-	return false
-}
-
-func (value None) IsNone() bool {
-	return true
-}
-
-func (value None) IsString() bool {
-	return false
-}
-
 func (value None) Truthy() bool {
-	return false
-}
-
-func (value None) IsList() bool {
-	return false
-}
-
-func (value None) IsObject() bool {
 	return false
 }
 
@@ -349,14 +202,6 @@ func (value None) Copy() Value {
 
 func (value None) String() string {
 	return "None"
-}
-
-func (value None) FunctionAddress() int {
-	panic("Invalid conversion")
-}
-
-func (value None) IsTexture() bool {
-	return false
 }
 
 func NewFunctionAddress(i int) FunctionAddress {
@@ -373,47 +218,7 @@ func (FunctionAddress) kind() ValueKind {
 	return Value_FunctionAddress
 }
 
-func (value FunctionAddress) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value FunctionAddress) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value FunctionAddress) IsNumeric() bool {
-	return false
-}
-
-func (value FunctionAddress) IsInt() bool {
-	return false
-}
-
-func (value FunctionAddress) IsBool() bool {
-	return false
-}
-
-func (value FunctionAddress) IsFloat() bool {
-	return false
-}
-
-func (value FunctionAddress) IsNone() bool {
-	return false
-}
-
-func (value FunctionAddress) IsString() bool {
-	return false
-}
-
 func (value FunctionAddress) Truthy() bool {
-	panic("FunctionAddress cannot be used in boolean context")
-}
-
-func (value FunctionAddress) IsList() bool {
-	return false
-}
-
-func (value FunctionAddress) IsObject() bool {
 	return false
 }
 
@@ -423,14 +228,6 @@ func (value FunctionAddress) Copy() Value {
 
 func (value FunctionAddress) String() string {
 	return fmt.Sprintf("FunctionAddress(%d)", value.Offset)
-}
-
-func (value FunctionAddress) FunctionAddress() int {
-	return value.Offset
-}
-
-func (value FunctionAddress) IsTexture() bool {
-	return false
 }
 
 type BoolValue struct {
@@ -447,48 +244,8 @@ func (BoolValue) kind() ValueKind {
 	return Value_Bool
 }
 
-func (value BoolValue) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value BoolValue) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value BoolValue) IsInt() bool {
-	return false
-}
-
-func (value BoolValue) IsBool() bool {
-	return true
-}
-
-func (value BoolValue) IsFloat() bool {
-	return false
-}
-
-func (value BoolValue) IsNumeric() bool {
-	return false
-}
-
-func (value BoolValue) IsNone() bool {
-	return false
-}
-
-func (value BoolValue) IsString() bool {
-	return false
-}
-
 func (value BoolValue) Truthy() bool {
 	return value.value
-}
-
-func (value BoolValue) IsList() bool {
-	return false
-}
-
-func (value BoolValue) IsObject() bool {
-	return false
 }
 
 func (value BoolValue) Copy() Value {
@@ -501,14 +258,6 @@ func (value BoolValue) String() string {
 	}
 
 	return "False"
-}
-
-func (value BoolValue) FunctionAddress() int {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value BoolValue) IsTexture() bool {
-	return false
 }
 
 type ListValue struct {
@@ -533,48 +282,8 @@ func (ListValue) kind() ValueKind {
 	return Value_List
 }
 
-func (value ListValue) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value ListValue) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value ListValue) IsNumeric() bool {
-	return true
-}
-
-func (value ListValue) IsInt() bool {
-	return false
-}
-
-func (value ListValue) IsBool() bool {
-	return false
-}
-
-func (value ListValue) IsFloat() bool {
-	return false
-}
-
-func (value ListValue) IsNone() bool {
-	return false
-}
-
-func (value ListValue) IsString() bool {
-	return false
-}
-
 func (value ListValue) Truthy() bool {
 	return len(value.array.Array) > 0
-}
-
-func (value ListValue) IsList() bool {
-	return true
-}
-
-func (value ListValue) IsObject() bool {
-	return false
 }
 
 // Copy reference
@@ -582,10 +291,6 @@ func (value ListValue) Copy() Value {
 	return ListValue{
 		array: value.array,
 	}
-}
-
-func (value ListValue) IsTexture() bool {
-	return false
 }
 
 // Lists are equal if they are of the same length and all elements of the list are pairwise equal.
@@ -627,7 +332,7 @@ func (list ListValue) append(value Value) ListValue {
 
 func (list ListValue) GetValue(index int) Value {
 	if !(index >= 0 && index < list.array.Length) {
-		panic("Out of bounds list access")
+		exit(errors.New("Out of bounds list access"))
 	}
 
 	return list.array.Array[index]
@@ -635,7 +340,7 @@ func (list ListValue) GetValue(index int) Value {
 
 func (list ListValue) SetValue(index int, value Value) {
 	if !(index >= 0 && index < list.array.Length) {
-		panic("Out of bounds list access")
+		exit(errors.New("Out of bounds list access"))
 	}
 
 	list.array.Array[index] = value
@@ -655,10 +360,6 @@ func (value ListValue) String() string {
 	}
 
 	return fmt.Sprintf("[%s]", str)
-}
-
-func (value ListValue) FunctionAddress() int {
-	panic(fmt.Errorf("Invalid conversion"))
 }
 
 type ObjectValue struct {
@@ -681,48 +382,8 @@ func (ObjectValue) kind() ValueKind {
 	return Value_Object
 }
 
-func (value ObjectValue) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value ObjectValue) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value ObjectValue) IsNumeric() bool {
-	return false
-}
-
-func (value ObjectValue) IsInt() bool {
-	return false
-}
-
-func (value ObjectValue) IsBool() bool {
-	return false
-}
-
-func (value ObjectValue) IsFloat() bool {
-	return false
-}
-
-func (value ObjectValue) IsNone() bool {
-	return false
-}
-
-func (value ObjectValue) IsString() bool {
-	return false
-}
-
 func (value ObjectValue) Truthy() bool {
 	return len(value.Object.object) > 0
-}
-
-func (value ObjectValue) IsList() bool {
-	return false
-}
-
-func (value ObjectValue) IsObject() bool {
-	return true
 }
 
 func (value ObjectValue) Copy() Value {
@@ -746,14 +407,10 @@ func (value ObjectValue) String() string {
 	return fmt.Sprintf("Object(%s)", kvps)
 }
 
-func (value ObjectValue) FunctionAddress() int {
-	panic("Invalid conversion")
-}
-
 func (value ObjectValue) GetValue(key string) Value {
 	v, ok := value.Object.object[key]
 	if !ok {
-		panic(fmt.Errorf("Field %+v not present in the object %+v", key, value))
+		exit(fmt.Errorf("Field %+v not present in the object %+v", key, value))
 	}
 
 	return v
@@ -761,10 +418,6 @@ func (value ObjectValue) GetValue(key string) Value {
 
 func (list ObjectValue) SetValue(key string, value Value) {
 	list.Object.object[key] = value
-}
-
-func (value ObjectValue) IsTexture() bool {
-	return false
 }
 
 type StringValue struct {
@@ -786,52 +439,8 @@ func (StringValue) kind() ValueKind {
 	return Value_String
 }
 
-func (value StringValue) Int() int64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value StringValue) Float() float64 {
-	panic(fmt.Errorf("Invalid conversion"))
-}
-
-func (value StringValue) IsNumeric() bool {
-	return false
-}
-
-func (value StringValue) IsInt() bool {
-	return false
-}
-
-func (value StringValue) IsBool() bool {
-	return false
-}
-
-func (value StringValue) IsFloat() bool {
-	return false
-}
-
-func (value StringValue) IsNone() bool {
-	return false
-}
-
-func (value StringValue) IsString() bool {
-	return true
-}
-
 func (value StringValue) Truthy() bool {
 	return false
-}
-
-func (value StringValue) IsList() bool {
-	return false
-}
-
-func (value StringValue) IsObject() bool {
-	return false
-}
-
-func (value StringValue) FunctionAddress() int {
-	panic("Invalid conversion")
 }
 
 func (value StringValue) Copy() Value {
@@ -843,10 +452,6 @@ func (value StringValue) String() string {
 	return value.Str
 }
 
-func (value StringValue) IsTexture() bool {
-	return false
-}
-
 type TextureValue struct {
 	Texture rl.Texture2D
 }
@@ -855,51 +460,7 @@ func (TextureValue) kind() ValueKind {
 	return Value_Texture
 }
 
-func (value TextureValue) Int() int64 {
-	panic("invalid conversion")
-}
-
-func (value TextureValue) Float() float64 {
-	panic("invalid conversion")
-}
-
-func (value TextureValue) IsNumeric() bool {
-	return false
-}
-
-func (value TextureValue) IsInt() bool {
-	return false
-}
-
-func (value TextureValue) IsBool() bool {
-	return false
-}
-
-func (value TextureValue) IsFloat() bool {
-	return false
-}
-
-func (value TextureValue) IsNone() bool {
-	return false
-}
-
-func (value TextureValue) IsString() bool {
-	return false
-}
-
-func (value TextureValue) FunctionAddress() int {
-	panic("Invalid conversion")
-}
-
 func (value TextureValue) Truthy() bool {
-	return false
-}
-
-func (value TextureValue) IsList() bool {
-	return false
-}
-
-func (value TextureValue) IsObject() bool {
 	return false
 }
 
@@ -911,8 +472,4 @@ func (value TextureValue) Copy() Value {
 
 func (value TextureValue) String() string {
 	return "Texture"
-}
-
-func (value TextureValue) IsTexture() bool {
-	return true
 }
