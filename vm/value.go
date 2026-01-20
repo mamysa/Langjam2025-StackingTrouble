@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -378,19 +379,26 @@ func (list listValue) SetValue(index int, v value) {
 }
 
 func (value listValue) String() string {
-	if value.array.Length == 0 {
-		return "[]"
+	var sb strings.Builder
+	sb.WriteRune('[')
+
+	arr := value.array.Array
+	arrLen := len(arr)
+
+	if arrLen > 0 {
+		e := arr[0]
+		sb.WriteString(e.String())
+
+		for i := 1; i < arrLen; i++ {
+			e := value.array.Array[i]
+			sb.WriteRune(',')
+			sb.WriteRune(' ')
+			sb.WriteString(e.String())
+		}
 	}
-	first := value.array.Array[0]
-	str := fmt.Sprintf("%+v", first)
 
-	for i := 1; i < value.array.Length; i++ {
-
-		rest := value.array.Array[i]
-		str = fmt.Sprintf("%s, %+v", str, rest)
-	}
-
-	return fmt.Sprintf("[%s]", str)
+	sb.WriteRune(']')
+	return sb.String()
 }
 
 type objectValue struct {
@@ -423,19 +431,26 @@ func (value objectValue) copy() value {
 }
 
 func (value objectValue) String() string {
+	var sb strings.Builder
+	sb.WriteString("Object(")
+
 	hasPrevious := false
-	kvps := ""
+
 	for key, value := range value.Object.object {
-		kvp := fmt.Sprintf("%s: %+v", key, value)
 		if hasPrevious {
-			kvp = ", " + kvp
+			sb.WriteRune(',')
+			sb.WriteRune(' ')
 		}
 
-		kvps = kvps + kvp
+		sb.WriteString(key)
+		sb.WriteRune(':')
+		sb.WriteRune(' ')
+		sb.WriteString(value.String())
 		hasPrevious = true
 	}
 
-	return fmt.Sprintf("Object(%s)", kvps)
+	sb.WriteRune(')')
+	return sb.String()
 }
 
 func (value objectValue) GetValue(key string) value {
