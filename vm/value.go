@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// for handling int64 to float32 conversions.
+	float32_minSafeInteger int64 = -((1 << 24) - 1)
+	float32_maxSafeInteger int64 = +((1 << 24) - 1)
 	// for handling int64 to float64 conversions.
 	float64_minSafeInteger int64 = -((1 << 53) - 1)
 	float64_maxSafeInteger int64 = +((1 << 53) - 1)
@@ -16,8 +19,11 @@ const (
 
 var (
 	int32CastError   = errors.New("int32 out of range")
+	int64CastError   = errors.New("int64 out of range")
+	float32CastError = errors.New("float32 out of range")
 	float64CastError = errors.New("float64 out of range")
 	uint8CastError   = errors.New("uint8 out of range")
+	floatIsNaNOrInf  = errors.New("NaN/Inf float")
 )
 
 type ValueKind int
@@ -109,6 +115,9 @@ func (v int64Value) toUint8() uint8 {
 }
 
 func (v int64Value) toFloat32() float32 {
+	if v.value < float32_minSafeInteger || v.value > float32_maxSafeInteger {
+		exit(float32CastError)
+	}
 	return float32(v.value)
 }
 
@@ -146,14 +155,38 @@ func (v float64Value) kind() ValueKind {
 }
 
 func (v float64Value) toInt64() int64 {
+	if math.IsNaN(v.value) || math.IsInf(v.value, 0) {
+		exit(floatIsNaNOrInf)
+	}
+
+	if v.value < math.MinInt64 || v.value > math.MaxInt64 {
+		exit(int64CastError)
+	}
+
 	return int64(v.value)
 }
 
 func (v float64Value) toInt32() int32 {
+	if math.IsNaN(v.value) || math.IsInf(v.value, 0) {
+		exit(floatIsNaNOrInf)
+	}
+
+	if v.value < math.MinInt32 || v.value > math.MaxInt32 {
+		exit(int32CastError)
+	}
+
 	return int32(v.value)
 }
 
 func (v float64Value) toUint8() uint8 {
+	if math.IsNaN(v.value) || math.IsInf(v.value, 0) {
+		exit(floatIsNaNOrInf)
+	}
+
+	if v.value < 0 || v.value > math.MaxUint8 {
+		exit(uint8CastError)
+	}
+
 	return uint8(v.value)
 }
 
