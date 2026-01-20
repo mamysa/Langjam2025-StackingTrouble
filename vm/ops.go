@@ -34,12 +34,12 @@ import "math"
 
 // Texture & _ => false
 
-func applyEq(v1, v2 Value) bool {
+func applyEq(v1, v2 value) bool {
 	switch v1.kind() {
-	case Value_None:
+	case value_None:
 		{
 			switch v2.kind() {
-			case Value_None:
+			case value_None:
 				{
 					return true
 				}
@@ -49,16 +49,16 @@ func applyEq(v1, v2 Value) bool {
 				}
 			}
 		}
-	case Value_Bool:
+	case value_Bool:
 		{
 			switch v2.kind() {
-			case Value_Bool:
+			case value_Bool:
 				{
-					return v1.(BoolValue).value == v2.(BoolValue).value
+					return v1.(boolValue).value == v2.(boolValue).value
 				}
-			case Value_Int, Value_Float:
+			case value_Int, value_Float:
 				{
-					return v1.(BoolValue).value == v2.Truthy()
+					return v1.(boolValue).value == v2.truthy()
 				}
 			default:
 				{
@@ -67,20 +67,20 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Bool:
+			case value_Bool:
 				{
-					return v1.Truthy() == v2.(BoolValue).value
+					return v1.truthy() == v2.(boolValue).value
 				}
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(IntValue).value == v2.(IntValue).value
+					return v1.(int64Value).value == v2.(int64Value).value
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(IntValue).toFloat64() == v2.(FloatValue).value
+					return v1.(int64Value).toFloat64() == v2.(float64Value).value
 				}
 			default:
 				{
@@ -89,20 +89,20 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Bool:
+			case value_Bool:
 				{
-					return v1.Truthy() == v2.(BoolValue).value
+					return v1.truthy() == v2.(boolValue).value
 				}
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(FloatValue).value == v2.(IntValue).toFloat64()
+					return v1.(float64Value).value == v2.(int64Value).toFloat64()
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(FloatValue).value == v2.(FloatValue).value
+					return v1.(float64Value).value == v2.(float64Value).value
 				}
 			default:
 				{
@@ -111,12 +111,12 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_FunctionAddress:
+	case value_FunctionAddress:
 		{
 			switch v2.kind() {
-			case Value_FunctionAddress:
+			case value_FunctionAddress:
 				{
-					return v1.(FunctionAddress).Offset == v2.(FunctionAddress).Offset
+					return v1.(functionAddressValue).Offset == v2.(functionAddressValue).Offset
 				}
 			default:
 				{
@@ -125,12 +125,12 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_String:
+	case value_String:
 		{
 			switch v2.kind() {
-			case Value_String:
+			case value_String:
 				{
-					return v1.(StringValue).Str == v2.(StringValue).Str
+					return v1.(stringValue).Str == v2.(stringValue).Str
 				}
 			default:
 				{
@@ -139,12 +139,12 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_List:
+	case value_List:
 		{
 			switch v2.kind() {
-			case Value_List:
+			case value_List:
 				{
-					return v1.(ListValue).compare(v2.(ListValue))
+					return v1.(listValue).compare(v2.(listValue))
 				}
 			default:
 				{
@@ -153,12 +153,12 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_Object:
+	case value_Object:
 		{
 			switch v2.kind() {
-			case Value_Object:
+			case value_Object:
 				{
-					return v1.(ObjectValue).Object == v2.(ObjectValue).Object
+					return v1.(objectValue).Object == v2.(objectValue).Object
 				}
 			default:
 				{
@@ -167,7 +167,7 @@ func applyEq(v1, v2 Value) bool {
 			}
 		}
 
-	case Value_Texture:
+	case value_Texture:
 		{
 			return false
 		}
@@ -177,7 +177,7 @@ func applyEq(v1, v2 Value) bool {
 }
 
 // applyEq negated.
-func applyNeq(v1, v2 Value) bool {
+func applyNeq(v1, v2 value) bool {
 	return !applyEq(v1, v2)
 }
 
@@ -194,18 +194,18 @@ func applyNeq(v1, v2 Value) bool {
 // _ & _ => error
 
 // TODO relative operators should be injected somehow.
-func applyLt(v1, v2 Value) (bool, error) {
+func applyLt(v1, v2 value) (bool, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(IntValue).value < v2.(IntValue).value, nil
+					return v1.(int64Value).value < v2.(int64Value).value, nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(IntValue).toFloat64() < v2.(FloatValue).value, nil
+					return v1.(int64Value).toFloat64() < v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -213,16 +213,16 @@ func applyLt(v1, v2 Value) (bool, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(FloatValue).value < v2.(IntValue).toFloat64(), nil
+					return v1.(float64Value).value < v2.(int64Value).toFloat64(), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(FloatValue).value < v2.(FloatValue).value, nil
+					return v1.(float64Value).value < v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -235,18 +235,18 @@ func applyLt(v1, v2 Value) (bool, error) {
 	}
 }
 
-func applyLtEq(v1, v2 Value) (bool, error) {
+func applyLtEq(v1, v2 value) (bool, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(IntValue).value <= v2.(IntValue).value, nil
+					return v1.(int64Value).value <= v2.(int64Value).value, nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(IntValue).toFloat64() <= v2.(FloatValue).value, nil
+					return v1.(int64Value).toFloat64() <= v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -254,16 +254,16 @@ func applyLtEq(v1, v2 Value) (bool, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(FloatValue).value <= v2.(IntValue).toFloat64(), nil
+					return v1.(float64Value).value <= v2.(int64Value).toFloat64(), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(FloatValue).value <= v2.(FloatValue).value, nil
+					return v1.(float64Value).value <= v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -276,18 +276,18 @@ func applyLtEq(v1, v2 Value) (bool, error) {
 	}
 }
 
-func applyGt(v1, v2 Value) (bool, error) {
+func applyGt(v1, v2 value) (bool, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(IntValue).value > v2.(IntValue).value, nil
+					return v1.(int64Value).value > v2.(int64Value).value, nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(IntValue).toFloat64() > v2.(FloatValue).value, nil
+					return v1.(int64Value).toFloat64() > v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -295,16 +295,16 @@ func applyGt(v1, v2 Value) (bool, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(FloatValue).value > v2.(IntValue).toFloat64(), nil
+					return v1.(float64Value).value > v2.(int64Value).toFloat64(), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(FloatValue).value > v2.(FloatValue).value, nil
+					return v1.(float64Value).value > v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -317,18 +317,18 @@ func applyGt(v1, v2 Value) (bool, error) {
 	}
 }
 
-func applyGtEq(v1, v2 Value) (bool, error) {
+func applyGtEq(v1, v2 value) (bool, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(IntValue).value >= v2.(IntValue).value, nil
+					return v1.(int64Value).value >= v2.(int64Value).value, nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(IntValue).toFloat64() >= v2.(FloatValue).value, nil
+					return v1.(int64Value).toFloat64() >= v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -336,16 +336,16 @@ func applyGtEq(v1, v2 Value) (bool, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return v1.(FloatValue).value >= v2.(IntValue).toFloat64(), nil
+					return v1.(float64Value).value >= v2.(int64Value).toFloat64(), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return v1.(FloatValue).value >= v2.(FloatValue).value, nil
+					return v1.(float64Value).value >= v2.(float64Value).value, nil
 				}
 			default:
 				{
@@ -371,18 +371,18 @@ func applyGtEq(v1, v2 Value) (bool, error) {
 // String & _ => string_concat(v1, v2)
 
 // _ & _ => error
-func applyAdd(v1, v2 Value) (Value, error) {
+func applyAdd(v1, v2 value) (value, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewInt(v1.(IntValue).value + v2.(IntValue).value), nil
+					return newInt64Value(v1.(int64Value).value + v2.(int64Value).value), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(IntValue).toFloat64() + v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(int64Value).toFloat64() + v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -390,16 +390,16 @@ func applyAdd(v1, v2 Value) (Value, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewFloatValue(v1.(FloatValue).value + v2.(IntValue).toFloat64()), nil
+					return newFloat64Value(v1.(float64Value).value + v2.(int64Value).toFloat64()), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(FloatValue).value + v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(float64Value).value + v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -407,13 +407,13 @@ func applyAdd(v1, v2 Value) (Value, error) {
 				}
 			}
 		}
-	case Value_List:
+	case value_List:
 		{
-			return v1.(ListValue).append(v2), nil
+			return v1.(listValue).append(v2), nil
 		}
-	case Value_String:
+	case value_String:
 		{
-			return v1.(StringValue).concat(v2), nil
+			return v1.(stringValue).concat(v2), nil
 		}
 	default:
 		{
@@ -432,18 +432,18 @@ func applyAdd(v1, v2 Value) (Value, error) {
 // Float & _     => error
 
 // _ & _ => error
-func applySub(v1, v2 Value) (Value, error) {
+func applySub(v1, v2 value) (value, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewInt(v1.(IntValue).value - v2.(IntValue).value), nil
+					return newInt64Value(v1.(int64Value).value - v2.(int64Value).value), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(IntValue).toFloat64() - v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(int64Value).toFloat64() - v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -451,16 +451,16 @@ func applySub(v1, v2 Value) (Value, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewFloatValue(v1.(FloatValue).value - v2.(IntValue).toFloat64()), nil
+					return newFloat64Value(v1.(float64Value).value - v2.(int64Value).toFloat64()), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(FloatValue).value - v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(float64Value).value - v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -484,18 +484,18 @@ func applySub(v1, v2 Value) (Value, error) {
 // Float & _     => error
 
 // _ & _ => error
-func applyMul(v1, v2 Value) (Value, error) {
+func applyMul(v1, v2 value) (value, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewInt(v1.(IntValue).value * v2.(IntValue).value), nil
+					return newInt64Value(v1.(int64Value).value * v2.(int64Value).value), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(IntValue).toFloat64() * v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(int64Value).toFloat64() * v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -503,16 +503,16 @@ func applyMul(v1, v2 Value) (Value, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewFloatValue(v1.(FloatValue).value * v2.(IntValue).toFloat64()), nil
+					return newFloat64Value(v1.(float64Value).value * v2.(int64Value).toFloat64()), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(FloatValue).value * v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(float64Value).value * v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -536,18 +536,18 @@ func applyMul(v1, v2 Value) (Value, error) {
 // Float & _     => error
 
 // _ & _ => error
-func applyDiv(v1, v2 Value) (Value, error) {
+func applyDiv(v1, v2 value) (value, error) {
 	switch v1.kind() {
-	case Value_Int:
+	case value_Int:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewFloatValue(v1.(IntValue).toFloat64() / v2.(IntValue).toFloat64()), nil
+					return newFloat64Value(v1.(int64Value).toFloat64() / v2.(int64Value).toFloat64()), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(IntValue).toFloat64() / v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(int64Value).toFloat64() / v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -555,16 +555,16 @@ func applyDiv(v1, v2 Value) (Value, error) {
 				}
 			}
 		}
-	case Value_Float:
+	case value_Float:
 		{
 			switch v2.kind() {
-			case Value_Int:
+			case value_Int:
 				{
-					return NewFloatValue(v1.(FloatValue).value / v2.(IntValue).toFloat64()), nil
+					return newFloat64Value(v1.(float64Value).value / v2.(int64Value).toFloat64()), nil
 				}
-			case Value_Float:
+			case value_Float:
 				{
-					return NewFloatValue(v1.(FloatValue).value / v2.(FloatValue).value), nil
+					return newFloat64Value(v1.(float64Value).value / v2.(float64Value).value), nil
 				}
 			default:
 				{
@@ -579,15 +579,15 @@ func applyDiv(v1, v2 Value) (Value, error) {
 	}
 }
 
-func applyNeg(v Value) (Value, error) {
+func applyNeg(v value) (value, error) {
 	switch v.kind() {
-	case Value_Int:
+	case value_Int:
 		{
-			return NewInt(-v.(IntValue).value), nil
+			return newInt64Value(-v.(int64Value).value), nil
 		}
-	case Value_Float:
+	case value_Float:
 		{
-			return NewFloatValue(-v.(FloatValue).value), nil
+			return newFloat64Value(-v.(float64Value).value), nil
 		}
 	default:
 		{
@@ -596,15 +596,15 @@ func applyNeg(v Value) (Value, error) {
 	}
 }
 
-func applyLen(v Value) (Value, error) {
+func applyLen(v value) (value, error) {
 	switch v.kind() {
-	case Value_List:
+	case value_List:
 		{
-			return NewInt(int64(v.(ListValue).array.Length)), nil
+			return newInt64Value(int64(v.(listValue).array.Length)), nil
 		}
-	case Value_String:
+	case value_String:
 		{
-			return NewInt(int64(len(v.(StringValue).Str))), nil
+			return newInt64Value(int64(len(v.(stringValue).Str))), nil
 		}
 	default:
 		{
@@ -613,16 +613,16 @@ func applyLen(v Value) (Value, error) {
 	}
 }
 
-func applyFloor(v Value) (Value, error) {
+func applyFloor(v value) (value, error) {
 	switch v.kind() {
-	case Value_Int:
+	case value_Int:
 		{
-			return NewInt(v.(IntValue).value), nil
+			return newInt64Value(v.(int64Value).value), nil
 		}
-	case Value_Float:
+	case value_Float:
 		{
-			floored := math.Floor(v.(FloatValue).value)
-			return NewInt(int64(floored)), nil
+			floored := math.Floor(v.(float64Value).value)
+			return newInt64Value(int64(floored)), nil
 		}
 	default:
 		{
@@ -631,16 +631,16 @@ func applyFloor(v Value) (Value, error) {
 	}
 }
 
-func applyCeil(v Value) (Value, error) {
+func applyCeil(v value) (value, error) {
 	switch v.kind() {
-	case Value_Int:
+	case value_Int:
 		{
-			return NewInt(v.(IntValue).value), nil
+			return newInt64Value(v.(int64Value).value), nil
 		}
-	case Value_Float:
+	case value_Float:
 		{
-			ceiled := math.Ceil(v.(FloatValue).value)
-			return NewInt(int64(ceiled)), nil
+			ceiled := math.Ceil(v.(float64Value).value)
+			return newInt64Value(int64(ceiled)), nil
 		}
 	default:
 		{

@@ -3,11 +3,11 @@ package vm
 import "fmt"
 
 type UnexpectedValueError struct {
-	v        Value
+	v        value
 	expected ValueKind
 }
 
-func newUnexpectedValueError(v Value, expected ValueKind) UnexpectedValueError {
+func newUnexpectedValueError(v value, expected ValueKind) UnexpectedValueError {
 	return UnexpectedValueError{
 		v:        v,
 		expected: expected,
@@ -24,11 +24,11 @@ func (e UnexpectedValueError) Error() string {
 }
 
 type NotNumericError struct {
-	v Value
+	v value
 	p string
 }
 
-func newNotNumericError(v Value, primitiveType string) NotNumericError {
+func newNotNumericError(v value, primitiveType string) NotNumericError {
 	return NotNumericError{
 		v: v,
 		p: primitiveType,
@@ -46,11 +46,11 @@ func (e NotNumericError) Error() string {
 
 type PrimitiveConversionError struct {
 	where        string
-	v            Value
+	v            value
 	expectedType string
 }
 
-func newPrimitiveConversionError(where string, v Value, expectedType string) PrimitiveConversionError {
+func newPrimitiveConversionError(where string, v value, expectedType string) PrimitiveConversionError {
 	return PrimitiveConversionError{
 		where:        where,
 		v:            v,
@@ -70,10 +70,10 @@ func (e PrimitiveConversionError) Error() string {
 
 type UnaryOperatorError struct {
 	opcode OpCode_NoArgs
-	v      Value
+	v      value
 }
 
-func newUnaryOperatorError(opcode OpCode_NoArgs, v Value) UnaryOperatorError {
+func newUnaryOperatorError(opcode OpCode_NoArgs, v value) UnaryOperatorError {
 	return UnaryOperatorError{
 		opcode: opcode,
 		v:      v,
@@ -91,11 +91,11 @@ func (e UnaryOperatorError) Error() string {
 
 type BinaryOperatorError struct {
 	opcode OpCode_NoArgs
-	v1     Value
-	v2     Value
+	v1     value
+	v2     value
 }
 
-func newBinaryOperatorError(opcode OpCode_NoArgs, v1, v2 Value) BinaryOperatorError {
+func newBinaryOperatorError(opcode OpCode_NoArgs, v1, v2 value) BinaryOperatorError {
 	return BinaryOperatorError{
 		opcode: opcode,
 		v1:     v1,

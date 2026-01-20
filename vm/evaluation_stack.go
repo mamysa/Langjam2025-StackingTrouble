@@ -6,13 +6,13 @@ const evaluationStackHeight int = 100
 
 type EvaluationStack struct {
 	top   int
-	stack []Value
+	stack []value
 }
 
 func NewEvaluationStack() EvaluationStack {
 	return EvaluationStack{
 		top:   -1,
-		stack: make([]Value, evaluationStackHeight),
+		stack: make([]value, evaluationStackHeight),
 	}
 }
 
@@ -20,7 +20,7 @@ func (stack *EvaluationStack) getStackTop() int {
 	return stack.top
 }
 
-func (stack *EvaluationStack) pushGuarded(value Value) {
+func (stack *EvaluationStack) pushGuarded(value value) {
 	//fmt.Printf("%+v\n", stack.top)
 
 	if stack.top >= evaluationStackHeight {
@@ -33,35 +33,35 @@ func (stack *EvaluationStack) pushGuarded(value Value) {
 
 func (stack *EvaluationStack) pushNone() {
 	stack.top += 1
-	stack.pushGuarded(NewNone())
+	stack.pushGuarded(newNone())
 }
 
 func (stack *EvaluationStack) pushBool(b bool) {
 	stack.top += 1
-	stack.pushGuarded(NewBool(b))
+	stack.pushGuarded(newBoolValue(b))
 }
 
 func (stack *EvaluationStack) pushInt(i int64) {
 	stack.top += 1
-	stack.pushGuarded(NewInt(i))
+	stack.pushGuarded(newInt64Value(i))
 }
 
 func (stack *EvaluationStack) pushFloat(f float64) {
 	stack.top += 1
-	stack.pushGuarded(NewFloatValue(f))
+	stack.pushGuarded(newFloat64Value(f))
 }
 
 func (stack *EvaluationStack) pushFunctionAddress(i int) {
 	stack.top += 1
-	stack.pushGuarded(NewFunctionAddress(i))
+	stack.pushGuarded(newFunctionAddressValue(i))
 }
 
 func (stack *EvaluationStack) pushString(s string) {
 	stack.top += 1
-	stack.pushGuarded(NewStringValue(s))
+	stack.pushGuarded(newStringValue(s))
 }
 
-func (stack *EvaluationStack) pushValue(value Value) {
+func (stack *EvaluationStack) pushValue(value value) {
 	if value == nil {
 		panic("Pushing nil value onto evaluation stack")
 	}
@@ -69,7 +69,7 @@ func (stack *EvaluationStack) pushValue(value Value) {
 	stack.pushGuarded(value)
 }
 
-func (stack *EvaluationStack) pop() Value {
+func (stack *EvaluationStack) pop() value {
 	if stack.top < 0 {
 		panic("Stack is empty, unable to pop xx")
 	}
@@ -80,7 +80,7 @@ func (stack *EvaluationStack) pop() Value {
 	return value
 }
 
-func (stack *EvaluationStack) peek() Value {
+func (stack *EvaluationStack) peek() value {
 	if stack.top < 0 {
 		panic("Stack is empty, unable to pop")
 	}

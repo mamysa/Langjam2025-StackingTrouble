@@ -218,7 +218,7 @@ func (interpreter *Interpreter) Run() {
 	}
 
 	value := interpreter.evaluationStack.peek()
-	if value.kind() != Value_None {
+	if value.kind() != value_None {
 		exit(errors.New("evaluation stack should contain None after execution"))
 	}
 }
@@ -278,10 +278,10 @@ func (interpreter *Interpreter) call(insn Call) {
 
 func (interpreter *Interpreter) callVirtual() {
 	value := interpreter.evaluationStack.pop()
-	if value.kind() != Value_FunctionAddress {
-		exitWithContext("callVirtual", newUnexpectedValueError(value, Value_FunctionAddress))
+	if value.kind() != value_FunctionAddress {
+		exitWithContext("callVirtual", newUnexpectedValueError(value, value_FunctionAddress))
 	}
-	addr := value.(FunctionAddress).Offset
+	addr := value.(functionAddressValue).Offset
 
 	nextInstructionOffset := interpreter.programCounter + 1
 	interpreter.callStack.pushStackFrame(nextInstructionOffset)
@@ -353,7 +353,7 @@ func (interpreter *Interpreter) neg() {
 // Not applied to truthy
 func (interpreter *Interpreter) not() {
 	v := interpreter.evaluationStack.pop()
-	result := !v.Truthy()
+	result := !v.truthy()
 	interpreter.evaluationStack.pushBool(result)
 	interpreter.programCounter++
 }
@@ -441,7 +441,7 @@ func (interpreter *Interpreter) pushFunctionAddr(insn PushFunctionAddr) {
 
 func (interpreter *Interpreter) brIf(insn BrIf) {
 	v := interpreter.evaluationStack.pop()
-	if v.Truthy() {
+	if v.truthy() {
 		interpreter.programCounter = InstructionOffset(insn.Offset)
 		return
 	}
@@ -451,7 +451,7 @@ func (interpreter *Interpreter) brIf(insn BrIf) {
 
 func (interpreter *Interpreter) brIfNot(insn BrIfNot) {
 	v := interpreter.evaluationStack.pop()
-	if !v.Truthy() {
+	if !v.truthy() {
 		interpreter.programCounter = InstructionOffset(insn.Offset)
 		return
 	}
@@ -470,7 +470,7 @@ func (interpreter *Interpreter) label(insn Label) {
 
 func (interpreter *Interpreter) dup() {
 	value := interpreter.evaluationStack.peek()
-	copiedValue := value.Copy()
+	copiedValue := value.copy()
 	interpreter.evaluationStack.pushValue(copiedValue)
 	interpreter.programCounter++
 }
@@ -481,12 +481,12 @@ func (interpreter *Interpreter) pop() {
 }
 
 func (interpreter *Interpreter) newList() {
-	interpreter.evaluationStack.pushValue(NewListValue())
+	interpreter.evaluationStack.pushValue(newListValue())
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) newObject() {
-	interpreter.evaluationStack.pushValue(NewObjectValue())
+	interpreter.evaluationStack.pushValue(newObjectValue())
 	interpreter.programCounter++
 }
 
@@ -510,16 +510,16 @@ func (interpreter *Interpreter) subscriptGet() {
 	subscript := interpreter.evaluationStack.pop()
 	target := interpreter.evaluationStack.pop()
 
-	if target.kind() != Value_List {
+	if target.kind() != value_List {
 		exit(errors.New("subscriptGet: target is not a list"))
 	}
 
-	if subscript.kind() != Value_Int {
+	if subscript.kind() != value_Int {
 		exit(errors.New("subscriptGet: non-integer subscript to list"))
 	}
 
-	index := subscript.(IntValue).value
-	value := target.(ListValue).GetValue(int(index))
+	index := subscript.(int64Value).value
+	value := target.(listValue).GetValue(int(index))
 
 	interpreter.evaluationStack.pushValue(value)
 	interpreter.programCounter++
@@ -528,11 +528,11 @@ func (interpreter *Interpreter) subscriptGet() {
 func (interpreter *Interpreter) objectFieldGet(insn ObjectFieldGet) {
 	target := interpreter.evaluationStack.pop()
 
-	if target.kind() != Value_Object {
+	if target.kind() != value_Object {
 		exit(fmt.Errorf("objectFieldGet: target %+v is not object", target))
 	}
 
-	value := target.(ObjectValue).GetValue(insn.Field)
+	value := target.(objectValue).GetValue(insn.Field)
 	interpreter.evaluationStack.pushValue(value)
 	interpreter.programCounter++
 }
@@ -544,16 +544,16 @@ func (interpreter *Interpreter) subscriptSet() {
 	target := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
 
-	if target.kind() != Value_List {
+	if target.kind() != value_List {
 		exit(errors.New("subscriptSet: target is not a list"))
 	}
 
-	if subscript.kind() != Value_Int {
+	if subscript.kind() != value_Int {
 		exit(errors.New("subscriptSet: non-integer subscript to list"))
 	}
 
-	index := subscript.(IntValue).value
-	target.(ListValue).SetValue(int(index), value)
+	index := subscript.(int64Value).value
+	target.(listValue).SetValue(int(index), value)
 	interpreter.programCounter++
 }
 
@@ -561,17 +561,17 @@ func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 	target := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
 
-	if target.kind() != Value_Object {
+	if target.kind() != value_Object {
 		exit(fmt.Errorf("objectFieldSet: target %+v is not object", target))
 	}
 
-	target.(ObjectValue).SetValue(insn.Field, value)
+	target.(objectValue).SetValue(insn.Field, value)
 	interpreter.programCounter++
 }
 
 func (interpreter *Interpreter) assert() {
 	value := interpreter.evaluationStack.pop()
-	if !value.Truthy() {
+	if !value.truthy() {
 		fmt.Printf("Assertion failed, PC=%d", interpreter.programCounter)
 		// TODO dump call stack
 		os.Exit(1)
@@ -787,11 +787,11 @@ func (interpreter *Interpreter) rlDrawTexture() {
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if v.kind() != Value_Texture {
-		exitWithContext("rlDrawTexture", newUnexpectedValueError(v, Value_Texture))
+	if v.kind() != value_Texture {
+		exitWithContext("rlDrawTexture", newUnexpectedValueError(v, value_Texture))
 	}
 
-	rl.DrawTexture(v.(TextureValue).Texture, x, y, color.RGBA{
+	rl.DrawTexture(v.(textureValue).Texture, x, y, color.RGBA{
 		R: 255,
 		G: 255,
 		B: 255,
@@ -886,11 +886,11 @@ func (interpreter *Interpreter) randomInt() {
 	}
 
 	value := interpreter.evaluationStack.pop()
-	if value.kind() != Value_Int {
-		exitWithContext("randomInt", newUnexpectedValueError(value, Value_Int))
+	if value.kind() != value_Int {
+		exitWithContext("randomInt", newUnexpectedValueError(value, value_Int))
 	}
 
-	intValue := value.(IntValue)
+	intValue := value.(int64Value)
 	if intValue.value <= 0 {
 		exitWithContext("randomInt", errors.New("argument must be greater than zero"))
 	}
@@ -946,12 +946,12 @@ func (interpreter *Interpreter) rlDrawText() {
 	}
 
 	t := interpreter.evaluationStack.pop()
-	if t.kind() != Value_String {
-		exitWithContext("rlDrawText", newUnexpectedValueError(t, Value_Texture))
+	if t.kind() != value_String {
+		exitWithContext("rlDrawText", newUnexpectedValueError(t, value_Texture))
 	}
 
 	rl.DrawText(
-		t.(StringValue).Str,
+		t.(stringValue).Str,
 		x,
 		y,
 		fontSize,
@@ -998,12 +998,12 @@ func (interpreter *Interpreter) rlLoadTexture() {
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if v.kind() != Value_String {
-		exitWithContext("rlLoadTexture", newUnexpectedValueError(v, Value_String))
+	if v.kind() != value_String {
+		exitWithContext("rlLoadTexture", newUnexpectedValueError(v, value_String))
 	}
 
-	texture := rl.LoadTexture(v.(StringValue).Str)
-	interpreter.evaluationStack.pushValue(TextureValue{Texture: texture})
+	texture := rl.LoadTexture(v.(stringValue).Str)
+	interpreter.evaluationStack.pushValue(newTextureValue(texture))
 	interpreter.programCounter++
 }
 
@@ -1013,21 +1013,21 @@ func (interpreter *Interpreter) rlUnloadTexture() {
 	}
 
 	v := interpreter.evaluationStack.pop()
-	if v.kind() != Value_Texture {
-		exitWithContext("rlUnloadTexture", newUnexpectedValueError(v, Value_String))
+	if v.kind() != value_Texture {
+		exitWithContext("rlUnloadTexture", newUnexpectedValueError(v, value_String))
 	}
 
-	rl.UnloadTexture(v.(TextureValue).Texture)
+	rl.UnloadTexture(v.(textureValue).Texture)
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
 }
 
-func unwrapArgCount(expectedArgCount int, v Value) error {
-	if v.kind() != Value_Int {
+func unwrapArgCount(expectedArgCount int, v value) error {
+	if v.kind() != value_Int {
 		return fmt.Errorf("error unwrapping arg count: value %+v of dynamic type %+v is not Int", v, v.kind())
 	}
 
-	actualArgCount := v.(IntValue).value
+	actualArgCount := v.(int64Value).value
 	if actualArgCount != int64(expectedArgCount) {
 		return fmt.Errorf("error unwrapping arg count: expected %d, got %d arguments", expectedArgCount, actualArgCount)
 	}

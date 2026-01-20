@@ -23,44 +23,43 @@ var (
 type ValueKind int
 
 const (
-	Value_None ValueKind = iota
-	Value_Bool
-	Value_Int
-	Value_Float
-	Value_FunctionAddress
-	Value_String
-	Value_List
-	Value_Object
-	Value_Texture
+	value_None ValueKind = iota
+	value_Bool
+	value_Int
+	value_Float
+	value_FunctionAddress
+	value_String
+	value_List
+	value_Object
+	value_Texture
 )
 
 func (v ValueKind) String() string {
 	switch v {
-	case Value_None:
+	case value_None:
 		return "None"
-	case Value_Bool:
+	case value_Bool:
 		return "Bool"
-	case Value_Int:
+	case value_Int:
 		return "Int"
-	case Value_Float:
+	case value_Float:
 		return "Float"
-	case Value_FunctionAddress:
+	case value_FunctionAddress:
 		return "FunctionAddress"
-	case Value_String:
+	case value_String:
 		return "String"
-	case Value_List:
+	case value_List:
 		return "List"
-	case Value_Object:
+	case value_Object:
 		return "Object"
-	case Value_Texture:
+	case value_Texture:
 		return "Texture"
 	default:
 		return "Unknown"
 	}
-
 }
 
-// IntValue/FloatValue implement this interface.
+// int64Value/float64Value implement this interface.
 type Numeric interface {
 	toInt64() int64
 	toInt32() int32
@@ -70,231 +69,230 @@ type Numeric interface {
 }
 
 // represents value on the stack.
-type Value interface {
+type value interface {
 	kind() ValueKind
-	Truthy() bool
-	Copy() Value
+	truthy() bool
+	copy() value
 	String() string
 }
 
-type IntValue struct {
+type int64Value struct {
 	value int64
 }
 
-func NewInt(i int64) IntValue {
-	return IntValue{
+func newInt64Value(i int64) int64Value {
+	return int64Value{
 		value: i,
 	}
 }
 
-func (v IntValue) kind() ValueKind {
-	return Value_Int
+func (v int64Value) kind() ValueKind {
+	return value_Int
 }
 
-func (v IntValue) toInt64() int64 {
+func (v int64Value) toInt64() int64 {
 	return v.value
 }
 
-func (v IntValue) toInt32() int32 {
+func (v int64Value) toInt32() int32 {
 	if v.value < math.MinInt32 || v.value > math.MaxInt32 {
 		exit(int32CastError)
 	}
 	return int32(v.value)
 }
 
-func (v IntValue) toUint8() uint8 {
+func (v int64Value) toUint8() uint8 {
 	if v.value < 0 || v.value > math.MaxUint8 {
 		exit(uint8CastError)
 	}
 	return uint8(v.value)
 }
 
-func (v IntValue) toFloat32() float32 {
+func (v int64Value) toFloat32() float32 {
 	return float32(v.value)
 }
 
-func (v IntValue) toFloat64() float64 {
+func (v int64Value) toFloat64() float64 {
 	if v.value < float64_minSafeInteger || v.value > float64_maxSafeInteger {
 		exit(float64CastError)
 	}
 	return float64(v.value)
 }
 
-func (value IntValue) Truthy() bool {
+func (value int64Value) truthy() bool {
 	return value.value == 1
 }
 
-func (value IntValue) Copy() Value {
-	return NewInt(value.value)
+func (value int64Value) copy() value {
+	return newInt64Value(value.value)
 }
 
-func (value IntValue) String() string {
+func (value int64Value) String() string {
 	return fmt.Sprintf("%d", value.value)
 }
 
-type FloatValue struct {
+type float64Value struct {
 	value float64
 }
 
-func NewFloatValue(value float64) FloatValue {
-	return FloatValue{
+func newFloat64Value(value float64) float64Value {
+	return float64Value{
 		value: value,
 	}
 }
 
-func (v FloatValue) kind() ValueKind {
-	return Value_Float
+func (v float64Value) kind() ValueKind {
+	return value_Float
 }
 
-func (v FloatValue) toInt64() int64 {
+func (v float64Value) toInt64() int64 {
 	return int64(v.value)
 }
 
-func (v FloatValue) toInt32() int32 {
+func (v float64Value) toInt32() int32 {
 	return int32(v.value)
 }
 
-func (v FloatValue) toUint8() uint8 {
+func (v float64Value) toUint8() uint8 {
 	return uint8(v.value)
 }
 
-func (v FloatValue) toFloat32() float32 {
+func (v float64Value) toFloat32() float32 {
 	return float32(v.value)
 }
 
-func (v FloatValue) toFloat64() float64 {
+func (v float64Value) toFloat64() float64 {
 	return v.value
 }
 
-func (value FloatValue) Truthy() bool {
+func (value float64Value) truthy() bool {
 	return value.value == 1.0
 }
 
-func (value FloatValue) Copy() Value {
-	return NewFloatValue(value.value)
+func (value float64Value) copy() value {
+	return newFloat64Value(value.value)
 }
 
-func (value FloatValue) String() string {
+func (value float64Value) String() string {
 	return fmt.Sprintf("%+v", value.value)
 }
 
-type None struct {
+type none struct {
 	Kind ValueKind
 }
 
-func NewNone() None {
-	return None{
-		Kind: Value_None,
+func newNone() none {
+	return none{
+		Kind: value_None,
 	}
 }
 
-func (None) kind() ValueKind {
-	return Value_None
+func (none) kind() ValueKind {
+	return value_None
 }
 
-func (value None) Truthy() bool {
+func (value none) truthy() bool {
 	return false
 }
 
-func (value None) Copy() Value {
-	return NewNone()
+func (value none) copy() value {
+	return newNone()
 }
 
-func (value None) String() string {
+func (value none) String() string {
 	return "None"
 }
 
-func NewFunctionAddress(i int) FunctionAddress {
-	return FunctionAddress{
+func newFunctionAddressValue(i int) functionAddressValue {
+	return functionAddressValue{
 		Offset: i,
 	}
 }
 
-type FunctionAddress struct {
+type functionAddressValue struct {
 	Offset int
 }
 
-func (FunctionAddress) kind() ValueKind {
-	return Value_FunctionAddress
+func (functionAddressValue) kind() ValueKind {
+	return value_FunctionAddress
 }
 
-func (value FunctionAddress) Truthy() bool {
+func (value functionAddressValue) truthy() bool {
 	return false
 }
 
-func (value FunctionAddress) Copy() Value {
-	return NewFunctionAddress(value.Offset)
+func (value functionAddressValue) copy() value {
+	return newFunctionAddressValue(value.Offset)
 }
 
-func (value FunctionAddress) String() string {
+func (value functionAddressValue) String() string {
 	return fmt.Sprintf("FunctionAddress(%d)", value.Offset)
 }
 
-type BoolValue struct {
+type boolValue struct {
 	value bool
 }
 
-func NewBool(b bool) BoolValue {
-	return BoolValue{
+func newBoolValue(b bool) boolValue {
+	return boolValue{
 		value: b,
 	}
 }
 
-func (BoolValue) kind() ValueKind {
-	return Value_Bool
+func (boolValue) kind() ValueKind {
+	return value_Bool
 }
 
-func (value BoolValue) Truthy() bool {
+func (value boolValue) truthy() bool {
 	return value.value
 }
 
-func (value BoolValue) Copy() Value {
-	return NewBool(value.value)
+func (value boolValue) copy() value {
+	return newBoolValue(value.value)
 }
 
-func (value BoolValue) String() string {
+func (value boolValue) String() string {
 	if value.value {
 		return "True"
 	}
-
 	return "False"
 }
 
-type ListValue struct {
+type listValue struct {
 	array *array
 }
 
 type array struct {
 	Length int
-	Array  []Value
+	Array  []value
 }
 
-func NewListValue() ListValue {
-	return ListValue{
+func newListValue() listValue {
+	return listValue{
 		array: &array{
 			Length: 0,
-			Array:  []Value{},
+			Array:  []value{},
 		},
 	}
 }
 
-func (ListValue) kind() ValueKind {
-	return Value_List
+func (listValue) kind() ValueKind {
+	return value_List
 }
 
-func (value ListValue) Truthy() bool {
+func (value listValue) truthy() bool {
 	return len(value.array.Array) > 0
 }
 
 // Copy reference
-func (value ListValue) Copy() Value {
-	return ListValue{
+func (value listValue) copy() value {
+	return listValue{
 		array: value.array,
 	}
 }
 
 // Lists are equal if they are of the same length and all elements of the list are pairwise equal.
-func (list ListValue) compare(other ListValue) bool {
+func (list listValue) compare(other listValue) bool {
 	if len(list.array.Array) != len(other.array.Array) {
 		return false
 	}
@@ -311,18 +309,18 @@ func (list ListValue) compare(other ListValue) bool {
 }
 
 // creates a new array with value added to it.
-func (list ListValue) append(value Value) ListValue {
+func (list listValue) append(v value) listValue {
 
 	originalLength := list.array.Length
 	originalList := list.array.Array
-	newList := make([]Value, originalLength+1)
+	newList := make([]value, originalLength+1)
 
 	for i := 0; i < originalLength; i++ {
 		newList[i] = originalList[i]
 	}
-	newList[originalLength] = value
+	newList[originalLength] = v
 
-	return ListValue{
+	return listValue{
 		array: &array{
 			Length: originalLength + 1,
 			Array:  newList,
@@ -330,7 +328,7 @@ func (list ListValue) append(value Value) ListValue {
 	}
 }
 
-func (list ListValue) GetValue(index int) Value {
+func (list listValue) GetValue(index int) value {
 	if !(index >= 0 && index < list.array.Length) {
 		exit(errors.New("Out of bounds list access"))
 	}
@@ -338,15 +336,15 @@ func (list ListValue) GetValue(index int) Value {
 	return list.array.Array[index]
 }
 
-func (list ListValue) SetValue(index int, value Value) {
+func (list listValue) SetValue(index int, v value) {
 	if !(index >= 0 && index < list.array.Length) {
 		exit(errors.New("Out of bounds list access"))
 	}
 
-	list.array.Array[index] = value
+	list.array.Array[index] = v
 }
 
-func (value ListValue) String() string {
+func (value listValue) String() string {
 	if value.array.Length == 0 {
 		return "[]"
 	}
@@ -362,36 +360,36 @@ func (value ListValue) String() string {
 	return fmt.Sprintf("[%s]", str)
 }
 
-type ObjectValue struct {
+type objectValue struct {
 	Object *object
 }
 
 type object struct {
-	object map[string]Value
+	object map[string]value
 }
 
-func NewObjectValue() ObjectValue {
-	return ObjectValue{
+func newObjectValue() objectValue {
+	return objectValue{
 		Object: &object{
-			object: map[string]Value{},
+			object: map[string]value{},
 		},
 	}
 }
 
-func (ObjectValue) kind() ValueKind {
-	return Value_Object
+func (objectValue) kind() ValueKind {
+	return value_Object
 }
 
-func (value ObjectValue) Truthy() bool {
+func (value objectValue) truthy() bool {
 	return len(value.Object.object) > 0
 }
 
-func (value ObjectValue) Copy() Value {
+func (value objectValue) copy() value {
 	// copy reference
-	return ObjectValue{Object: value.Object}
+	return objectValue{Object: value.Object}
 }
 
-func (value ObjectValue) String() string {
+func (value objectValue) String() string {
 	hasPrevious := false
 	kvps := ""
 	for key, value := range value.Object.object {
@@ -407,7 +405,7 @@ func (value ObjectValue) String() string {
 	return fmt.Sprintf("Object(%s)", kvps)
 }
 
-func (value ObjectValue) GetValue(key string) Value {
+func (value objectValue) GetValue(key string) value {
 	v, ok := value.Object.object[key]
 	if !ok {
 		exit(fmt.Errorf("Field %+v not present in the object %+v", key, value))
@@ -416,60 +414,66 @@ func (value ObjectValue) GetValue(key string) Value {
 	return v
 }
 
-func (list ObjectValue) SetValue(key string, value Value) {
-	list.Object.object[key] = value
+func (list objectValue) SetValue(key string, v value) {
+	list.Object.object[key] = v
 }
 
-type StringValue struct {
+type stringValue struct {
 	Str string
 }
 
-func NewStringValue(s string) StringValue {
-	return StringValue{
+func newStringValue(s string) stringValue {
+	return stringValue{
 		Str: s,
 	}
 }
 
-func (sv StringValue) concat(v Value) StringValue {
+func (sv stringValue) concat(v value) stringValue {
 	s := fmt.Sprintf("%s%s", sv.String(), v.String())
-	return NewStringValue(s)
+	return newStringValue(s)
 }
 
-func (StringValue) kind() ValueKind {
-	return Value_String
+func (stringValue) kind() ValueKind {
+	return value_String
 }
 
-func (value StringValue) Truthy() bool {
+func (value stringValue) truthy() bool {
 	return false
 }
 
-func (value StringValue) Copy() Value {
+func (value stringValue) copy() value {
 	// copy reference
-	return StringValue{Str: value.Str}
+	return stringValue{Str: value.Str}
 }
 
-func (value StringValue) String() string {
+func (value stringValue) String() string {
 	return value.Str
 }
 
-type TextureValue struct {
+type textureValue struct {
 	Texture rl.Texture2D
 }
 
-func (TextureValue) kind() ValueKind {
-	return Value_Texture
+func newTextureValue(tex rl.Texture2D) textureValue {
+	return textureValue{
+		Texture: tex,
+	}
 }
 
-func (value TextureValue) Truthy() bool {
+func (textureValue) kind() ValueKind {
+	return value_Texture
+}
+
+func (value textureValue) truthy() bool {
 	return false
 }
 
-func (value TextureValue) Copy() Value {
-	return TextureValue{
+func (value textureValue) copy() value {
+	return textureValue{
 		Texture: value.Texture,
 	}
 }
 
-func (value TextureValue) String() string {
+func (value textureValue) String() string {
 	return "Texture"
 }

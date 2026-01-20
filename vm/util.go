@@ -2,9 +2,9 @@ package vm
 
 import rl "github.com/gen2brain/raylib-go/raylib"
 
-// various utility funcs for extracting required primitive types out of Value_Int/Value_Float
+// various utility funcs for extracting required primitive types out of value_Int/Value_Float
 // and generating appropriate error messages.
-func int32FromNumeric(v Value) (int32, error) {
+func int32FromNumeric(v value) (int32, error) {
 	if numeric, ok := v.(Numeric); ok {
 		return numeric.toInt32(), nil
 	}
@@ -12,7 +12,7 @@ func int32FromNumeric(v Value) (int32, error) {
 	return 0, newNotNumericError(v, "int32")
 }
 
-func uint8FromNumeric(v Value) (uint8, error) {
+func uint8FromNumeric(v value) (uint8, error) {
 	if numeric, ok := v.(Numeric); ok {
 		return numeric.toUint8(), nil
 	}
@@ -20,7 +20,7 @@ func uint8FromNumeric(v Value) (uint8, error) {
 	return 0, newNotNumericError(v, "uint8")
 }
 
-func float32FromNumeric(v Value) (float32, error) {
+func float32FromNumeric(v value) (float32, error) {
 	if numeric, ok := v.(Numeric); ok {
 		return numeric.toFloat32(), nil
 	}
@@ -28,7 +28,7 @@ func float32FromNumeric(v Value) (float32, error) {
 	return 0, newNotNumericError(v, "float32")
 }
 
-func float64FromNumeric(v Value) (float64, error) {
+func float64FromNumeric(v value) (float64, error) {
 	if numeric, ok := v.(Numeric); ok {
 		return numeric.toFloat64(), nil
 	}
@@ -36,12 +36,12 @@ func float64FromNumeric(v Value) (float64, error) {
 	return 0, newNotNumericError(v, "float64")
 }
 
-func rlVector2FromObject(v Value) (rl.Vector2, error) {
-	if v.kind() != Value_Object {
-		return rl.Vector2{}, newUnexpectedValueError(v, Value_Object)
+func rlVector2FromObject(v value) (rl.Vector2, error) {
+	if v.kind() != value_Object {
+		return rl.Vector2{}, newUnexpectedValueError(v, value_Object)
 	}
 
-	object := v.(ObjectValue)
+	object := v.(objectValue)
 	x, err := float32FromNumeric(object.GetValue("x"))
 	if err != nil {
 		return rl.Vector2{}, err
@@ -59,12 +59,12 @@ func rlVector2FromObject(v Value) (rl.Vector2, error) {
 
 }
 
-func rlCamera2DFromObject(v Value) (rl.Camera2D, error) {
-	if v.kind() != Value_Object {
-		return rl.Camera2D{}, newUnexpectedValueError(v, Value_Object)
+func rlCamera2DFromObject(v value) (rl.Camera2D, error) {
+	if v.kind() != value_Object {
+		return rl.Camera2D{}, newUnexpectedValueError(v, value_Object)
 	}
 
-	cameraObject := v.(ObjectValue)
+	cameraObject := v.(objectValue)
 
 	offset, err := rlVector2FromObject(cameraObject.GetValue("offset"))
 	if err != nil {

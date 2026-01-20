@@ -12,14 +12,12 @@ type CodegenVisitor struct {
 	Ast                   Ast
 	symGen                util.SymGen
 	reservedFunctionNames map[string]vm.OpCode_NoArgs
-	Globals               map[string]vm.Value
 }
 
 func NewCodegenVisitor() *CodegenVisitor {
 	return &CodegenVisitor{
 		Instructions: make([]vm.Instruction, 0),
 		symGen:       util.NewSymGen(),
-		Globals:      map[string]vm.Value{},
 		reservedFunctionNames: map[string]vm.OpCode_NoArgs{
 			"RlInitWindow":        vm.RlInitWindow,
 			"RlCloseWindow":       vm.RlCloseWindow,
@@ -144,11 +142,7 @@ func (visitor *CodegenVisitor) visitAst(ast Ast) {
 		panic("could not find offset for main")
 	}
 
-	visitor.Program = &vm.Program{
-		Instructions:            visitor.Instructions,
-		EntryInstructionAddress: 0,
-		Globals:                 visitor.Globals,
-	}
+	visitor.Program = vm.NewProgram(visitor.Instructions, 0)
 }
 
 // generates entry function that computes and sets all globals.

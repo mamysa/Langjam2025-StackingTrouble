@@ -7,7 +7,7 @@ const CallStackSize int = 100
 type InstructionOffset int
 
 type CallStackEntry struct {
-	locals        map[string]Value
+	locals        map[string]value
 	returnAddress InstructionOffset
 	label         string
 }
@@ -27,7 +27,7 @@ func NewCallStack() CallStack {
 func (stack *CallStack) pushStackFrame(returnAddress InstructionOffset) {
 	stack.top += 1
 	stack.stack[stack.top] = CallStackEntry{
-		locals:        map[string]Value{},
+		locals:        map[string]value{},
 		returnAddress: returnAddress,
 		label:         "no-label",
 	}
@@ -43,11 +43,11 @@ func (stack *CallStack) setLabel(label string) {
 	stack.stack[stack.top].label = label
 }
 
-func (stack *CallStack) putLocal(sym string, value Value) {
-	stack.stack[stack.top].locals[sym] = value
+func (stack *CallStack) putLocal(sym string, v value) {
+	stack.stack[stack.top].locals[sym] = v
 }
 
-func (stack *CallStack) getLocal(sym string) (Value, error) {
+func (stack *CallStack) getLocal(sym string) (value, error) {
 	local, ok := stack.stack[stack.top].locals[sym]
 	if !ok {
 		return nil, fmt.Errorf("Unknown local %s", sym)
