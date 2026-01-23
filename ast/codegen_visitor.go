@@ -212,6 +212,7 @@ func (visitor *CodegenVisitor) visitFunctionDef(def FunctionDef) {
 
 func (visitor *CodegenVisitor) visitAssert(stmt AssertStmt) {
 	stmt.Expr.Accept(visitor)
+	stmt.MessageExpr.Accept(visitor)
 	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.Assert})
 }
 
@@ -434,7 +435,6 @@ func (visitor *CodegenVisitor) visitString(expr String) {
 }
 
 func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
-	// TODO handle indirect calls.
 	for _, argument := range expr.Args {
 		argument.Accept(visitor)
 	}
@@ -456,7 +456,6 @@ func (visitor *CodegenVisitor) visitFunctionCall(expr FunctionCall) {
 			visitor.addInstruction(vm.NewCall(variable.Var))
 			return
 		}
-
 	}
 
 	//  otherwise interpret variable is as a function pointer and try calling that

@@ -570,9 +570,11 @@ func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 }
 
 func (interpreter *Interpreter) assert() {
+	errorMessage := interpreter.evaluationStack.pop()
 	value := interpreter.evaluationStack.pop()
+
 	if !value.truthy() {
-		fmt.Printf("Assertion failed, PC=%d", interpreter.programCounter)
+		fmt.Printf("Assertion failed, PC=%d: %s\n", interpreter.programCounter, errorMessage.String())
 		// TODO dump call stack
 		os.Exit(1)
 	}

@@ -388,7 +388,7 @@ func (p *Parser) parseStatementBlock() ([]ast.Statement, error) {
 	return statements, nil
 }
 
-// statement_assert = `assert` `(` expression `)`
+// statement_assert = `assert` `(` expression, expression `)`
 func (p *Parser) statementAssert() (ast.Statement, error) {
 	if _, err := p.expect(tokenizer.Token_Assert); err != nil {
 		return nil, err
@@ -403,6 +403,15 @@ func (p *Parser) statementAssert() (ast.Statement, error) {
 		return nil, err
 	}
 
+	if _, err := p.expect(tokenizer.Token_Comma); err != nil {
+		return nil, err
+	}
+
+	errorMessageExpr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err := p.expect(tokenizer.Token_RParen); err != nil {
 		return nil, err
 	}
@@ -412,7 +421,8 @@ func (p *Parser) statementAssert() (ast.Statement, error) {
 	}
 
 	return ast.AssertStmt{
-		Expr: expr,
+		Expr:        expr,
+		MessageExpr: errorMessageExpr,
 	}, nil
 }
 

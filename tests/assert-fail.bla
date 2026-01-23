@@ -1,4 +1,4 @@
-#? STDOUT Assertion failed, PC=5
+#? STDOUT Assertion failed, PC=6: is none
 def main() {
-	assert(None);
+	assert(None, "is none");
 }

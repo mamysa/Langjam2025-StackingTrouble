@@ -47,7 +47,8 @@ func (stmt AssignStmt) String() string {
 }
 
 type AssertStmt struct {
-	Expr Expr
+	Expr        Expr
+	MessageExpr Expr
 }
 
 func (stmt AssertStmt) Accept(visitor AstVisitor) {
