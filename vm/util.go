@@ -42,12 +42,12 @@ func rlVector2FromObject(v value) (rl.Vector2, error) {
 	}
 
 	object := v.(objectValue)
-	x, err := float32FromNumeric(object.GetValue("x"))
+	x, err := float32FromNumeric(object.getValue("x"))
 	if err != nil {
 		return rl.Vector2{}, err
 	}
 
-	y, err := float32FromNumeric(object.GetValue("y"))
+	y, err := float32FromNumeric(object.getValue("y"))
 	if err != nil {
 		return rl.Vector2{}, err
 	}
@@ -66,22 +66,22 @@ func rlCamera2DFromObject(v value) (rl.Camera2D, error) {
 
 	cameraObject := v.(objectValue)
 
-	offset, err := rlVector2FromObject(cameraObject.GetValue("offset"))
+	offset, err := rlVector2FromObject(cameraObject.getValue("offset"))
 	if err != nil {
 		return rl.Camera2D{}, err
 	}
 
-	target, err := rlVector2FromObject(cameraObject.GetValue("target"))
+	target, err := rlVector2FromObject(cameraObject.getValue("target"))
 	if err != nil {
 		return rl.Camera2D{}, err
 	}
 
-	rotation, err := float32FromNumeric(cameraObject.GetValue("rotation"))
+	rotation, err := float32FromNumeric(cameraObject.getValue("rotation"))
 	if err != nil {
 		return rl.Camera2D{}, err
 	}
 
-	scale, err := float32FromNumeric(cameraObject.GetValue("scale"))
+	scale, err := float32FromNumeric(cameraObject.getValue("scale"))
 	if err != nil {
 		return rl.Camera2D{}, err
 	}

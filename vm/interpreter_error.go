@@ -4,10 +4,10 @@ import "fmt"
 
 type UnexpectedValueError struct {
 	v        value
-	expected ValueKind
+	expected valueKind
 }
 
-func newUnexpectedValueError(v value, expected ValueKind) UnexpectedValueError {
+func newUnexpectedValueError(v value, expected valueKind) UnexpectedValueError {
 	return UnexpectedValueError{
 		v:        v,
 		expected: expected,

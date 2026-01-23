@@ -27,10 +27,10 @@ var (
 	floatIsNaNOrInf  = errors.New("NaN/Inf float")
 )
 
-type ValueKind int
+type valueKind int
 
 const (
-	value_None ValueKind = iota
+	value_None valueKind = iota
 	value_Bool
 	value_Int
 	value_Float
@@ -41,7 +41,7 @@ const (
 	value_Texture
 )
 
-func (v ValueKind) String() string {
+func (v valueKind) String() string {
 	switch v {
 	case value_None:
 		return "None"
@@ -77,7 +77,7 @@ type Numeric interface {
 
 // represents value on the stack.
 type value interface {
-	kind() ValueKind
+	kind() valueKind
 	truthy() bool
 	copy() value
 	String() string
@@ -93,7 +93,7 @@ func newInt64Value(i int64) int64Value {
 	}
 }
 
-func (v int64Value) kind() ValueKind {
+func (v int64Value) kind() valueKind {
 	return value_Int
 }
 
@@ -151,7 +151,7 @@ func newFloat64Value(value float64) float64Value {
 	}
 }
 
-func (v float64Value) kind() ValueKind {
+func (v float64Value) kind() valueKind {
 	return value_Float
 }
 
@@ -212,7 +212,7 @@ func (value float64Value) String() string {
 }
 
 type none struct {
-	Kind ValueKind
+	Kind valueKind
 }
 
 func newNone() none {
@@ -221,7 +221,7 @@ func newNone() none {
 	}
 }
 
-func (none) kind() ValueKind {
+func (none) kind() valueKind {
 	return value_None
 }
 
@@ -247,7 +247,7 @@ type functionAddressValue struct {
 	Offset int
 }
 
-func (functionAddressValue) kind() ValueKind {
+func (functionAddressValue) kind() valueKind {
 	return value_FunctionAddress
 }
 
@@ -273,7 +273,7 @@ func newBoolValue(b bool) boolValue {
 	}
 }
 
-func (boolValue) kind() ValueKind {
+func (boolValue) kind() valueKind {
 	return value_Bool
 }
 
@@ -297,20 +297,18 @@ type listValue struct {
 }
 
 type array struct {
-	Length int
-	Array  []value
+	Array []value
 }
 
 func newListValue() listValue {
 	return listValue{
 		array: &array{
-			Length: 0,
-			Array:  []value{},
+			Array: []value{},
 		},
 	}
 }
 
-func (listValue) kind() ValueKind {
+func (listValue) kind() valueKind {
 	return value_List
 }
 
@@ -342,11 +340,14 @@ func (list listValue) compare(other listValue) bool {
 	return true
 }
 
+func (list listValue) length() int {
+	return len(list.array.Array)
+}
+
 // creates a new array with value added to it.
 func (list listValue) append(v value) listValue {
-
-	originalLength := list.array.Length
 	originalList := list.array.Array
+	originalLength := len(list.array.Array)
 	newList := make([]value, originalLength+1)
 
 	for i := 0; i < originalLength; i++ {
@@ -356,33 +357,32 @@ func (list listValue) append(v value) listValue {
 
 	return listValue{
 		array: &array{
-			Length: originalLength + 1,
-			Array:  newList,
+			Array: newList,
 		},
 	}
 }
 
-func (list listValue) GetValue(index int) value {
-	if !(index >= 0 && index < list.array.Length) {
+func (list listValue) getValue(index int) value {
+	if !(index >= 0 && index < len(list.array.Array)) {
 		exit(errors.New("Out of bounds list access"))
 	}
 
 	return list.array.Array[index]
 }
 
-func (list listValue) SetValue(index int, v value) {
-	if !(index >= 0 && index < list.array.Length) {
+func (list listValue) setValue(index int, v value) {
+	if !(index >= 0 && index < len(list.array.Array)) {
 		exit(errors.New("Out of bounds list access"))
 	}
 
 	list.array.Array[index] = v
 }
 
-func (value listValue) String() string {
+func (list listValue) String() string {
 	var sb strings.Builder
 	sb.WriteRune('[')
 
-	arr := value.array.Array
+	arr := list.array.Array
 	arrLen := len(arr)
 
 	if arrLen > 0 {
@@ -390,7 +390,7 @@ func (value listValue) String() string {
 		sb.WriteString(e.String())
 
 		for i := 1; i < arrLen; i++ {
-			e := value.array.Array[i]
+			e := list.array.Array[i]
 			sb.WriteRune(',')
 			sb.WriteRune(' ')
 			sb.WriteString(e.String())
@@ -417,26 +417,26 @@ func newObjectValue() objectValue {
 	}
 }
 
-func (objectValue) kind() ValueKind {
+func (objectValue) kind() valueKind {
 	return value_Object
 }
 
-func (value objectValue) truthy() bool {
-	return len(value.Object.object) > 0
+func (obj objectValue) truthy() bool {
+	return len(obj.Object.object) > 0
 }
 
-func (value objectValue) copy() value {
+func (obj objectValue) copy() value {
 	// copy reference
-	return objectValue{Object: value.Object}
+	return objectValue{Object: obj.Object}
 }
 
-func (value objectValue) String() string {
+func (obj objectValue) String() string {
 	var sb strings.Builder
 	sb.WriteString("Object(")
 
 	hasPrevious := false
 
-	for key, value := range value.Object.object {
+	for key, value := range obj.Object.object {
 		if hasPrevious {
 			sb.WriteRune(',')
 			sb.WriteRune(' ')
@@ -453,17 +453,17 @@ func (value objectValue) String() string {
 	return sb.String()
 }
 
-func (value objectValue) GetValue(key string) value {
-	v, ok := value.Object.object[key]
+func (obj objectValue) getValue(key string) value {
+	v, ok := obj.Object.object[key]
 	if !ok {
-		exit(fmt.Errorf("Field %+v not present in the object %+v", key, value))
+		exit(fmt.Errorf("Field %+v not present in the object %+v", key, obj))
 	}
 
 	return v
 }
 
-func (list objectValue) SetValue(key string, v value) {
-	list.Object.object[key] = v
+func (obj objectValue) setValue(key string, v value) {
+	obj.Object.object[key] = v
 }
 
 type stringValue struct {
@@ -476,12 +476,16 @@ func newStringValue(s string) stringValue {
 	}
 }
 
+func (sv stringValue) length() int {
+	return len(sv.Str)
+}
+
 func (sv stringValue) concat(v value) stringValue {
 	s := fmt.Sprintf("%s%s", sv.String(), v.String())
 	return newStringValue(s)
 }
 
-func (stringValue) kind() ValueKind {
+func (stringValue) kind() valueKind {
 	return value_String
 }
 
@@ -508,7 +512,7 @@ func newTextureValue(tex rl.Texture2D) textureValue {
 	}
 }
 
-func (textureValue) kind() ValueKind {
+func (textureValue) kind() valueKind {
 	return value_Texture
 }
 

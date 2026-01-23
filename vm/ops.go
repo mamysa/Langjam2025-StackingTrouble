@@ -600,11 +600,11 @@ func applyLen(v value) (value, error) {
 	switch v.kind() {
 	case value_List:
 		{
-			return newInt64Value(int64(v.(listValue).array.Length)), nil
+			return newInt64Value(int64(v.(listValue).length())), nil
 		}
 	case value_String:
 		{
-			return newInt64Value(int64(len(v.(stringValue).Str))), nil
+			return newInt64Value(int64(v.(stringValue).length())), nil
 		}
 	default:
 		{

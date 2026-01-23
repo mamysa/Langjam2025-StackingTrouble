@@ -519,7 +519,7 @@ func (interpreter *Interpreter) subscriptGet() {
 	}
 
 	index := subscript.(int64Value).value
-	value := target.(listValue).GetValue(int(index))
+	value := target.(listValue).getValue(int(index))
 
 	interpreter.evaluationStack.pushValue(value)
 	interpreter.programCounter++
@@ -532,7 +532,7 @@ func (interpreter *Interpreter) objectFieldGet(insn ObjectFieldGet) {
 		exit(fmt.Errorf("objectFieldGet: target %+v is not object", target))
 	}
 
-	value := target.(objectValue).GetValue(insn.Field)
+	value := target.(objectValue).getValue(insn.Field)
 	interpreter.evaluationStack.pushValue(value)
 	interpreter.programCounter++
 }
@@ -553,7 +553,7 @@ func (interpreter *Interpreter) subscriptSet() {
 	}
 
 	index := subscript.(int64Value).value
-	target.(listValue).SetValue(int(index), value)
+	target.(listValue).setValue(int(index), value)
 	interpreter.programCounter++
 }
 
@@ -565,7 +565,7 @@ func (interpreter *Interpreter) objectFieldSet(insn ObjectFieldSet) {
 		exit(fmt.Errorf("objectFieldSet: target %+v is not object", target))
 	}
 
-	target.(objectValue).SetValue(insn.Field, value)
+	target.(objectValue).setValue(insn.Field, value)
 	interpreter.programCounter++
 }
 
