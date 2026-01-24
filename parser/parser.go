@@ -884,6 +884,8 @@ func (p *Parser) expressionUnary() (ast.Expr, error) {
 // expr_atom = '[' ']'     (new-array-expr)
 // expr_atom = '{' '}'     (new-object-expr)
 // expr_atom = `len` `(` expr `)`
+// expr_atom = `int` `(` expr `)`
+// expr_atom = `float` `(` expr `)`
 func (p *Parser) expressionAtom() (ast.Expr, error) {
 	if p.nextTokenIs(tokenizer.Token_String) {
 		tok, err := p.expect(tokenizer.Token_String)
@@ -961,6 +963,27 @@ func (p *Parser) expressionAtom() (ast.Expr, error) {
 		}
 
 		return ast.CastFloat{Expr: expr}, nil
+	}
+
+	if p.nextTokenIs(tokenizer.Token_CastInt) {
+		if _, err := p.expect(tokenizer.Token_CastInt); err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_LParen); err != nil {
+			return nil, err
+		}
+
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := p.expect(tokenizer.Token_RParen); err != nil {
+			return nil, err
+		}
+
+		return ast.CastInt{Expr: expr}, nil
 	}
 
 	if p.nextTokenIs(tokenizer.Token_Global) {

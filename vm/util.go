@@ -4,6 +4,15 @@ import rl "github.com/gen2brain/raylib-go/raylib"
 
 // various utility funcs for extracting required primitive types out of value_Int/Value_Float
 // and generating appropriate error messages.
+
+func int64FromNumeric(v value) (int64, error) {
+	if numeric, ok := v.(Numeric); ok {
+		return numeric.toInt64(), nil
+	}
+
+	return 0, newNotNumericError(v, "int64")
+}
+
 func int32FromNumeric(v value) (int32, error) {
 	if numeric, ok := v.(Numeric); ok {
 		return numeric.toInt32(), nil

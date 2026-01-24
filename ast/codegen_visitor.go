@@ -550,7 +550,12 @@ func (visitor *CodegenVisitor) visitReadGlobalExpression(expr ReadGlobal) {
 	visitor.addInstruction(vm.GetGlobal{Global: expr.GlobalName})
 }
 
+func (visitor *CodegenVisitor) visitCastIntExpression(expr CastInt) {
+	expr.Expr.Accept(visitor) // evaluate target castInt expression
+	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.CastInt})
+}
+
 func (visitor *CodegenVisitor) visitCastFloatExpression(expr CastFloat) {
-	expr.Expr.Accept(visitor) // evaluate target castFloat operation
+	expr.Expr.Accept(visitor) // evaluate target castFloat expression
 	visitor.addInstruction(vm.InstructionNoOperands{OpCode: vm.CastFloat})
 }

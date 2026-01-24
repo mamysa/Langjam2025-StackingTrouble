@@ -128,6 +128,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlUnloadTexture()
 			case GetTime:
 				interpreter.getTime()
+			case CastInt:
+				interpreter.castInt()
 			case CastFloat:
 				interpreter.castFloat()
 			case RandomInt:
@@ -841,6 +843,16 @@ func (interpreter *Interpreter) rlIsKeyReleased() {
 
 	b := rl.IsKeyReleased(key)
 	interpreter.evaluationStack.pushBool(b)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) castInt() {
+	f, err := int64FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("castInt", err)
+	}
+
+	interpreter.evaluationStack.pushInt(f)
 	interpreter.programCounter++
 }
 

@@ -47,6 +47,7 @@ const (
 	Token_Len       TokenKind = "len"
 	Token_Assert    TokenKind = "assert"
 	Token_CastFloat TokenKind = "float"
+	Token_CastInt   TokenKind = "int"
 
 	Token_True  TokenKind = "True"
 	Token_False TokenKind = "False"
@@ -73,6 +74,7 @@ var specialIdentifiers = map[string]TokenKind{
 	"None":   Token_None,
 	"global": Token_Global,
 	"float":  Token_CastFloat,
+	"int":    Token_CastInt,
 }
 
 var operators = map[string]TokenKind{

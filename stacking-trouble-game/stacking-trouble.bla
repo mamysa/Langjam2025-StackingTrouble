@@ -28,6 +28,7 @@ global PUSHING_DISTANCE = 0.05
 global PICK_UP_CRATE_DESPAWN_AFTER = 16
 global EXPLODER_CRATE_EXPLODE_AFTER = 5 
 
+global EXPLOSION_DURATION = 0.30
 global EXPLODER_CRATE_EXPLOSION_RADIUS = 2
 
 global SCORE_PER_CRATE_DESTROYED = 1
@@ -106,6 +107,11 @@ def abs(a) {
 
 def min(a, b) {
 	return a if a < b else b;
+}
+
+def clamp(minA, maxA, a) {
+	assert(minA < maxA, "clamp: maxA must be larger than minA");
+	return max(min(a, maxA), minA);
 }
 
 def max(a, b) {
@@ -291,29 +297,37 @@ def player_check_death_condition(self, world) {
 
 		crate_gravity_behavior = global(CRATE_GRAVITY_BEHAVIOR_CRUSH);
 
-		if crate != None {
+		if crate != None and not crate.has_exploded {
 			crate_gravity_behavior = crate.get_player_gravity_behavior();
-		}
+			
+			if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
 
-		if self.y + global(PLAYER_HEIGHT) >= crate_info.crate_y {
-			if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_CRUSH) {
-				if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) 
-				and not self.respawn_invulnerability_cooldown_timer.is_applied {
-					_player_lose_life(self);
-				} else {
-					if self.liveness == None {
-						world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+				if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_CRUSH) {
+					# depending on whether player is jumping, we either destroy the crate and give player points
+					# or crush the player and destroy the crate.
+
+					if self.vertical_movement_kind != global(VERTICAL_MOVEMENT_JUMPING) 
+					and not self.respawn_invulnerability_cooldown_timer.is_applied {
+						# (1) player is not jumping and does not have invulnerability timer applied.
+						_player_lose_life(self);
+					} 
+					else {
+						# give points if the player is alive. (and not dead/incapacitated)
+						if self.liveness == None {
+							world.score = world.score + global(SCORE_PER_CRATE_DESTROYED);
+						}
 					}
+
+					crate.explode(crate);
 				}
-				crate.explode(crate);
-			} else {
-			# TODO if player is dead/respawning, this should have no effect.
-				if crate != None {
+				if crate_gravity_behavior == global(CRATE_GRAVITY_BEHAVIOR_PICKUP) {
+					# TODO if player is dead/respawning, this should have no effect.
 					crate.pick_up_behavior_func(world);
 					crate.on_picked_up(crate);
 				}
-			}
+			} 
 		}
+	
 		c = c + 1;
 	}
 }
@@ -592,6 +606,7 @@ def crate_new(x, y) {
 	crate.horizontal_movement_kind = None;
 	crate.has_exploded = False;
 
+	crate.explosion_timer = timer_new(global(EXPLOSION_DURATION));
 	crate.set_position = &crate_set_position;
 	crate.draw = &crate_draw;
 	crate.move = &crate_move;
@@ -610,7 +625,7 @@ def crate_new(x, y) {
 }
 
 def crate_should_despawn(self) {
-	return self.has_exploded;
+	return self.has_exploded and not self.explosion_timer.is_applied;
 }
 
 def crate_on_added_to_board(self) {
@@ -634,8 +649,21 @@ def crate_draw(self) {
 	cellStartX = global(CELL_SIZE) *  self.x;
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
 
-	#RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), self.color.r, self.color.g, self.color.b);
-	RlDrawTexture(asset_registry.crate, cellStartX, cellStartY);
+	if not self.has_exploded {
+		RlDrawTexture(asset_registry.crate, cellStartX, cellStartY);
+		return;
+	}
+
+	explosion_colors = [] + 255 + 200 + 150 + 100 + 50 + 0;
+	num_explosion_frame_indices = len(explosion_colors);
+
+	duration = self.explosion_timer.default_duration;
+	counter_clamped = clamp(0.0, duration, self.explosion_timer.counter); # clamp between [0, duration] just in case.
+	counter_normalized = 1.0 - counter_clamped / duration; # normalize to [0,1] range and subtract from 1 to ensure.
+	explosion_frame = clamp(0, num_explosion_frame_indices-1, int(counter_normalized * num_explosion_frame_indices)); # clamp with index of the last frame
+	print("Current explosion frame: " + explosion_frame + " counter normalized: " + counter_normalized);
+
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_colors[explosion_frame], 0, 0);
 }
 
 # again, row_index is passed here because object comparisons by reference is borked atm.
@@ -646,6 +674,11 @@ def crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 
 	# crate is already moving.
 	if self.horizontal_movement_kind != None {
+		return False;
+	}
+
+	# disallow pushing exploded crates.
+	if self.has_exploded {
 		return False;
 	}
 
@@ -683,9 +716,13 @@ def crate_explode(self) {
 	}
 
 	self.has_exploded = True;
+	timer_arm(self.explosion_timer);
+	# timer applied 
+	print("timer applied " + self.explosion_timer.counter);
 }
 
 def crate_tick(self, dt, world, crate_index) {
+	timer_tick(self.explosion_timer, dt);
 	if self == world.pushed_crate {
 		crate_tick_horizontal_movement(self, dt, world);
 		return;
@@ -699,6 +736,10 @@ def crate_tick(self, dt, world, crate_index) {
 # to refactor compiler to compare references (at least before the deadline).
 # TODO refactor to compare objects and lists by reference.
 def crate_tick_vertical_movement(self, dt, world, crate_index) {
+	if self.has_exploded {
+		return;
+	}
+
 	crate_column_index = self.previous_goal_x;
 	target_y = world_get_floor_level(world, crate_column_index, crate_index);
 
@@ -809,6 +850,10 @@ def pick_up_crate_tick(self, dt, world, crate_index) {
 def pick_up_crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 	# crate is already moving.
 	if self.horizontal_movement_kind != None {
+		return False;
+	}
+
+	if self.has_exploded {
 		return False;
 	}
 
@@ -1012,7 +1057,12 @@ def world_try_destroy_bottom_row(self) {
 		}
 
 		bottom_most_crate = col[0];
-		if abs(bottom_most_crate.y - target_row_y) >= global(MOVEMENT_EPS) {
+		if abs(bottom_most_crate.y - target_row_y) >= 0.0001 {
+			return;
+		}
+
+		# do not get rid of the bottom row if there are any exploding crates...
+		if bottom_most_crate.has_exploded {
 			return;
 		}
 
@@ -1028,6 +1078,7 @@ def world_try_destroy_bottom_row(self) {
 		x = x + 1;
 	}
 
+	# TODO FIXME this gets applied multiple times while crates are exploding....
 	self.score = self.score + global(SCORE_PER_CRATE_DESTROYED) * global(BOARD_CELLS_ALONG_X);
 }
 

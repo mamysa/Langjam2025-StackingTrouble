@@ -32,6 +32,7 @@ const (
 	Not
 	PushTrue  // pushes True boolean onto the stack
 	PushFalse // pushes False boolean onto the stack
+	CastInt   // casts numeric value on top of the stack to int, otherwise crashes.
 	CastFloat // casts numeric value on top of the stack to float, otherwise crashes.
 
 	// various built-ins
@@ -139,6 +140,8 @@ func (o OpCode_NoArgs) String() string {
 		return "RlDrawText"
 	case GetTime:
 		return "GetTime"
+	case CastInt:
+		return "CastInt"
 	case CastFloat:
 		return "CastFloat"
 	case RandomInt:

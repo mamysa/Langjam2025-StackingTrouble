@@ -223,3 +223,15 @@ func (e CastFloat) String() string {
 func (e CastFloat) Accept(visitor AstVisitor) {
 	visitor.visitCastFloatExpression(e)
 }
+
+type CastInt struct {
+	Expr Expr
+}
+
+func (e CastInt) String() string {
+	return fmt.Sprintf("CastInt(%+v)", e.Expr)
+}
+
+func (e CastInt) Accept(visitor AstVisitor) {
+	visitor.visitCastIntExpression(e)
+}
