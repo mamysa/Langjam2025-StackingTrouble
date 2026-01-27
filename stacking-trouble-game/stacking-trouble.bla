@@ -67,8 +67,18 @@ global CRATE_GRAVITY_BEHAVIOR_CRUSH = 1
 global CRATE_GRAVITY_BEHAVIOR_PICKUP = 2
 
 
+# accepts board coordinates, transforms that do the screen coordinates and draws the texture.
+def draw_1x1_texture(x, y, texture) {
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+
+	cell_start_x = global(CELL_SIZE) * x;
+	cell_start_y = board_height - (global(CELL_SIZE) * y);
+
+	RlDrawTexture(texture, cell_start_x, cell_start_y);
+}
+
 def make_2d_camera() {
-	scale = 0.7;
+	scale = 0.93;
 	# want to achieve equal spacing horizontally. Compute board dimensions along X, subtract from screen width and divide by half.
 	# That will be our horizontal offset.
 	board_size_along_x = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_X) * scale;
@@ -77,7 +87,7 @@ def make_2d_camera() {
 
 	offset_vector_2d = {};
 	offset_vector_2d.x = offset_x;
-	offset_vector_2d.y = offset_y;
+	offset_vector_2d.y = offset_y+40;
 
 	target_vector_2d = {};
 	target_vector_2d.x = 0;
@@ -597,7 +607,7 @@ def player_get_y_span_scaled(self) {
 
 
 # CRATE OBJECT
-def crate_new(x, y) {
+def crate_new(x, y, texture) {
 	crate = {};
 	crate.x = x;
 	crate.y = y;
@@ -605,6 +615,7 @@ def crate_new(x, y) {
 	crate.current_goal_x = None;
 	crate.horizontal_movement_kind = None;
 	crate.has_exploded = False;
+	crate.texture = texture;
 
 	crate.explosion_timer = timer_new(global(EXPLOSION_DURATION));
 	crate.set_position = &crate_set_position;
@@ -642,7 +653,6 @@ def crate_get_player_gravity_behavior() {
 }
 
 def crate_draw(self) {
-	asset_registry = global(ASSET_REGISTRY);
 
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
@@ -650,7 +660,7 @@ def crate_draw(self) {
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
 
 	if not self.has_exploded {
-		RlDrawTexture(asset_registry.crate, cellStartX, cellStartY);
+		RlDrawTexture(self.texture, cellStartX, cellStartY);
 		return;
 	}
 
@@ -804,8 +814,8 @@ def pick_up_crate_behavior_give_health(world) {
 	world.player.health = min(world.player.health + 1, 3);
 }
 
-def pick_up_crate_new(x, y, pick_up_behavior_func) {
-	crate = crate_new(x, y);
+def pick_up_crate_new(x, y, pick_up_behavior_func, texture) {
+	crate = crate_new(x, y, texture);
 	crate.on_added_to_board = &pick_up_crate_on_added_to_board;
 	crate.move = &pick_up_crate_move;
 	crate.draw = &pick_up_crate_draw;
@@ -876,8 +886,8 @@ def pick_up_crate_draw(self) {
 }
 
 # EXPLODER CRATE
-def exploder_crate_new(x, y) {
-	crate = crate_new(x, y);
+def exploder_crate_new(x, y, texture) {
+	crate = crate_new(x, y, texture);
 	crate.on_added_to_board = &exploder_crate_on_added_to_board;
 	crate.draw = &exploder_crate_draw;
 	crate.tick = &exploder_crate_tick;
@@ -1018,15 +1028,6 @@ def world_new() {
 		x = x + 1;
 	}
 
-
-	crate1 = crate_new(8, 0);
-	crate2 = crate_new(2, 0);
-	crate3 = crate_new(4, 0);
-	columns[8] = columns[8] + crate1;
-	columns[2] = columns[2] + crate2;
-	columns[4] = columns[4] + crate3;
-	
-	
 	world = {};
 	world.queue = 0; # number of crates that are queued to spawn.
 	world.columns = columns;
@@ -1200,13 +1201,16 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 }
 
 def _world_pick_crate_kind_to_spawn(x, y) {
+	ar = global(ASSET_REGISTRY);
 	if random_float() < 0.05 {
 		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
 		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health);
-		return exploder_crate_new(x, y);
+		return exploder_crate_new(x, y, ar.crates[0]);
 	}
 
-	return crate_new(x, y);
+
+	crate_tex = random_int(len(ar.crates));
+	return crate_new(x, y, ar.crates[crate_tex]);
 }
 
 def world_spawn_crate_2(self) {
@@ -1546,6 +1550,28 @@ def world_append_crate(self, column_index, crate) {
 }
 
 def world_draw(self) {
+	# render board edges
+	asset_registry = global(ASSET_REGISTRY);
+
+	#y = 0;
+	#while y < global(BOARD_CELLS_ALONG_Y)+3 {
+	#	draw_1x1_texture(0, y+3, asset_registry.wall);
+	#	draw_1x1_texture(4, y+3, asset_registry.wall);
+	#	draw_1x1_texture(8, y+3, asset_registry.wall);
+	#	y = y + 4;
+	#}
+
+	#y = 0;
+	#while y < global(BOARD_CELLS_ALONG_Y)+4 {
+	#	draw_1x1_texture(-1, y, asset_registry.world_beam_pillar);
+	#	draw_1x1_texture(global(BOARD_CELLS_ALONG_X), y, asset_registry.world_beam_pillar);
+	#	y = y + 1;
+	#}
+
+
+
+
+
 	c = 0;
 	while c < len(self.cranes_left) {
 		crane = self.cranes_left[c];
@@ -1582,17 +1608,45 @@ def world_draw(self) {
 }
 
 
+def load_assets() {
+	asset_registry = global(ASSET_REGISTRY);
+
+	asset_registry.crates = [] 
+	  + RlLoadTexture("stacking-trouble-game/assets/crate_y_1.png")
+	  + RlLoadTexture("stacking-trouble-game/assets/crate_g_1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/crate_c_1.png")
+	  + RlLoadTexture("stacking-trouble-game/assets/crate_y_2.png")
+	  + RlLoadTexture("stacking-trouble-game/assets/crate_g_2.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/crate_c_2.png");
+	#asset_registry.world_beam_pillar = RlLoadTexture("stacking-trouble-game/assets/world_beam_pillar.png");
+	#asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
+}
+
+def unload_assets() {
+	asset_registry = global(ASSET_REGISTRY);
+
+	i = 0;
+	while i < len(asset_registry.crates) {
+		RlUnloadTexture(asset_registry.crates[i]);
+		i = i + 1;
+	}
+	
+
+	#RlUnloadTexture(asset_registry.world_beam_pillar);
+	#RlUnloadTexture(asset_registry.wall);
+}
 
 def main() {
+
 	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
 	RlSetTargetFPS(60);
 
-	# TODO should introduce load assets function.
-	crate_tex = RlLoadTexture("stacking-trouble-game/assets/crate1.png");
+	# init Raylib first so that we can call RlLoadTexture
+	load_assets();
 
-	asset_registry = global(ASSET_REGISTRY);
 
-	asset_registry.crate = crate_tex;
+
+
 
 
 	world = world_new();
@@ -1655,7 +1709,8 @@ def main() {
 		RlEndDrawing();
 	}
 
-	RlUnloadTexture(crate_tex);
+	unload_assets();
+
 	RlCloseWindow();
 }
 

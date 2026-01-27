@@ -1017,6 +1017,9 @@ func (interpreter *Interpreter) rlLoadTexture() {
 	}
 
 	texture := rl.LoadTexture(v.(stringValue).Str)
+	rl.SetTextureFilter(texture, rl.FilterBilinear)
+	rl.SetTextureWrap(texture, rl.WrapClamp)
+
 	interpreter.evaluationStack.pushValue(newTextureValue(texture))
 	interpreter.programCounter++
 }
