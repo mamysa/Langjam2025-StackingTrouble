@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -140,6 +141,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.floor()
 			case Ceil:
 				interpreter.ceil()
+			case Sin:
+				interpreter.sin()
+			case Cos:
+				interpreter.cos()
 			default:
 				exit(fmt.Errorf("Unhandled %+v", simple))
 			}
@@ -891,6 +896,34 @@ func (interpreter *Interpreter) ceil() {
 	}
 
 	interpreter.evaluationStack.pushValue(c)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) sin() {
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		exitWithContext("sin", err)
+	}
+
+	f, err := float64FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("sin", err)
+	}
+
+	interpreter.evaluationStack.pushFloat(math.Sin(f))
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) cos() {
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		exitWithContext("cos", err)
+	}
+
+	f, err := float64FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("cos", err)
+	}
+
+	interpreter.evaluationStack.pushFloat(math.Cos(f))
 	interpreter.programCounter++
 }
 

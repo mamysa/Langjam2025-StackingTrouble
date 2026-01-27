@@ -40,6 +40,8 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"random_float":        vm.RandomFloat,
 			"floor":               vm.Floor,
 			"ceil":                vm.Ceil,
+			"sin":                 vm.Sin,
+			"cos":                 vm.Cos,
 		},
 	}
 }

@@ -59,6 +59,8 @@ const (
 	RandomFloat //  returns random float in [0, 1)
 	Floor       // floors a number.
 	Ceil
+	Cos
+	Sin
 )
 
 func (o OpCode_NoArgs) String() string {
@@ -150,6 +152,10 @@ func (o OpCode_NoArgs) String() string {
 		return "Floor"
 	case Ceil:
 		return "Ceil"
+	case Cos:
+		return "Cos"
+	case Sin:
+		return "Sin"
 	case RandomFloat:
 		return "RandomFloat"
 	case RlIsKeyReleased:
