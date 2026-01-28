@@ -25,8 +25,8 @@ global PLAYER_HEIGHT = 2
 
 global PUSHING_DISTANCE = 0.05
 
-global PICK_UP_CRATE_DESPAWN_AFTER = 16
-global EXPLODER_CRATE_EXPLODE_AFTER = 5 
+global PICK_UP_CRATE_DESPAWN_AFTER = 24 
+global EXPLODER_CRATE_EXPLODE_AFTER = 24 
 
 global EXPLOSION_DURATION = 0.30
 global EXPLODER_CRATE_EXPLOSION_RADIUS = 2
@@ -48,7 +48,7 @@ global PLAYER_JUMP_COOLDOWN = 0.56
 global INITIAL_CRATE_SPAWN_TIMER = 5.5
 global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
 
-global DOUBLE_SPEED_DURATION = 4
+global DOUBLE_SPEED_DURATION =8 
 global DOUBLE_SPEED_VELOCITY_MULTIPLIER = 1.5
 
 global SCREEN_WIDTH = 800
@@ -75,6 +75,26 @@ def draw_1x1_texture(x, y, texture) {
 	cell_start_y = board_height - (global(CELL_SIZE) * y);
 
 	RlDrawTexture(texture, cell_start_x, cell_start_y);
+}
+
+# accepts board coordinates, transforms that do the screen coordinates and draws the texture.
+def draw_1x1_rectangle(x, y, r, g, b, a) {
+	c = global(CELL_SIZE);
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+
+	cell_start_x = global(CELL_SIZE) * x;
+	cell_start_y = board_height - (global(CELL_SIZE) * y);
+
+
+	RlDrawRectangle(cell_start_x, cell_start_y, c, c, r, g, b, a);
+}
+
+# applies scaled square wave to normalized input
+# returns 1 if positive, -1 if negative
+def square_wave_scaled(x) {
+	assert(x >= 0.0 and x <= 1.0, "not normalized");
+	v = cos(x * x * x * 200);
+	return -1 if v < 0 else 1;
 }
 
 def make_2d_camera() {
@@ -578,14 +598,14 @@ def player_draw(self) {
 	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
 
 	if self.respawn_invulnerability_cooldown_timer.is_applied {
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255);
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
 		return;
 	}
 
 	if self.liveness != None{
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0);
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0, 255);
 	} else {
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0);
+		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
 	}
 
 }
@@ -673,7 +693,7 @@ def crate_draw(self) {
 	explosion_frame = clamp(0, num_explosion_frame_indices-1, int(counter_normalized * num_explosion_frame_indices)); # clamp with index of the last frame
 	print("Current explosion frame: " + explosion_frame + " counter normalized: " + counter_normalized);
 
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_colors[explosion_frame], 0, 0);
+	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_colors[explosion_frame], 0, 0, 255);
 }
 
 # again, row_index is passed here because object comparisons by reference is borked atm.
@@ -827,6 +847,7 @@ def pick_up_crate_new(x, y, pick_up_behavior_func, texture) {
 	crate.pick_up_behavior_func = pick_up_behavior_func;
 	crate.pick_up_despawn_timer = timer_new(global(PICK_UP_CRATE_DESPAWN_AFTER));
 	crate.picked_up = False;
+
 	return crate;
 }
 
@@ -879,10 +900,18 @@ def pick_up_crate_move(self, desired_horizontal_movement_kind, world, row_index)
 }
 
 def pick_up_crate_draw(self) {
-	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
-	cellStartX = global(CELL_SIZE) *  self.x;
-	cellStartY = board_height - (global(CELL_SIZE) * self.y);
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 0);
+	if self.has_exploded {
+		crate_draw(self);
+		return;
+	}
+
+	duration = self.pick_up_despawn_timer.default_duration;
+	v = clamp(0.0, 1.0, (duration - self.pick_up_despawn_timer.counter)/duration);
+
+	crate_draw(self);
+	if not square_wave_scaled(v) {
+		draw_1x1_rectangle(self.x, self.y, 0, 0, 0, 160);
+	}
 }
 
 # EXPLODER CRATE
@@ -900,12 +929,20 @@ def exploder_crate_on_added_to_board(self) {
 	timer_arm(self.exploder_timer);
 }
 
+# for drawing crates that have a limited lifetime and then despawn after certain time.
 def exploder_crate_draw(self) {
-	# should probably extract this coordinates computation to a function. TODO
-	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
-	cellStartX = global(CELL_SIZE) *  self.x;
-	cellStartY = board_height - (global(CELL_SIZE) * self.y);
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), 255, 0, 255);
+	if self.has_exploded {
+		crate_draw(self);
+		return;
+	}
+
+	duration = self.exploder_timer.default_duration;
+	v = clamp(0.0, 1.0, (duration - self.exploder_timer.counter)/duration);
+
+	crate_draw(self);
+	if not square_wave_scaled(v) {
+		draw_1x1_rectangle(self.x, self.y, 0, 0, 0, 160);
+	}
 }
 
 def exploder_crate_tick(self, dt, world, crate_index) {
@@ -1011,7 +1048,7 @@ def crane_draw(self) {
 	width = global(CELL_SIZE);
 	height = 32; 
 
-	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255);
+	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
 }
 
 
@@ -1203,9 +1240,17 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 def _world_pick_crate_kind_to_spawn(x, y) {
 	ar = global(ASSET_REGISTRY);
 	if random_float() < 0.05 {
-		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed);
-		#return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health);
-		return exploder_crate_new(x, y, ar.crates[0]);
+		c = random_float();
+
+		if 0 <= c and c < 0.2 {
+			return exploder_crate_new(x, y, ar.exploder_crate);
+		}  
+
+		if 0.2 <= c and c < 0.6 {
+			return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health, ar.health_crate);
+		}  
+		
+		return pick_up_crate_new(x, y, &pick_up_crate_behavior_double_speed, ar.double_speed_crate);
 	}
 
 
@@ -1618,6 +1663,10 @@ def load_assets() {
 	  + RlLoadTexture("stacking-trouble-game/assets/crate_y_2.png")
 	  + RlLoadTexture("stacking-trouble-game/assets/crate_g_2.png")
 		+ RlLoadTexture("stacking-trouble-game/assets/crate_c_2.png");
+	
+	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
+	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
+	asset_registry.double_speed_crate = RlLoadTexture("stacking-trouble-game/assets/crate_double_speed.png");
 	#asset_registry.world_beam_pillar = RlLoadTexture("stacking-trouble-game/assets/world_beam_pillar.png");
 	#asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
 }
@@ -1634,6 +1683,9 @@ def unload_assets() {
 
 	#RlUnloadTexture(asset_registry.world_beam_pillar);
 	#RlUnloadTexture(asset_registry.wall);
+	RlUnloadTexture(asset_registry.exploder_crate);
+	RlUnloadTexture(asset_registry.health_crate);
+	RlUnloadTexture(asset_registry.double_speed_crate);
 }
 
 def main() {

@@ -730,7 +730,12 @@ func (interpreter *Interpreter) rlSetTargetFps() {
 
 // (x, y, width, height, r, g, b)
 func (interpreter *Interpreter) rlDrawRectangle() {
-	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
+	if err := unwrapArgCount(8, interpreter.evaluationStack.pop()); err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	a, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
 		exitWithContext("rlDrawRectangle", err)
 	}
 
@@ -770,10 +775,10 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 	}
 
 	rl.DrawRectangle(x, y, w, h, color.RGBA{
-		R: uint8(r),
-		G: uint8(g),
-		B: uint8(b),
-		A: 255,
+		R: r,
+		G: g,
+		B: b,
+		A: a,
 	})
 
 	interpreter.evaluationStack.pushNone()
