@@ -1239,14 +1239,14 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 
 def _world_pick_crate_kind_to_spawn(x, y) {
 	ar = global(ASSET_REGISTRY);
-	if random_float() < 0.05 {
+	if random_float() < 0.025 {
 		c = random_float();
 
-		if 0 <= c and c < 0.2 {
+		if 0 <= c and c < 0.25 {
 			return exploder_crate_new(x, y, ar.exploder_crate);
 		}  
 
-		if 0.2 <= c and c < 0.6 {
+		if 0.25 <= c and c < 0.7 {
 			return pick_up_crate_new(x, y, &pick_up_crate_behavior_give_health, ar.health_crate);
 		}  
 		
@@ -1598,23 +1598,20 @@ def world_draw(self) {
 	# render board edges
 	asset_registry = global(ASSET_REGISTRY);
 
-	#y = 0;
-	#while y < global(BOARD_CELLS_ALONG_Y)+3 {
-	#	draw_1x1_texture(0, y+3, asset_registry.wall);
-	#	draw_1x1_texture(4, y+3, asset_registry.wall);
-	#	draw_1x1_texture(8, y+3, asset_registry.wall);
-	#	y = y + 4;
-	#}
+	y = 0;
+	while y < global(BOARD_CELLS_ALONG_Y)+3 {
+		draw_1x1_texture(0, y+3, asset_registry.wall);
+		draw_1x1_texture(4, y+3, asset_registry.wall);
+		draw_1x1_texture(8, y+3, asset_registry.wall);
+		y = y + 4;
+	}
 
-	#y = 0;
-	#while y < global(BOARD_CELLS_ALONG_Y)+4 {
-	#	draw_1x1_texture(-1, y, asset_registry.world_beam_pillar);
-	#	draw_1x1_texture(global(BOARD_CELLS_ALONG_X), y, asset_registry.world_beam_pillar);
-	#	y = y + 1;
-	#}
-
-
-
+	y = 0;
+	while y < global(BOARD_CELLS_ALONG_Y)+4 {
+		draw_1x1_texture(-1, y, asset_registry.wall_pillar_left);
+		draw_1x1_texture(global(BOARD_CELLS_ALONG_X), y, asset_registry.wall_pillar_right);
+		y = y + 1;
+	}
 
 
 	c = 0;
@@ -1667,8 +1664,9 @@ def load_assets() {
 	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
 	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
 	asset_registry.double_speed_crate = RlLoadTexture("stacking-trouble-game/assets/crate_double_speed.png");
-	#asset_registry.world_beam_pillar = RlLoadTexture("stacking-trouble-game/assets/world_beam_pillar.png");
-	#asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
+	asset_registry.wall_pillar_left = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_left.png");
+	asset_registry.wall_pillar_right = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_right.png");
+	asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
 }
 
 def unload_assets() {
@@ -1681,88 +1679,133 @@ def unload_assets() {
 	}
 	
 
-	#RlUnloadTexture(asset_registry.world_beam_pillar);
-	#RlUnloadTexture(asset_registry.wall);
+	RlUnloadTexture(asset_registry.wall_pillar_left);
+	RlUnloadTexture(asset_registry.wall_pillar_right);
+	RlUnloadTexture(asset_registry.wall);
+
 	RlUnloadTexture(asset_registry.exploder_crate);
 	RlUnloadTexture(asset_registry.health_crate);
 	RlUnloadTexture(asset_registry.double_speed_crate);
 }
 
-def main() {
 
+# Game state object.
+# What state is the game in? E.g. splash-screen / tutorial / actual game.
+def main_game_state_new() {
+	game_state = {};
+	game_state.world =	world_new(); 
+	game_state.run = &_main_game_state_run;
+
+	# physics loop stuff.
+	game_state.previous_time_ms = time();
+	game_state.accumulator = 0.0;
+
+	return game_state;
+}
+
+def _main_game_state_run(self, game) {
+	_main_game_state_handle_input(self);
+	_main_game_state_do_physics(self);
+	_main_game_state_draw(self);
+}
+
+def _main_game_state_handle_input(self) {
+	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
+		self.accumulator = 0.0;
+		self.world = world_new();
+	}
+
+	if RlIsKeyDown(global(RL_KEY_SPACE)) {
+		self.world.player.jump(self.world.player);
+	}
+
+	if RlIsKeyDown(global(RL_KEY_LEFT)) {
+		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_LEFT), self.world);
+	}
+
+	if RlIsKeyDown(global(RL_KEY_RIGHT)) {
+		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_RIGHT), self.world);
+	}
+}
+
+def _main_game_state_do_physics(self) {
+	dt  = 0.01;
+	new_time_ms = time();
+	frame_time = (new_time_ms - self.previous_time_ms) / 1000.0;
+	self.previous_time_ms = new_time_ms;
+	self.accumulator = self.accumulator + frame_time;
+
+
+	while dt < self.accumulator {
+		world_tick(self.world, dt);
+		self.accumulator = self.accumulator - dt;
+	}
+}
+
+def _main_game_state_draw(self) {
+	RlBeginMode2D(global(BOARD_CAMERA));
+	world_draw(self.world);
+	RlEndMode2D();
+
+	RlDrawText("Score: " + self.world.score, 10, 10, 40, 255,0,0);
+	RlDrawText("Health: " + self.world.player.health, 300, 10, 40, 255,0,0);
+
+	if self.world.player.liveness == global(PLAYER_LIVENESS_DEAD){
+		RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
+		RlDrawText("(press enter to restart)" , 300, 350, 20, 255,0,0);
+	}
+}
+
+# Splash screen game state.
+def splashscreen_game_state_new() {
+	game_state = {};
+	game_state.run = &_splashscreen_game_state_run;
+	return game_state;
+}
+
+def _splashscreen_game_state_run(self, game) {
+	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
+		game.set_main_state(game);
+	}
+
+	RlDrawText("This is a splashscreen", 10, 10, 40, 255,0,0);
+}
+
+
+
+# Game object. Exposes methods for game state switching.
+def game_new() {
+	game = {};
+	game.game_state = splashscreen_game_state_new();
+	game.set_main_state = &_game_set_main_state;
+	return game;
+}
+
+def _game_set_main_state(self) {
+	self.game_state = main_game_state_new();
+}
+
+def game_run(self) {
 	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
 	RlSetTargetFPS(60);
 
 	# init Raylib first so that we can call RlLoadTexture
 	load_assets();
 
-
-
-
-
-
-	world = world_new();
-
-	current_time_ms = time();
-	dt  = 0.01;
-	accumulator = 0.0;
-
-
 	while not RlWindowShouldClose() {
-		if RlIsKeyReleased(global(RL_KEY_ENTER)) {
-			accumulator = 0.0;
-			world = world_new();
-		}
-
-		if RlIsKeyDown(global(RL_KEY_SPACE)) {
-			world.player.jump(world.player);
-		}
-
-		if RlIsKeyDown(global(RL_KEY_LEFT)) {
-			world.player.move(world.player, global(HORIZONTAL_MOVEMENT_LEFT), world);
-		}
-
-		if RlIsKeyDown(global(RL_KEY_RIGHT)) {
-			world.player.move(world.player, global(HORIZONTAL_MOVEMENT_RIGHT), world);
-		}
-
-
-		# physics main loop, shamlessly stolen from Gaffer On Games Fix your timestep 
-		# we don't do any interpolation between states though.
-		new_time_ms = time();
-		frame_time = (new_time_ms - current_time_ms) / 1000.0;
-		current_time_ms = new_time_ms;
-
-		accumulator = accumulator + frame_time ;
-
-		while dt < accumulator {
-			world_tick(world, dt);
-			accumulator = accumulator - dt;
-		}
-
 		RlBeginDrawing();
 		RlClearBackground(230, 230, 230);
-
-
-		RlBeginMode2D(global(BOARD_CAMERA));
-
-		world_draw(world);
-
-		RlEndMode2D();
-
-		RlDrawText("Score: " + world.score, 10, 10, 40, 255,0,0);
-		RlDrawText("Healh: " + world.player.health, 300, 10, 40, 255,0,0);
-
-
-		if world.player.liveness == global(PLAYER_LIVENESS_DEAD){
-			RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
-			RlDrawText("(press enter to restart)" , 300, 350, 20, 255,0,0);
-		}
+		self.game_state.run(self.game_state, self);
 		RlEndDrawing();
 	}
 
 	unload_assets();
 
 	RlCloseWindow();
+
 }
 
+def main() {
+	game = game_new();
+	game_run(game);
+}
