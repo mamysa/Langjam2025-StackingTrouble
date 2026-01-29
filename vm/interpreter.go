@@ -18,14 +18,19 @@ type Interpreter struct {
 	evaluationStack EvaluationStack
 	programCounter  InstructionOffset
 	program         *Program
+	randomGenerator *rand.Rand
 }
 
 func NewInterpreter(program *Program) Interpreter {
+	randomSource := rand.NewSource(time.Now().UnixNano())
+	random := rand.New(randomSource)
+
 	return Interpreter{
 		callStack:       NewCallStack(),
 		evaluationStack: NewEvaluationStack(),
 		programCounter:  InstructionOffset(program.EntryInstructionAddress),
 		program:         program,
+		randomGenerator: random,
 	}
 }
 
@@ -947,7 +952,7 @@ func (interpreter *Interpreter) randomInt() {
 		exitWithContext("randomInt", errors.New("argument must be greater than zero"))
 	}
 
-	randomValue := rand.Intn(int(intValue.value))
+	randomValue := interpreter.randomGenerator.Intn(int(intValue.value))
 	interpreter.evaluationStack.pushInt(int64(randomValue))
 	interpreter.programCounter++
 }
@@ -957,7 +962,7 @@ func (interpreter *Interpreter) randomFloat() {
 		exitWithContext("randomInt", err)
 	}
 
-	randomValue := rand.Float64()
+	randomValue := interpreter.randomGenerator.Float64()
 	interpreter.evaluationStack.pushFloat(randomValue)
 	interpreter.programCounter++
 }
