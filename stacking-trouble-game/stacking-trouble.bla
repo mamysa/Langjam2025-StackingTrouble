@@ -89,6 +89,35 @@ def draw_1x1_rectangle(x, y, r, g, b, a) {
 	RlDrawRectangle(cell_start_x, cell_start_y, c, c, r, g, b, a);
 }
 
+def draw_hud(score, health, double_speed_applied) {
+	bg_height = 40;
+
+
+	asset_registry = global(ASSET_REGISTRY);
+	screen_width = global(SCREEN_WIDTH);
+	score_text_start = int(screen_width - (screen_width / 4));
+
+
+	RlDrawRectangle(0, 0, screen_width, bg_height,  220, 240, 240, 200);
+	RlDrawRectangle(0, bg_height, global(SCREEN_WIDTH), 2, 0, 0, 0, 200);
+	RlDrawText("" + score, score_text_start, 6, 30, 255,0,0);
+
+	heart_start = 20;
+
+	i = 0;
+	while i < health {
+		offset = heart_start + i * 36;
+		RlDrawTexture(asset_registry.icon_heart, offset, bg_height*0.5-16);
+		i = i + 1;
+	}
+
+
+	if double_speed_applied {
+		double_speed_offset = heart_start + 4 * 36;
+		RlDrawTexture(asset_registry.icon_double_speed, double_speed_offset, bg_height*0.5-16);
+	}
+}
+
 # applies scaled square wave to normalized input
 # returns 1 if positive, -1 if negative
 def square_wave_scaled(x) {
@@ -1613,6 +1642,12 @@ def world_draw(self) {
 		y = y + 1;
 	}
 
+	x	= -1;
+	while x < global(BOARD_CELLS_ALONG_X) + 1 {
+		draw_1x1_texture(x, -1, asset_registry.floor);
+		x = x + 1;
+	}
+
 
 	c = 0;
 	while c < len(self.cranes_left) {
@@ -1667,6 +1702,9 @@ def load_assets() {
 	asset_registry.wall_pillar_left = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_left.png");
 	asset_registry.wall_pillar_right = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_right.png");
 	asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
+	asset_registry.floor = RlLoadTexture("stacking-trouble-game/assets/floor.png");
+	asset_registry.icon_heart = RlLoadTexture("stacking-trouble-game/assets/icon_heart.png");
+	asset_registry.icon_double_speed = RlLoadTexture("stacking-trouble-game/assets/icon_double_speed.png");
 }
 
 def unload_assets() {
@@ -1682,10 +1720,14 @@ def unload_assets() {
 	RlUnloadTexture(asset_registry.wall_pillar_left);
 	RlUnloadTexture(asset_registry.wall_pillar_right);
 	RlUnloadTexture(asset_registry.wall);
+	RlUnloadTexture(asset_registry.floor);
 
 	RlUnloadTexture(asset_registry.exploder_crate);
 	RlUnloadTexture(asset_registry.health_crate);
 	RlUnloadTexture(asset_registry.double_speed_crate);
+
+	RlUnloadTexture(asset_registry.icon_heart);
+	RlUnloadTexture(asset_registry.icon_double_speed);
 }
 
 
@@ -1747,8 +1789,11 @@ def _main_game_state_draw(self) {
 	world_draw(self.world);
 	RlEndMode2D();
 
-	RlDrawText("Score: " + self.world.score, 10, 10, 40, 255,0,0);
-	RlDrawText("Health: " + self.world.player.health, 300, 10, 40, 255,0,0);
+	
+	#RlDrawText("Score: " + self.world.score, 10, 10, 40, 255,0,0);
+	#RlDrawText("Health: " + self.world.player.health, 300, 10, 40, 255,0,0);
+
+	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
 
 	if self.world.player.liveness == global(PLAYER_LIVENESS_DEAD){
 		RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
