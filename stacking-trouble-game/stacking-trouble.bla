@@ -12,6 +12,7 @@ global VERTICAL_MOVEMENT_JUMPING = 1
 
 # steal these from raylib enum
 global RL_KEY_SPACE = 32
+global RL_KEY_P = 80
 global RL_KEY_RIGHT = 262
 global RL_KEY_LEFT = 263
 global RL_KEY_ENTER = 257
@@ -1741,19 +1742,48 @@ def main_game_state_new() {
 	# physics loop stuff.
 	game_state.previous_time_ms = time();
 	game_state.accumulator = 0.0;
+	game_state.is_paused = False;
 
 	return game_state;
 }
 
+def _main_game_state_toggle_pause(self) {
+	if self.world.player.liveness == global(PLAYER_LIVENESS_DEAD){
+	# do not allow to pause when player is dead.
+		return;
+	}
+
+	self.is_paused = not self.is_paused;
+	if not self.is_paused {
+		self.previous_time_ms = time();
+		self.accumulator = 0.0;
+	}
+}
+
 def _main_game_state_run(self, game) {
 	_main_game_state_handle_input(self);
-	_main_game_state_do_physics(self);
+
+	if not self.is_paused {
+		_main_game_state_do_physics(self);
+	}
+
 	_main_game_state_draw(self);
 }
 
 def _main_game_state_handle_input(self) {
+
+	if RlIsKeyReleased(global(RL_KEY_P)) {
+		_main_game_state_toggle_pause(self);
+	}
+
+	if self.is_paused {
+		# do not accept any inputs aside from unpause button.
+		return;
+	}
+
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
 		self.accumulator = 0.0;
+		self.previous_time_ms = time();
 		self.world = world_new();
 	}
 
@@ -1798,6 +1828,12 @@ def _main_game_state_draw(self) {
 	if self.world.player.liveness == global(PLAYER_LIVENESS_DEAD){
 		RlDrawText("Game Over" , 270, 300, 40, 255,0,0);
 		RlDrawText("(press enter to restart)" , 300, 350, 20, 255,0,0);
+	}
+
+	if self.is_paused {
+		RlDrawRectangle(0, 0, global(SCREEN_WIDTH), global(SCREEN_HEIGHT), 0, 0, 0, 100);
+		RlDrawText("Paused" , 300, 270, 40, 255,0,0);
+
 	}
 }
 
