@@ -99,6 +99,14 @@ the crate and award a point,
 without any health loss.
 "
 
+global TUTORIAL_STAGE_3_TEXT = 
+"The Company will also regularly 
+provide you with Double Speed crates 
+that boost your movement speed and
+pushing strength.
+Contents of this crate are 100%
+safe for consumption.
+"
 
 # accepts board coordinates, transforms that do the screen coordinates and draws the texture.
 def draw_1x1_texture(x, y, texture) {
@@ -1914,18 +1922,28 @@ def tutorial_game_state_new() {
 	game_state.tutorial_stage_2_timer = timer_new(11); #11
 	game_state.tutorial_stage_2_active = False;
 
+	game_state.tutorial_stage_3_timer = timer_new(31); #31
+	game_state.tutorial_stage_3_active = False;
+
 
 	timer_arm(game_state.tutorial_stage_2_timer);
+	timer_arm(game_state.tutorial_stage_3_timer);
 	return game_state;
 }
 
 def _tutorial_game_state_tick(self, dt) {
 	timer_tick(self.tutorial_stage_2_timer, dt);
+	timer_tick(self.tutorial_stage_3_timer, dt);
 	self.tutorial_stage.tick(self.tutorial_stage, dt);
 
 	if not self.tutorial_stage_2_timer.is_applied and not self.tutorial_stage_2_active {
 		self.tutorial_stage = tutorial_stage_2();
 		self.tutorial_stage_2_active = True;
+	}
+
+	if not self.tutorial_stage_3_timer.is_applied and not self.tutorial_stage_3_active {
+		self.tutorial_stage = tutorial_stage_3();
+		self.tutorial_stage_3_active = True;
 	}
 }
 
@@ -2152,6 +2170,81 @@ def _tutorial_stage_2_draw(self) {
 	if self.text_index == 4 {
 		draw_text_widget(550, 220, 400, 130, global(TUTORIAL_STAGE_2_TEXT_4));
 	}
+}
+
+def tutorial_stage_3() {
+	player_x = 1;
+	world = world_new(player_x, 1, False);
+	
+
+	ar = global(ASSET_REGISTRY);
+	cells_x = global(BOARD_CELLS_ALONG_X);
+
+	crate_gap = cells_x - 3;
+
+	x = 0;
+	while  x < cells_x {
+		if x != crate_gap  {
+			crate_tex = ar.crates[random_int(len(ar.crates))];
+			world.columns[x] = world.columns[x] + crate_new(x, 0, crate_tex);
+
+			if x == crate_gap - 1 or x > crate_gap {
+				crate_tex = ar.crates[random_int(len(ar.crates))];
+				world.columns[x] = world.columns[x] + crate_new(x, 1, crate_tex);
+			}
+		}
+		x = x + 1;
+	}
+
+
+	t = {};
+	t.tick = &_tutorial_stage_3_tick;
+	t.draw = &_tutorial_stage_3_draw;
+	t.world = world;
+	t.double_speed_crate_column = player_x + 2;
+	t.player_stop_column = crate_gap - 1;
+
+
+	t.double_speed_crate_spawn_timer = timer_new(0.5);
+	t.double_speed_crate_spawned = False;
+	timer_arm(t.double_speed_crate_spawn_timer);
+
+
+	t.player_move_timer = timer_new(6);
+	timer_arm(t.player_move_timer);
+	return t;
+}
+
+def _tutorial_stage_3_tick(self, dt) {
+	world_tick(self.world, dt);
+	timer_tick(self.double_speed_crate_spawn_timer, dt);
+	timer_tick(self.player_move_timer, dt);
+
+
+	w = self.world;
+	ar = global(ASSET_REGISTRY);
+	if not self.double_speed_crate_spawn_timer.is_applied and not self.double_speed_crate_spawned {
+		hc = pick_up_crate_new(self.double_speed_crate_column, global(BOARD_CELLS_ALONG_Y)+4, &pick_up_crate_behavior_double_speed, ar.double_speed_crate);
+		w.columns[self.double_speed_crate_column] = w.columns[self.double_speed_crate_column] + hc;
+		hc.on_added_to_board(hc);
+		self.double_speed_crate_spawned = True;
+	}
+
+
+	if not self.player_move_timer.is_applied {
+		if not (abs(w.player.x - self.player_stop_column) < 0.5) {
+			w.player.move(w.player, global(HORIZONTAL_MOVEMENT_RIGHT), w);
+		}
+	}
+}
+
+def _tutorial_stage_3_draw(self) {
+	RlBeginMode2D(global(BOARD_CAMERA));
+	world_draw(self.world);
+	RlEndMode2D();
+	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
+
+		draw_text_widget(550, 220, 400, 190, global(TUTORIAL_STAGE_3_TEXT));
 }
 
 
