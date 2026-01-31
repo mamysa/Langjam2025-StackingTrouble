@@ -1,17 +1,17 @@
+# The changing these will break the game so don't change them, mkay?
 global CELL_SIZE = 64
 global BOARD_CELLS_ALONG_X = 12
 global BOARD_CELLS_ALONG_Y = 6
 
-
 global HORIZONTAL_MOVEMENT_LEFT = -1
 global HORIZONTAL_MOVEMENT_RIGHT = 1
-
 
 global VERTICAL_MOVEMENT_FALLING = -1
 global VERTICAL_MOVEMENT_JUMPING = 1
 
 # steal these from raylib enum
 global RL_KEY_SPACE = 32
+global RL_KEY_H = 72 
 global RL_KEY_P = 80
 global RL_KEY_RIGHT = 262
 global RL_KEY_LEFT = 263
@@ -59,13 +59,20 @@ global BOARD_CRATE_EXIT_MARGIN = 2
 
 global BOARD_CAMERA = make_2d_camera()
 
-
 global ASSET_REGISTRY = {}
 
 # defines what happens when a player and crate interact along the y axis (due to gravity and what not).
 # Normal behaviour would be to crush the player, but for pickups (such as health) crate should be despawned.
 global CRATE_GRAVITY_BEHAVIOR_CRUSH = 1
 global CRATE_GRAVITY_BEHAVIOR_PICKUP = 2
+
+global TUTORIAL_STAGE_1_TEXT = 
+"Welcome! 
+Your job is to organize crates 
+into rows by pushing them around.
+Once the bottom-most row is full, 
+it is cleared and points are awarded.
+Crates are delivered regularly."
 
 
 # accepts board coordinates, transforms that do the screen coordinates and draws the texture.
@@ -88,6 +95,25 @@ def draw_1x1_rectangle(x, y, r, g, b, a) {
 
 
 	RlDrawRectangle(cell_start_x, cell_start_y, c, c, r, g, b, a);
+}
+
+def draw_text_widget(center_x, center_y, w, h, text) {
+	half_w = int(0.5 * w);
+	half_h = int(0.5 * h);
+	border_width = 2;
+
+	top_x= center_x - half_w;
+	top_y= center_y - half_h;
+
+	RlDrawRectangle(top_x, top_y, w, h, 250, 220, 220, 220);
+	#render borders
+	RlDrawRectangle(top_x-border_width, top_y-border_width, border_width, h+border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x+w-border_width, top_y-border_width, border_width, h+border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x-border_width, top_y-border_width, w+border_width, border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x-border_width, top_y+h-border_width, w+border_width, border_width, 2, 0, 0, 200);
+
+	# render text
+	RlDrawText(global(TUTORIAL_STAGE_1_TEXT) , top_x + 10, top_y + 10, 20, 255,0,0);
 }
 
 def draw_hud(score, health, double_speed_applied) {
@@ -1087,7 +1113,7 @@ def crane_draw(self) {
 # Is a collection of columns containing crates.
 # Also contains player instance.
 # All crates in columns are sorted by y coordinate.
-def world_new() {
+def world_new(player_x, player_y, enable_crate_spawning) {
 	columns = [];
 	x = 0;
 	while x < global(BOARD_CELLS_ALONG_X) {
@@ -1096,17 +1122,19 @@ def world_new() {
 	}
 
 	world = {};
+	world.enable_crate_spawning = enable_crate_spawning;
 	world.queue = 0; # number of crates that are queued to spawn.
 	world.columns = columns;
 	world.cranes_left= [];
 	world.cranes_right = [];
-	world.player = player_new(0, 0);
+	world.player = player_new(player_x, player_y);
 	world.pushed_crate = None;
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	world.score = 0;
 	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
 	world.double_speed_timer = timer_new(global(DOUBLE_SPEED_DURATION));
+	world.tick = &world_tick;
 	return world;
 }
 
@@ -1172,12 +1200,14 @@ def _world_tick_cranes(self, cranes, dt) {
 }
 
 def world_tick(self, dt) {
-
 	player_check_death_condition(self.player, self);
 	world_try_destroy_bottom_row(self);
 	timer_tick(self.crate_spawn_timer, dt);
 	timer_tick(self.double_speed_timer, dt);
-	world_spawn_crate_2(self);
+
+	if self.enable_crate_spawning {
+		world_spawn_crate_2(self);
+	}
 
 	self.cranes_left = _world_tick_cranes(self, self.cranes_left, dt);
 	self.cranes_right = _world_tick_cranes(self, self.cranes_right, dt);
@@ -1732,18 +1762,39 @@ def unload_assets() {
 }
 
 
+# Physics ticker class. Maintains frametimes, delta times, and invokes a callback with delta time when 
+# appropriate
+def physics_ticker_new() {
+	ticker = {};
+	ticker.previous_time_ms = time();
+	ticker.accumulator = 0.0;
+	return ticker;
+}
+
+# self = physics_ticker
+# object must contain tick(obj, dt) method.
+def physics_ticker_tick(self, obj) {
+	dt  = 0.01;
+	new_time_ms = time();
+	frame_time = (new_time_ms - self.previous_time_ms) / 1000.0;
+	self.previous_time_ms = new_time_ms;
+	self.accumulator = self.accumulator + frame_time;
+
+	while dt < self.accumulator {
+		obj.tick(obj, dt);
+		self.accumulator = self.accumulator - dt;
+	}
+}
+
+
 # Game state object.
 # What state is the game in? E.g. splash-screen / tutorial / actual game.
 def main_game_state_new() {
 	game_state = {};
-	game_state.world =	world_new(); 
+	game_state.world =	world_new(5, 0, True); 
 	game_state.run = &_main_game_state_run;
-
-	# physics loop stuff.
-	game_state.previous_time_ms = time();
-	game_state.accumulator = 0.0;
+	game_state.physics_ticker = physics_ticker_new(); 
 	game_state.is_paused = False;
-
 	return game_state;
 }
 
@@ -1755,8 +1806,7 @@ def _main_game_state_toggle_pause(self) {
 
 	self.is_paused = not self.is_paused;
 	if not self.is_paused {
-		self.previous_time_ms = time();
-		self.accumulator = 0.0;
+		self.physics_ticker = physics_ticker_new();
 	}
 }
 
@@ -1782,9 +1832,8 @@ def _main_game_state_handle_input(self) {
 	}
 
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
-		self.accumulator = 0.0;
-		self.previous_time_ms = time();
-		self.world = world_new();
+		self.physics_ticker = physics_ticker_new();
+		self.world = world_new(5, 0, True);
 	}
 
 	if RlIsKeyDown(global(RL_KEY_SPACE)) {
@@ -1801,17 +1850,7 @@ def _main_game_state_handle_input(self) {
 }
 
 def _main_game_state_do_physics(self) {
-	dt  = 0.01;
-	new_time_ms = time();
-	frame_time = (new_time_ms - self.previous_time_ms) / 1000.0;
-	self.previous_time_ms = new_time_ms;
-	self.accumulator = self.accumulator + frame_time;
-
-
-	while dt < self.accumulator {
-		world_tick(self.world, dt);
-		self.accumulator = self.accumulator - dt;
-	}
+	physics_ticker_tick(self.physics_ticker, self.world);
 }
 
 def _main_game_state_draw(self) {
@@ -1837,6 +1876,104 @@ def _main_game_state_draw(self) {
 	}
 }
 
+# Tutorial game state
+# All actual tutorial setup/drawing will be done in objects implementing tick/draw methods.
+# This way we will be able to switch/reset tutorial stages on keypress (including various input timers.)
+def tutorial_game_state_new() {
+	game_state = {};
+	game_state.run = &_tutorial_game_state_run;
+	game_state.physics_ticker = physics_ticker_new(); 
+	game_state.tutorial_stage = tutorial_stage_1();
+	return game_state;
+}
+
+def _tutorial_game_state_run(self, game) {
+	physics_ticker_tick(self.physics_ticker, self.tutorial_stage);
+	self.tutorial_stage.draw(self.tutorial_stage);
+}
+
+
+# Tutorial Stage 1 - explaining basics of the game
+def tutorial_stage_1() {
+	# setup the world. This is all very board size dependent so will probably break if board size is changed...
+	ar = global(ASSET_REGISTRY);
+	cells_x = global(BOARD_CELLS_ALONG_X);
+
+	lx = clamp(0, cells_x, int(cells_x * 0.45));
+	rx = clamp(0, cells_x, lx + 1);
+
+	world = world_new(lx-2, 2, False);
+	
+	x = 0;
+	while x < lx {
+		crate_tex = random_int(len(ar.crates));
+		col = world.columns[x];
+		col = col + crate_new(x, 0, ar.crates[crate_tex]);
+		world.columns[x] = col;
+		x = x + 1;
+	}
+
+	x = rx;
+	while x < cells_x {
+		crate_tex = random_int(len(ar.crates));
+		crate_tex_2 = random_int(len(ar.crates));
+		col = world.columns[x];
+		col = col + crate_new(x, 0, ar.crates[crate_tex]);
+		if random_float() < 0.5 {
+			col = col + crate_new(x, 1, ar.crates[crate_tex_2]);
+		}
+		world.columns[x] = col;
+		x = x + 1;
+	}
+
+
+	t = {};
+	t.tick = &_tutorial_stage_1_tick;
+	t.draw = &_tutorial_stage_1_draw;
+	t.world = world;
+	t.crate_spawn_column = lx - 1;
+
+	# crate spawn timer
+	t.crate_spawn_timer = timer_new(1);
+	t.crate_spawned = False;
+	timer_arm(t.crate_spawn_timer);
+
+	t.player_move_timer = timer_new(8);
+	t.player_moved = False;
+	timer_arm(t.player_move_timer);
+
+
+	return t;
+}
+
+def _tutorial_stage_1_tick(self, dt) {
+	world_tick(self.world, dt);
+	timer_tick(self.crate_spawn_timer, dt);
+	timer_tick(self.player_move_timer, dt);
+
+	if not self.crate_spawn_timer.is_applied and not self.crate_spawned {
+		ar = global(ASSET_REGISTRY);
+		crate_tex = random_int(len(ar.crates));
+		w = self.world;
+		w.columns[self.crate_spawn_column] = w.columns[self.crate_spawn_column] + crate_new(self.crate_spawn_column, global(BOARD_CELLS_ALONG_Y)+4, ar.crates[crate_tex]);
+		self.crate_spawned = True;
+	}
+
+	if not self.player_move_timer.is_applied and not self.player_moved {
+		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_RIGHT), self.world);
+		self.player_moved = True;
+	}
+}
+
+def _tutorial_stage_1_draw(self) {
+	RlBeginMode2D(global(BOARD_CAMERA));
+	world_draw(self.world);
+	RlEndMode2D();
+	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
+	draw_text_widget(550, 200, 400, 190, global(TUTORIAL_STAGE_1_TEXT));
+}
+
+
 # Splash screen game state.
 def splashscreen_game_state_new() {
 	game_state = {};
@@ -1849,21 +1986,28 @@ def _splashscreen_game_state_run(self, game) {
 		game.set_main_state(game);
 	}
 
+	if RlIsKeyReleased(global(RL_KEY_H)) {
+		game.set_tutorial_state(game);
+	}
+
 	RlDrawText("This is a splashscreen", 10, 10, 40, 255,0,0);
 }
-
-
 
 # Game object. Exposes methods for game state switching.
 def game_new() {
 	game = {};
 	game.game_state = splashscreen_game_state_new();
 	game.set_main_state = &_game_set_main_state;
+	game.set_tutorial_state = &_game_set_tutorial_state;
 	return game;
 }
 
 def _game_set_main_state(self) {
 	self.game_state = main_game_state_new();
+}
+
+def _game_set_tutorial_state(self) {
+	self.game_state = tutorial_game_state_new();
 }
 
 def game_run(self) {
@@ -1883,7 +2027,6 @@ def game_run(self) {
 	unload_assets();
 
 	RlCloseWindow();
-
 }
 
 def main() {
