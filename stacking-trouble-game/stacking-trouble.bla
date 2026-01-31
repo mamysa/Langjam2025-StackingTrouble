@@ -108,6 +108,24 @@ Contents of this crate are 100%
 safe for consumption.
 "
 
+global TUTORIAL_STAGE_4_TEXT_1 = 
+"Finally, there's a chance for a crate
+containing TNT to be delivered. 
+It explodes after some time, 
+destroying crates around it.
+"
+
+global TUTORIAL_STAGE_4_TEXT_2 = 
+"This concludes the training 
+programme.
+Work smart, work fast, work safe.
+
+And remember: 
+you are NOT irreplaceable.
+
+- The Company
+"
+
 # accepts board coordinates, transforms that do the screen coordinates and draws the texture.
 def draw_1x1_texture(x, y, texture) {
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
@@ -1332,7 +1350,7 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 
 def _world_pick_crate_kind_to_spawn(x, y) {
 	ar = global(ASSET_REGISTRY);
-	if random_float() < 0.125 {
+	if random_float() < 0.025 {
 		c = random_float();
 
 		if 0 <= c and c < 0.25 {
@@ -1925,15 +1943,24 @@ def tutorial_game_state_new() {
 	game_state.tutorial_stage_3_timer = timer_new(31); #31
 	game_state.tutorial_stage_3_active = False;
 
+	game_state.tutorial_stage_4_timer = timer_new(42); #42
+	game_state.tutorial_stage_4_active = False;
+
+	game_state.back_to_splashscreen_timer = timer_new(72); #69
+	game_state.back_to_main_menu_active = False;
 
 	timer_arm(game_state.tutorial_stage_2_timer);
 	timer_arm(game_state.tutorial_stage_3_timer);
+	timer_arm(game_state.tutorial_stage_4_timer);
+	timer_arm(game_state.back_to_splashscreen_timer);
 	return game_state;
 }
 
 def _tutorial_game_state_tick(self, dt) {
 	timer_tick(self.tutorial_stage_2_timer, dt);
 	timer_tick(self.tutorial_stage_3_timer, dt);
+	timer_tick(self.tutorial_stage_4_timer, dt);
+	timer_tick(self.back_to_splashscreen_timer, dt);
 	self.tutorial_stage.tick(self.tutorial_stage, dt);
 
 	if not self.tutorial_stage_2_timer.is_applied and not self.tutorial_stage_2_active {
@@ -1945,12 +1972,23 @@ def _tutorial_game_state_tick(self, dt) {
 		self.tutorial_stage = tutorial_stage_3();
 		self.tutorial_stage_3_active = True;
 	}
+
+	if not self.tutorial_stage_4_timer.is_applied and not self.tutorial_stage_4_active {
+		self.tutorial_stage = tutorial_stage_4();
+		self.tutorial_stage_4_active = True;
+	}
 }
 
 
 def _tutorial_game_state_run(self, game) {
 	physics_ticker_tick(self.physics_ticker, self);
 	self.tutorial_stage.draw(self.tutorial_stage);
+
+
+	if not self.back_to_splashscreen_timer.is_applied and not self.back_to_main_menu_active {
+		game.set_splashscreen_state(game);
+		self.back_to_main_menu_active = True;
+	}
 }
 
 
@@ -2243,10 +2281,77 @@ def _tutorial_stage_3_draw(self) {
 	world_draw(self.world);
 	RlEndMode2D();
 	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
-
-		draw_text_widget(550, 220, 400, 190, global(TUTORIAL_STAGE_3_TEXT));
+	draw_text_widget(550, 220, 400, 190, global(TUTORIAL_STAGE_3_TEXT));
 }
 
+# Tutorial stage 4 explaining the TNT crate.
+def tutorial_stage_4() {
+	ar = global(ASSET_REGISTRY);
+	cells_x = global(BOARD_CELLS_ALONG_X);
+
+	
+	world = world_new(8, 0, False);
+	
+	x = 0;
+	while x < 6 {
+		crates_along_y = random_int(3);
+		y = 0;
+		col = world.columns[x];
+		while y < crates_along_y + 1 {
+			crate_tex = ar.crates[random_int(len(ar.crates))];
+			col = col + crate_new(x, y, crate_tex);
+			y = y + 1;
+		}
+
+		if x == 2 {
+			ex = exploder_crate_new(x, global(BOARD_CELLS_ALONG_Y)+4, ar.exploder_crate);
+			ex.on_added_to_board(ex);
+			col = col + ex;
+		}	
+
+		world.columns[x] = col;
+		x = x + 1;
+	}
+
+	t = {};
+	t.tick = &_tutorial_stage_4_tick;
+	t.draw = &_tutorial_stage_4_draw;
+	t.world = world;
+
+	t.text_index = 1;
+
+	t.text2_timer = timer_new(24.5);
+	t.text2_timer_done = False;
+
+	timer_arm(t.text2_timer);
+	return t;
+
+}
+
+def _tutorial_stage_4_tick(self, dt) {
+	world_tick(self.world, dt);
+	timer_tick(self.text2_timer, dt);
+
+	if not self.text2_timer.is_applied and not self.text2_timer_done {
+		self.text_index = 2;
+		self.text2_timer_done = True;
+	}
+}
+
+def _tutorial_stage_4_draw(self) {
+	RlBeginMode2D(global(BOARD_CAMERA));
+	world_draw(self.world);
+	RlEndMode2D();
+	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
+
+	if self.text_index == 1 {
+		draw_text_widget(550, 220, 400, 130, global(TUTORIAL_STAGE_4_TEXT_1));
+	}
+
+	if self.text_index == 2 {
+		draw_text_widget(550, 220, 400, 255, global(TUTORIAL_STAGE_4_TEXT_2));
+	}
+}
 
 # Splash screen game state.
 def splashscreen_game_state_new() {
@@ -2271,9 +2376,14 @@ def _splashscreen_game_state_run(self, game) {
 def game_new() {
 	game = {};
 	game.game_state = splashscreen_game_state_new();
+	game.set_splashscreen_state = &_game_set_splashscreen_state;
 	game.set_main_state = &_game_set_main_state;
 	game.set_tutorial_state = &_game_set_tutorial_state;
 	return game;
+}
+
+def _game_set_splashscreen_state(self) {
+	self.game_state = splashscreen_game_state_new();
 }
 
 def _game_set_main_state(self) {
