@@ -1770,14 +1770,7 @@ def world_draw(self) {
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
-	asset_registry.crates = [] 
-	  + RlLoadTexture("stacking-trouble-game/assets/crate_y_1.png")
-	  + RlLoadTexture("stacking-trouble-game/assets/crate_g_1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/crate_c_1.png")
-	  + RlLoadTexture("stacking-trouble-game/assets/crate_y_2.png")
-	  + RlLoadTexture("stacking-trouble-game/assets/crate_g_2.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/crate_c_2.png");
-	
+	asset_registry.crates = RlLoadTextureList("stacking-trouble-game/assets/common_crates");
 	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
 	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
 	asset_registry.double_speed_crate = RlLoadTexture("stacking-trouble-game/assets/crate_double_speed.png");
@@ -1787,6 +1780,8 @@ def load_assets() {
 	asset_registry.floor = RlLoadTexture("stacking-trouble-game/assets/floor.png");
 	asset_registry.icon_heart = RlLoadTexture("stacking-trouble-game/assets/icon_heart.png");
 	asset_registry.icon_double_speed = RlLoadTexture("stacking-trouble-game/assets/icon_double_speed.png");
+
+print(asset_registry.crates);
 }
 
 def unload_assets() {

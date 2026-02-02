@@ -51,6 +51,7 @@ const (
 	RlBeginMode2D
 	RlEndMode2D
 	RlLoadTexture
+	RlLoadTextureList
 	RlUnloadTexture
 
 	// Time
@@ -136,6 +137,14 @@ func (o OpCode_NoArgs) String() string {
 		return "RlSetTargetFPS"
 	case RlDrawRectangle:
 		return "RlDrawRectangle"
+	case RlDrawTexture:
+		return "RlDrawTexture"
+	case RlLoadTexture:
+		return "RlLoadTexture"
+	case RlUnloadTexture:
+		return "RlUnloadTexture"
+	case RlLoadTextureList:
+		return "RlLoadTextureList"
 	case RlIsKeyDown:
 		return "RlIsKeyDown"
 	case RlDrawText:
