@@ -1115,9 +1115,26 @@ def crane_tick(self, dt, world) {
 
 		able_to_spawn = True;
 
-		# have the column reached its maximum occupancy?
+		# has the column reached its maximum occupancy?
 		if world_get_count_in_column(world, self.current_goal_x) >= global(BOARD_CELLS_ALONG_Y)  {
 			able_to_spawn = able_to_spawn and False;
+		}
+
+		# does it overlap the player?
+		# In some RARE cases player will be able to have 7 crates in the column. 
+		# In this case, if player is moving from a column with 7 crates to a column with 5 crates, and the crate in dropped into the 
+		# column with 5 crates, we should check if player happens to overlap the crate 
+		# (so that we don't end up having odd cases with crates spawning inside the player)
+		player_prev_goal_x = world.player.previous_goal_x;
+		player_next_goal_x = world.player.current_goal_x;
+		if player_prev_goal_x == self.current_goal_x or player_next_goal_x == self.current_goal_x {
+			#TODO
+				crate_interval = interval_new(self.y, self.y + global(CRATE_HEIGHT));
+				player_interval = world.player.get_y_axis_span(world.player);
+				if intervals_overlap(crate_interval, player_interval) {
+					print("" + crate_interval + " " + player_interval);
+					able_to_spawn = able_to_spawn and False;
+				}
 		}
 
 		# does it overlap any crates?
