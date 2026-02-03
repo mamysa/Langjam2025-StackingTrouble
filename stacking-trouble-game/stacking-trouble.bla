@@ -1153,9 +1153,12 @@ def crane_draw(self) {
 	cell_start_y = board_height - (global(CELL_SIZE) * self.y); 
 
 	width = global(CELL_SIZE);
-	height = 32; 
 
-	RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
+	asset_registry = global(ASSET_REGISTRY);
+
+	RlDrawTexture(asset_registry.crane, cell_start_x, cell_start_y-width*1.55);
+
+	#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
 }
 
 
@@ -1771,6 +1774,7 @@ def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
 	asset_registry.crates = RlLoadTextureList("stacking-trouble-game/assets/common_crates");
+	asset_registry.crane = RlLoadTexture("stacking-trouble-game/assets/crane.png");
 	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
 	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
 	asset_registry.double_speed_crate = RlLoadTexture("stacking-trouble-game/assets/crate_double_speed.png");
@@ -1798,6 +1802,7 @@ def unload_assets() {
 	RlUnloadTexture(asset_registry.wall_pillar_right);
 	RlUnloadTexture(asset_registry.wall);
 	RlUnloadTexture(asset_registry.floor);
+	RlUnloadTexture(asset_registry.crane);
 
 	RlUnloadTexture(asset_registry.exploder_crate);
 	RlUnloadTexture(asset_registry.health_crate);
