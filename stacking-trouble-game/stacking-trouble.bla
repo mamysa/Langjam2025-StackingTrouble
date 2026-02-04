@@ -743,6 +743,7 @@ def crate_new(x, y, texture) {
 	crate.horizontal_movement_kind = None;
 	crate.has_exploded = False;
 	crate.texture = texture;
+	crate.explosion_animation = asset_registry_pick_explosion_animation();
 
 	crate.explosion_timer = timer_new(global(EXPLOSION_DURATION));
 	crate.set_position = &crate_set_position;
@@ -787,20 +788,21 @@ def crate_draw(self) {
 	cellStartY = board_height - (global(CELL_SIZE) * self.y);
 
 	if not self.has_exploded {
-		RlDrawTexture(self.texture, cellStartX, cellStartY);
+		draw_1x1_texture(self.x, self.y, self.texture);
 		return;
 	}
 
-	explosion_colors = [] + 255 + 200 + 150 + 100 + 50 + 0;
-	num_explosion_frame_indices = len(explosion_colors);
+	explosion_frames = self.explosion_animation;
+	num_explosion_frame_indices = len(explosion_frames);
 
 	duration = self.explosion_timer.default_duration;
 	counter_clamped = clamp(0.0, duration, self.explosion_timer.counter); # clamp between [0, duration] just in case.
 	counter_normalized = 1.0 - counter_clamped / duration; # normalize to [0,1] range and subtract from 1 to ensure.
-	explosion_frame = clamp(0, num_explosion_frame_indices-1, int(counter_normalized * num_explosion_frame_indices)); # clamp with index of the last frame
-	print("Current explosion frame: " + explosion_frame + " counter normalized: " + counter_normalized);
+	explosion_frame_index = clamp(0, num_explosion_frame_indices-1, int(counter_normalized * num_explosion_frame_indices)); # clamp with index of the last frame
+	print("Current explosion frame: " + explosion_frame_index + " counter normalized: " + counter_normalized);
 
-	RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_colors[explosion_frame], 0, 0, 255);
+	draw_1x1_texture(self.x, self.y, explosion_frames[explosion_frame_index]);
+	#RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_frames[explosion_frame_index], 0, 0, 255);
 }
 
 # again, row_index is passed here because object comparisons by reference is borked atm.
@@ -1787,10 +1789,52 @@ def world_draw(self) {
 }
 
 
+def texture_array_unload(arr) {
+	i = 0;
+	while i < len(arr) {
+		RlUnloadTexture(arr[i]);
+		i = i + 1;
+	}
+}
+
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
-	asset_registry.crates = RlLoadTextureList("stacking-trouble-game/assets/common_crates");
+	asset_registry.explosion_1 = [] 
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f0.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f2.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f3.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f4.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f5.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f6.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f7.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f8.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f9.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f10.png");
+
+
+	asset_registry.explosion_2 = [] 
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f0.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f2.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f3.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f4.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f5.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f6.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f7.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f8.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f9.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f10.png");
+
+	asset_registry.crates = [] 
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_c_1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_c_2.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_g_1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_g_2.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_y_1.png")
+		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_y_2.png");
+
 	asset_registry.crane = RlLoadTexture("stacking-trouble-game/assets/crane.png");
 	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
 	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
@@ -1802,18 +1846,19 @@ def load_assets() {
 	asset_registry.icon_heart = RlLoadTexture("stacking-trouble-game/assets/icon_heart.png");
 	asset_registry.icon_double_speed = RlLoadTexture("stacking-trouble-game/assets/icon_double_speed.png");
 
-print(asset_registry.crates);
+}
+
+def asset_registry_pick_explosion_animation() {
+	ar = global(ASSET_REGISTRY);
+	return ar.explosion_1 if random_float() < 0.5 else ar.explosion_2;
 }
 
 def unload_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
-	i = 0;
-	while i < len(asset_registry.crates) {
-		RlUnloadTexture(asset_registry.crates[i]);
-		i = i + 1;
-	}
-	
+	texture_array_unload(asset_registry.crates);
+	texture_array_unload(asset_registry.explosion_1);
+	texture_array_unload(asset_registry.explosion_2);
 
 	RlUnloadTexture(asset_registry.wall_pillar_left);
 	RlUnloadTexture(asset_registry.wall_pillar_right);
