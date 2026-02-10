@@ -66,6 +66,8 @@ global ASSET_REGISTRY = {}
 global CRATE_GRAVITY_BEHAVIOR_CRUSH = 1
 global CRATE_GRAVITY_BEHAVIOR_PICKUP = 2
 
+global ANIMATION_FRAME_DURATION = 0.04
+
 global TUTORIAL_STAGE_1_TEXT = 
 "Welcome to The Company! 
 Your job is to organize crates 
@@ -133,6 +135,14 @@ def draw_1x1_texture(x, y, texture) {
 	cell_start_x = global(CELL_SIZE) * x;
 	cell_start_y = board_height - (global(CELL_SIZE) * y);
 
+	RlDrawTexture(texture, cell_start_x, cell_start_y);
+}
+
+def draw_1x2_texture(x, y, texture) {
+	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
+	cell_start_x = global(CELL_SIZE) *  x;
+	#subtract additional CELL_SIZE so that we account for player's height which is twice as large as other objects on scene.
+	cell_start_y = board_height - (global(CELL_SIZE) * y) - global(CELL_SIZE);
 	RlDrawTexture(texture, cell_start_x, cell_start_y);
 }
 
@@ -228,6 +238,42 @@ def make_2d_camera() {
 
 	return camera;
 }
+
+
+### == Animator 
+# This class is responsible for simulating player animations and picking a the correct frame.
+# Reli
+def animator_new(frame_duration, animation) {
+	self = {};
+	self.frame_duration = frame_duration;
+	self.current_time = 0.0;
+	self.current_frame = 0;
+	animator_set_animation(self, animation);
+	return self;
+}
+
+def animator_set_animation(self, animation) {
+	assert(animation != None, "No animation to play specified...");
+	assert(len(animation) > 0, "Empty animation");
+	self.animation = animation;
+	self.current_frame = self.current_frame % len(animation);
+}
+
+def animator_tick(self, dt) {
+	self.current_time = self.current_time + dt;
+
+	while self.current_time >= self.frame_duration {
+		self.current_time = self.current_time - self.frame_duration;
+		self.current_frame = (self.current_frame + 1) % len(self.animation);
+	}
+}
+
+# returns texture.
+def animator_get_frame(self) {
+	return self.animation[self.current_frame];
+}
+
+### == End animator 
 
 def board_x_coordinate_in_bounds(x) {
 	return x >= 0 and x < global(BOARD_CELLS_ALONG_X);
@@ -402,6 +448,8 @@ def player_new(x, y) {
 	player.liveness = None; # none if player is alive and okay.
 	player.health = 3; # number of lives the player has
 
+	ar = global(ASSET_REGISTRY);
+	player.animator = animator_new(global(ANIMATION_FRAME_DURATION), ar.hardhat_dude_walk_right);
 	return player;
 }
 
@@ -609,6 +657,19 @@ def player_tick(self, dt, world) {
 
 	player_tick_horizontal_movement(self, dt, world);
 	player_tick_vertical_movement(self, dt, world);
+
+	# This is where we pick desired animation frame
+	ar = global(ASSET_REGISTRY);
+	animation = ar.hardhat_dude_idle;
+	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) {
+		animation = ar.hardhat_dude_walk_left;
+	}
+	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
+		animation = ar.hardhat_dude_walk_right;
+	}
+	
+	animator_set_animation(self.animator, animation);
+	animator_tick(self.animator, dt);
 }
 
 # self = player
@@ -694,6 +755,9 @@ def player_tick_vertical_movement(self, dt, world) {
 }
 
 def player_draw(self) {
+	ar = global(ASSET_REGISTRY);
+
+
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 
 	cell_start_x = global(CELL_SIZE) *  self.x;
@@ -712,7 +776,9 @@ def player_draw(self) {
 	if self.liveness != None{
 		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0, 255);
 	} else {
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
+		#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
+		tex = animator_get_frame(self.animator);
+		draw_1x2_texture(self.x, self.y, tex);
 	}
 
 }
@@ -1800,6 +1866,12 @@ def texture_array_unload(arr) {
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
+	asset_registry.hardhat_dude_idle = [] +RlLoadTexture("stacking-trouble-game/assets/hardhat_dude.png");
+
+	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
+
+	## TODO should load these as well using _load_animation_From_directory
 	asset_registry.explosion_1 = [] 
 		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f0.png")
 		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f1.png")
@@ -1848,6 +1920,25 @@ def load_assets() {
 
 }
 
+# loads animation frames from some directory.
+# Iterates from startingFrameNumber to endingFrameNumber, generates filename + frame + extension, does RlLoadTexture and 
+# returns a list containing loaded textures.
+# This texture array can be unloaded with texture_array_unload
+def _load_animation_from_directory(directory, filename, startingFrameNumber, endingFrameNumber, extension) {
+	arr = [];
+
+	i = startingFrameNumber;
+	while i <= endingFrameNumber {
+		filepath = directory + filename + i + extension;
+		print("Loading " + filepath);
+		frame = RlLoadTexture(filepath);
+		arr = arr + frame;
+		i = i + 1;
+	}
+
+	return arr;
+}
+
 def asset_registry_pick_explosion_animation() {
 	ar = global(ASSET_REGISTRY);
 	return ar.explosion_1 if random_float() < 0.5 else ar.explosion_2;
@@ -1855,6 +1946,10 @@ def asset_registry_pick_explosion_animation() {
 
 def unload_assets() {
 	asset_registry = global(ASSET_REGISTRY);
+
+	texture_array_unload(asset_registry.hardhat_dude_idle);
+	texture_array_unload(asset_registry.hardhat_dude_walk_right);
+	texture_array_unload(asset_registry.hardhat_dude_walk_left);
 
 	texture_array_unload(asset_registry.crates);
 	texture_array_unload(asset_registry.explosion_1);
