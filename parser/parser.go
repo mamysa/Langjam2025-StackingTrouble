@@ -817,14 +817,14 @@ func (p *Parser) expressionAdditive() (ast.Expr, error) {
 	return lhs, nil
 }
 
-// EXPR_MUL := EXPR_UNARY { {* | /} EXPR_UNARY}*
+// EXPR_MUL := EXPR_UNARY { {* | / | %} EXPR_UNARY}*
 func (p *Parser) expressionMultiplicative() (ast.Expr, error) {
 	lhs, err := p.expressionUnary()
 	if err != nil {
 		return nil, err
 	}
 
-	ops := []tokenizer.TokenKind{tokenizer.Token_Mul, tokenizer.Token_Div}
+	ops := []tokenizer.TokenKind{tokenizer.Token_Mul, tokenizer.Token_Div, tokenizer.Token_Mod}
 
 	for p.nextTokenIs(ops...) {
 		opToken, err := p.expect(ops...)
@@ -838,6 +838,8 @@ func (p *Parser) expressionMultiplicative() (ast.Expr, error) {
 			op = ast.BinOp_Mul
 		case tokenizer.Token_Div:
 			op = ast.BinOp_Div
+		case tokenizer.Token_Mod:
+			op = ast.BinOp_Mod
 		}
 
 		rhs, err := p.expressionUnary()

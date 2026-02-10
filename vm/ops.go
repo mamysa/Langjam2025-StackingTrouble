@@ -579,6 +579,49 @@ func applyDiv(v1, v2 value) (value, error) {
 	}
 }
 
+func applyMod(v1, v2 value) (value, error) {
+	switch v1.kind() {
+	case value_Int:
+		{
+			switch v2.kind() {
+			case value_Int:
+				{
+					return newInt64Value(moduloInt(v1.(Numeric).toInt64(), v2.(Numeric).toInt64())), nil
+				}
+			case value_Float:
+				{
+					return newFloat64Value(moduloFloat(v1.(Numeric).toFloat64(), v2.(Numeric).toFloat64())), nil
+				}
+			default:
+				{
+					return nil, newBinaryOperatorError(Mod, v1, v2)
+				}
+			}
+		}
+	case value_Float:
+		{
+			switch v2.kind() {
+			case value_Int:
+				{
+					return newFloat64Value(moduloFloat(v1.(Numeric).toFloat64(), v2.(Numeric).toFloat64())), nil
+				}
+			case value_Float:
+				{
+					return newFloat64Value(moduloFloat(v1.(Numeric).toFloat64(), v2.(Numeric).toFloat64())), nil
+				}
+			default:
+				{
+					return nil, newBinaryOperatorError(Mod, v1, v2)
+				}
+			}
+		}
+	default:
+		{
+			return nil, newBinaryOperatorError(Mod, v1, v2)
+		}
+	}
+}
+
 func applyNeg(v value) (value, error) {
 	switch v.kind() {
 	case value_Int:
@@ -647,4 +690,14 @@ func applyCeil(v value) (value, error) {
 			return nil, newUnaryOperatorError(Floor, v)
 		}
 	}
+}
+
+// Donald Knuth's modulo by floored division.
+func moduloInt(a, n int64) int64 {
+	af, nf := float64(a), float64(n)
+	return a - int64(math.Floor(af/nf))*n
+}
+
+func moduloFloat(a, n float64) float64 {
+	return a - math.Floor(a/n)*n
 }

@@ -69,6 +69,8 @@ func (interpreter *Interpreter) Run() {
 				interpreter.mul()
 			case Div:
 				interpreter.div()
+			case Mod:
+				interpreter.mod()
 			case Not:
 				interpreter.not()
 			case Neg:
@@ -348,6 +350,17 @@ func (interpreter *Interpreter) div() {
 	v2 := interpreter.evaluationStack.pop()
 	v1 := interpreter.evaluationStack.pop()
 	v, err := applyDiv(v1, v2)
+	if err != nil {
+		exit(err)
+	}
+	interpreter.evaluationStack.pushValue(v)
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) mod() {
+	v2 := interpreter.evaluationStack.pop()
+	v1 := interpreter.evaluationStack.pop()
+	v, err := applyMod(v1, v2)
 	if err != nil {
 		exit(err)
 	}

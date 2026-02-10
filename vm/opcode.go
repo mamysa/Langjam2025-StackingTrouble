@@ -16,6 +16,7 @@ const (
 	Sub
 	Mul
 	Div
+	Mod // modulo
 	Neg
 	PushNone    // pushes none object onto the stack
 	Print       // consume topmost value on the stack and print it
@@ -89,6 +90,8 @@ func (o OpCode_NoArgs) String() string {
 		return "Mul"
 	case Div:
 		return "Div"
+	case Mod:
+		return "Mod"
 	case Neg:
 		return "Neg"
 	case Print:

@@ -22,6 +22,7 @@ const (
 	Token_Minus    TokenKind = "-"
 	Token_Mul      TokenKind = "*"
 	Token_Div      TokenKind = "/"
+	Token_Mod      TokenKind = "%"
 	Token_Assign   TokenKind = "="
 	Token_LParen   TokenKind = "("
 	Token_RParen   TokenKind = ")"
@@ -82,6 +83,7 @@ var operators = map[string]TokenKind{
 	"-":  Token_Minus,
 	"*":  Token_Mul,
 	"/":  Token_Div,
+	"%":  Token_Mod,
 	"=":  Token_Assign,
 	"&":  Token_FuncAddr,
 	"<":  Token_Lt,

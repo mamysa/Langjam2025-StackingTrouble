@@ -9,6 +9,7 @@ const (
 	BinOp_Sub   BinOp = "-"
 	BinOp_Mul   BinOp = "*"
 	BinOp_Div   BinOp = "/"
+	BinOp_Mod   BinOp = "%"
 	BinOp_Lt    BinOp = "<"
 	BinOp_Gt    BinOp = ">"
 	BinOp_GrEq  BinOp = ">="

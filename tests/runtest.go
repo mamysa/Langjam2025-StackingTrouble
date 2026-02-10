@@ -11,6 +11,7 @@ import (
 var TESTS_PASSING []string = []string{
 	"assert-fail.bla",
 	"arith-0.bla",
+	"arith-mod.bla",
 	"cmp-0.bla",
 	"boolean-short-circuit.bla",
 	"list-cmp.bla",
