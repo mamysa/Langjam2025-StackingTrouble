@@ -663,9 +663,15 @@ def player_tick(self, dt, world) {
 	animation = ar.hardhat_dude_idle;
 	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) {
 		animation = ar.hardhat_dude_walk_left;
+		if self.is_pushing {
+			animation = ar.hardhat_dude_push_left;
+		}
 	}
 	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
 		animation = ar.hardhat_dude_walk_right;
+		if self.is_pushing {
+			animation = ar.hardhat_dude_push_right;
+		}
 	}
 	
 	animator_set_animation(self.animator, animation);
@@ -1869,7 +1875,10 @@ def load_assets() {
 	asset_registry.hardhat_dude_idle = [] +RlLoadTexture("stacking-trouble-game/assets/hardhat_dude.png");
 
 	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
+
+	asset_registry.hardhat_dude_push_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_right/", "", 0, 15, ".png");
 	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_push_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_left/", "", 0, 15, ".png");
 
 	## TODO should load these as well using _load_animation_From_directory
 	asset_registry.explosion_1 = [] 
@@ -1949,7 +1958,9 @@ def unload_assets() {
 
 	texture_array_unload(asset_registry.hardhat_dude_idle);
 	texture_array_unload(asset_registry.hardhat_dude_walk_right);
+	texture_array_unload(asset_registry.hardhat_dude_push_right);
 	texture_array_unload(asset_registry.hardhat_dude_walk_left);
+	texture_array_unload(asset_registry.hardhat_dude_push_left);
 
 	texture_array_unload(asset_registry.crates);
 	texture_array_unload(asset_registry.explosion_1);
