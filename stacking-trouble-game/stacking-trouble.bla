@@ -2283,6 +2283,7 @@ def _tutorial_stage_1_tick(self, dt) {
 	timer_tick(self.crate_spawn_timer, dt);
 	timer_tick(self.player_move_timer, dt);
 
+
 	if not self.crate_spawn_timer.is_applied and not self.crate_spawned {
 		ar = global(ASSET_REGISTRY);
 		crate_tex = random_int(len(ar.crates));
@@ -2293,6 +2294,7 @@ def _tutorial_stage_1_tick(self, dt) {
 
 	if not self.player_move_timer.is_applied and not self.player_moved {
 		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_RIGHT), self.world);
+		self.world.player.move(self.world.player, None, self.world);
 		self.player_moved = True;
 	}
 }
@@ -2505,6 +2507,8 @@ def _tutorial_stage_3_tick(self, dt) {
 	if not self.player_move_timer.is_applied {
 		if not (abs(w.player.x - self.player_stop_column) < 0.5) {
 			w.player.move(w.player, global(HORIZONTAL_MOVEMENT_RIGHT), w);
+		} else {
+			w.player.move(w.player, None, w);
 		}
 	}
 }
