@@ -428,8 +428,12 @@ def player_new(x, y) {
 	player.previous_goal_x = x;
 	player.current_goal_x = None;
 
+	# currently applied movement.
 	player.horizontal_movement_kind = None;
 
+	# used for tracking continuous user input. A requirement to make animations 
+	# work smoothly. See player_tick.
+	player.desired_horizontal_movement_kind = None;
 
 	player.goal_y = None;
 	player.vertical_movement_kind = None;
@@ -529,6 +533,12 @@ def player_can_push_crate(self, crate) {
 }
 
 def player_move(self, desired_horizontal_movement_kind, world) {
+	self.desired_horizontal_movement_kind = desired_horizontal_movement_kind;
+
+	if desired_horizontal_movement_kind == None {
+		return False;
+	}
+
 	if self.liveness != None {
 			return False;
 	}
@@ -541,9 +551,6 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 		return False;
 	}
 
-	if desired_horizontal_movement_kind == None {
-		return False;
-	}
 
 	if desired_horizontal_movement_kind == self.horizontal_movement_kind {
 		# do not allow player to queue multiple movements in the same direction
@@ -658,22 +665,70 @@ def player_tick(self, dt, world) {
 	player_tick_horizontal_movement(self, dt, world);
 	player_tick_vertical_movement(self, dt, world);
 
-	# This is where we pick desired animation frame
+	# This is where we pick desired animation frame.
+	# Due to a (short) cooldown after the player has moved, idle animation is picked for a few frames
+	# making the whole animation jarring.
+	# In addition to applying animations based on player horizontal movement kind, we also add 
+	# desired_horizontal_movement_kind (which is continuous and depends ONLY on player input).
+	# To pick correct animations (walking vs pushing), we have to apply the same crate pushing logic as we do with
+	# actual player movement. Not great.
 	ar = global(ASSET_REGISTRY);
 	animation = ar.hardhat_dude_idle;
-	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) {
+
+	player_interval = player_get_y_span_scaled(self);
+	can_move_in_direction = False;
+	can_push_in_direction = False;
+	if self.desired_horizontal_movement_kind != None {
+		target_x = self.previous_goal_x + self.desired_horizontal_movement_kind;
+		if board_x_coordinate_in_bounds(target_x) {
+			overlapping_crates = world.interval_overlaps_any_in_column(world, player_interval, target_x);
+			if len(overlapping_crates) == 0 {
+				can_move_in_direction = True;
+			}
+
+			if len(overlapping_crates) > 0 {
+				overlap_info = overlapping_crates[0];
+				can_push_crate = player_can_push_crate(self, overlap_info.crate);
+				crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
+				if can_push_crate and crate_moveable {
+					can_move_in_direction = True;
+					can_push_in_direction = True;
+				}
+
+			}
+		}
+	}
+
+	# Select animation based on continuous movement first.
+	if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) and can_move_in_direction  {
+		animation = ar.hardhat_dude_walk_left;
+		if can_push_in_direction {
+			animation = ar.hardhat_dude_push_left;
+		}
+	}
+
+	if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) and can_move_in_direction {
+		animation = ar.hardhat_dude_walk_right;
+		if can_push_in_direction {
+			animation = ar.hardhat_dude_push_right;
+		}
+	} 
+
+
+	# overwrite with actual movement when possible.
+	if  self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) {
 		animation = ar.hardhat_dude_walk_left;
 		if self.is_pushing {
 			animation = ar.hardhat_dude_push_left;
 		}
 	}
-	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
+	   if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
 		animation = ar.hardhat_dude_walk_right;
 		if self.is_pushing {
 			animation = ar.hardhat_dude_push_right;
 		}
 	}
-	
+
 	animator_set_animation(self.animator, animation);
 	animator_tick(self.animator, dt);
 }
@@ -821,6 +876,7 @@ def crate_new(x, y, texture) {
 	crate.set_position = &crate_set_position;
 	crate.draw = &crate_draw;
 	crate.move = &crate_move;
+	crate.can_be_moved = &crate_can_be_moved;
 	crate.get_player_gravity_behavior = &crate_get_player_gravity_behavior;
 	crate.get_y_axis_span = &crate_get_y_axis_span;
 	crate.get_center = &crate_get_center;
@@ -898,26 +954,30 @@ def crate_move(self, desired_horizontal_movement_kind, world, row_index) {
 		return False;
 	}
 
+	if not crate_can_be_moved(self, world, desired_horizontal_movement_kind) {
+		return False;
+	}
 
 	target_goal_x = self.previous_goal_x + desired_horizontal_movement_kind;
-
-	if not board_x_coordinate_in_bounds(target_goal_x) {
-		return False;
-	}
-
-	e = crate_get_y_span_scaled(self);
-
-	overlapping_crates_in_target_column = world.interval_overlaps_any_in_column(world, e, target_goal_x);
-	if len(overlapping_crates_in_target_column) > 0 {
-		return False;
-	}
-
 	self.horizontal_movement_kind = desired_horizontal_movement_kind;
 	self.current_goal_x = target_goal_x;
 	world.columns[self.previous_goal_x] = list_remove_at_index(world.columns[self.previous_goal_x], row_index);
 	world.pushed_crate = self;
 
 	return True;
+}
+
+# returns true if crate can be moved to desired target column
+def crate_can_be_moved(self, world, desired_horizontal_movement_kind) {
+	e = crate_get_y_span_scaled(self);
+	target_x = self.previous_goal_x + desired_horizontal_movement_kind;
+
+	if not board_x_coordinate_in_bounds(target_x) {
+		return False;
+	}
+
+	overlapping_crates_in_target_column = world.interval_overlaps_any_in_column(world, e, target_x);
+	return len(overlapping_crates_in_target_column) == 0;
 }
 
 def crate_explode(self) {
@@ -2050,21 +2110,26 @@ def _main_game_state_handle_input(self) {
 		return;
 	}
 
+
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
 		self.physics_ticker = physics_ticker_new();
 		self.world = world_new(5, 0, True);
 	}
 
+
+	p = self.world.player;
+	p.move(p, None, self.world);
+
 	if RlIsKeyDown(global(RL_KEY_SPACE)) {
-		self.world.player.jump(self.world.player);
+		p.jump(p);
 	}
 
 	if RlIsKeyDown(global(RL_KEY_LEFT)) {
-		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_LEFT), self.world);
+		p.move(p, global(HORIZONTAL_MOVEMENT_LEFT), self.world);
 	}
 
 	if RlIsKeyDown(global(RL_KEY_RIGHT)) {
-		self.world.player.move(self.world.player, global(HORIZONTAL_MOVEMENT_RIGHT), self.world);
+		p.move(p, global(HORIZONTAL_MOVEMENT_RIGHT), self.world);
 	}
 }
 
