@@ -675,44 +675,51 @@ def player_tick(self, dt, world) {
 	ar = global(ASSET_REGISTRY);
 	animation = ar.hardhat_dude_idle;
 
-	player_interval = player_get_y_span_scaled(self);
-	can_move_in_direction = False;
-	can_push_in_direction = False;
-	if self.desired_horizontal_movement_kind != None {
-		target_x = self.previous_goal_x + self.desired_horizontal_movement_kind;
-		if board_x_coordinate_in_bounds(target_x) {
-			overlapping_crates = world.interval_overlaps_any_in_column(world, player_interval, target_x);
-			if len(overlapping_crates) == 0 {
-				can_move_in_direction = True;
-			}
-
-			if len(overlapping_crates) > 0 {
-				overlap_info = overlapping_crates[0];
-				can_push_crate = player_can_push_crate(self, overlap_info.crate);
-				crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
-				if can_push_crate and crate_moveable {
+	if self.horizontal_movement_kind == None {
+		player_interval = player_get_y_span_scaled(self);
+		can_move_in_direction = False;
+		can_push_in_direction = False;
+		if self.desired_horizontal_movement_kind != None {
+			print("PLAYER TARGET X " + self.previous_goal_x);
+			target_x = self.previous_goal_x + self.desired_horizontal_movement_kind;
+			if board_x_coordinate_in_bounds(target_x) {
+				overlapping_crates = world.interval_overlaps_any_in_column(world, player_interval, target_x);
+				if len(overlapping_crates) == 0 {
 					can_move_in_direction = True;
-					can_push_in_direction = True;
+					print("NO CRATES");
 				}
 
+				if len(overlapping_crates) > 0 {
+					overlap_info = overlapping_crates[0];
+					can_push_crate = player_can_push_crate(self, overlap_info.crate);
+					crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
+
+					print("CRATE MOVEABLE " + crate_moveable + " CAN PUSH CRATE " + can_push_crate);
+					if can_push_crate and crate_moveable {
+						can_move_in_direction = True;
+						can_push_in_direction = True;
+					}
+
+				}
 			}
 		}
-	}
 
-	# Select animation based on continuous movement first.
-	if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) and can_move_in_direction  {
-		animation = ar.hardhat_dude_walk_left;
-		if can_push_in_direction {
-			animation = ar.hardhat_dude_push_left;
-		}
-	}
 
-	if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) and can_move_in_direction {
-		animation = ar.hardhat_dude_walk_right;
-		if can_push_in_direction {
-			animation = ar.hardhat_dude_push_right;
+		# Select animation based on continuous movement first.
+		if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) and can_move_in_direction  {
+			animation = ar.hardhat_dude_walk_left;
+			if can_push_in_direction {
+				animation = ar.hardhat_dude_push_left;
+			}
 		}
-	} 
+
+		if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) and can_move_in_direction {
+			animation = ar.hardhat_dude_walk_right;
+			if can_push_in_direction {
+				animation = ar.hardhat_dude_push_right;
+			}
+		} 
+	}
 
 
 	# overwrite with actual movement when possible.
@@ -722,7 +729,8 @@ def player_tick(self, dt, world) {
 			animation = ar.hardhat_dude_push_left;
 		}
 	}
-	   if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
+
+	if self.horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_RIGHT) {
 		animation = ar.hardhat_dude_walk_right;
 		if self.is_pushing {
 			animation = ar.hardhat_dude_push_right;
@@ -1417,8 +1425,6 @@ def world_tick(self, dt) {
 	self.cranes_left = _world_tick_cranes(self, self.cranes_left, dt);
 	self.cranes_right = _world_tick_cranes(self, self.cranes_right, dt);
 
-	self.player.tick(self.player, dt, self);
-
 	if self.pushed_crate != None {
 		if self.pushed_crate.should_despawn(self.pushed_crate) {
 			self.pushed_crate = None;
@@ -1448,6 +1454,9 @@ def world_tick(self, dt) {
 		x = x + 1;
 	}
 
+
+	# tick player after simulating all the crates.
+	self.player.tick(self.player, dt, self);
 
 	if self.player.liveness != None {
 		return;
@@ -1932,8 +1941,7 @@ def texture_array_unload(arr) {
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
-	asset_registry.hardhat_dude_idle = [] +RlLoadTexture("stacking-trouble-game/assets/hardhat_dude.png");
-
+	asset_registry.hardhat_dude_idle = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_idle/", "", 0, 31, ".png");
 	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
 
 	asset_registry.hardhat_dude_push_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_right/", "", 0, 15, ".png");
