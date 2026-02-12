@@ -54,6 +54,8 @@ const (
 	RlLoadTexture
 	RlLoadTextureList
 	RlUnloadTexture
+	RlLoadDefaultFont   // loads font and sets it as a global font.
+	RlUnloadDefaultFont // unloads default font if present.
 
 	// Time
 	GetTime     // returns time since epoch in millisenonds
@@ -152,6 +154,10 @@ func (o OpCode_NoArgs) String() string {
 		return "RlIsKeyDown"
 	case RlDrawText:
 		return "RlDrawText"
+	case RlLoadDefaultFont:
+		return "RlLoadDefaultFont"
+	case RlUnloadDefaultFont:
+		return "RlUnloadDefaultFont"
 	case GetTime:
 		return "GetTime"
 	case CastInt:

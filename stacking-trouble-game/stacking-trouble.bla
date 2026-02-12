@@ -174,7 +174,7 @@ def draw_text_widget(center_x, center_y, w, h, text) {
 	RlDrawRectangle(top_x-border_width, top_y+h-border_width, w+border_width, border_width, 2, 0, 0, 200);
 
 	# render text
-	RlDrawText(text, top_x + 10, top_y + 10, 20, 255,0,0);
+	RlDrawText(text, top_x + 5, top_y + 5, 21, 230,30,30);
 }
 
 def draw_hud(score, health, double_speed_applied) {
@@ -188,7 +188,7 @@ def draw_hud(score, health, double_speed_applied) {
 
 	RlDrawRectangle(0, 0, screen_width, bg_height,  220, 240, 240, 200);
 	RlDrawRectangle(0, bg_height, global(SCREEN_WIDTH), 2, 0, 0, 0, 200);
-	RlDrawText("" + score, score_text_start, 6, 30, 255,0,0);
+	RlDrawText("" + score, score_text_start, 6, 32, 230,30,30);
 
 	heart_start = 20;
 
@@ -198,7 +198,6 @@ def draw_hud(score, health, double_speed_applied) {
 		RlDrawTexture(asset_registry.icon_heart, offset, bg_height*0.5-16);
 		i = i + 1;
 	}
-
 
 	if double_speed_applied {
 		double_speed_offset = heart_start + 4 * 36;
@@ -1936,6 +1935,8 @@ def texture_array_unload(arr) {
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
+	RlLoadDefaultFont("stacking-trouble-game/assets/ThaleahFat.ttf");
+
 	asset_registry.hardhat_dude_idle = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_idle/", "", 0, 31, ".png");
 	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
 
@@ -1994,6 +1995,8 @@ def asset_registry_pick_explosion_animation() {
 
 def unload_assets() {
 	asset_registry = global(ASSET_REGISTRY);
+
+	RlUnloadDefaultFont();
 
 	texture_array_unload(asset_registry.hardhat_dude_idle);
 	texture_array_unload(asset_registry.hardhat_dude_walk_right);
@@ -2412,15 +2415,15 @@ def _tutorial_stage_2_draw(self) {
 	}
 
 	if self.text_index == 2 {
-		draw_text_widget(550, 220, 400, 70, global(TUTORIAL_STAGE_2_TEXT_2));
+		draw_text_widget(550, 220, 400, 65, global(TUTORIAL_STAGE_2_TEXT_2));
 	}
 
 	if self.text_index == 3 {
-		draw_text_widget(550, 220, 400, 100, global(TUTORIAL_STAGE_2_TEXT_3));
+		draw_text_widget(550, 220, 400, 95, global(TUTORIAL_STAGE_2_TEXT_3));
 	}
 
 	if self.text_index == 4 {
-		draw_text_widget(550, 220, 400, 130, global(TUTORIAL_STAGE_2_TEXT_4));
+		draw_text_widget(550, 220, 400, 125, global(TUTORIAL_STAGE_2_TEXT_4));
 	}
 }
 
@@ -2561,11 +2564,11 @@ def _tutorial_stage_4_draw(self) {
 	draw_hud(self.world.score, self.world.player.health, self.world.double_speed_timer.is_applied);
 
 	if self.text_index == 1 {
-		draw_text_widget(550, 220, 400, 130, global(TUTORIAL_STAGE_4_TEXT_1));
+		draw_text_widget(550, 220, 400, 125, global(TUTORIAL_STAGE_4_TEXT_1));
 	}
 
 	if self.text_index == 2 {
-		draw_text_widget(550, 220, 400, 255, global(TUTORIAL_STAGE_4_TEXT_2));
+		draw_text_widget(550, 220, 400, 250, global(TUTORIAL_STAGE_4_TEXT_2));
 	}
 }
 

@@ -36,6 +36,8 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlLoadTexture":       vm.RlLoadTexture,
 			"RlLoadTextureList":   vm.RlLoadTextureList,
 			"RlUnloadTexture":     vm.RlUnloadTexture,
+			"RlLoadDefaultFont":   vm.RlLoadDefaultFont,
+			"RlUnloadDefaultFont": vm.RlUnloadDefaultFont,
 			"time":                vm.GetTime,
 			"random_int":          vm.RandomInt,
 			"random_float":        vm.RandomFloat,

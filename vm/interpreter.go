@@ -20,6 +20,7 @@ type Interpreter struct {
 	programCounter  InstructionOffset
 	program         *Program
 	randomGenerator *rand.Rand
+	defaultFont     *rl.Font
 }
 
 func NewInterpreter(program *Program) Interpreter {
@@ -137,6 +138,10 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlUnloadTexture()
 			case RlLoadTextureList:
 				interpreter.rlLoadTextureList()
+			case RlLoadDefaultFont:
+				interpreter.rlLoadFont()
+			case RlUnloadDefaultFont:
+				interpreter.rlUnloadFont()
 			case GetTime:
 				interpreter.getTime()
 			case CastInt:
@@ -1023,17 +1028,36 @@ func (interpreter *Interpreter) rlDrawText() {
 		exitWithContext("rlDrawText", newUnexpectedValueError(t, value_Texture))
 	}
 
-	rl.DrawText(
-		t.(stringValue).Str,
-		x,
-		y,
-		fontSize,
-		color.RGBA{
-			R: r,
-			G: g,
-			B: b,
-			A: 255,
-		})
+	if interpreter.defaultFont != nil {
+		rl.DrawTextEx(*interpreter.defaultFont,
+			t.(stringValue).Str,
+			rl.Vector2{
+				X: float32(x),
+				Y: float32(y),
+			},
+			float32(fontSize),
+			1,
+			color.RGBA{
+				R: r,
+				G: g,
+				B: b,
+				A: 255,
+			},
+		)
+
+	} else {
+		rl.DrawText(
+			t.(stringValue).Str,
+			x,
+			y,
+			fontSize,
+			color.RGBA{
+				R: r,
+				G: g,
+				B: b,
+				A: 255,
+			})
+	}
 
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
@@ -1094,6 +1118,42 @@ func (interpreter *Interpreter) rlUnloadTexture() {
 	}
 
 	rl.UnloadTexture(v.(textureValue).Texture)
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlLoadFont() {
+	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
+		exitWithContext("rlLoadFont", err)
+	}
+
+	v := interpreter.evaluationStack.pop()
+	if v.kind() != value_String {
+		exitWithContext("rlLoadFont", newUnexpectedValueError(v, value_String))
+	}
+
+	path := v.(stringValue).Str
+
+	if interpreter.defaultFont != nil {
+		rl.UnloadFont(*interpreter.defaultFont)
+	}
+
+	f := rl.LoadFontEx(path, 32, nil)
+	interpreter.defaultFont = &f
+
+	interpreter.evaluationStack.pushNone()
+	interpreter.programCounter++
+}
+
+func (interpreter *Interpreter) rlUnloadFont() {
+	if err := unwrapArgCount(0, interpreter.evaluationStack.pop()); err != nil {
+		exitWithContext("rlUnloadFont", err)
+	}
+
+	if interpreter.defaultFont != nil {
+		rl.UnloadFont(*interpreter.defaultFont)
+	}
+
 	interpreter.evaluationStack.pushNone()
 	interpreter.programCounter++
 }
