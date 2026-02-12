@@ -11,6 +11,7 @@ global VERTICAL_MOVEMENT_JUMPING = 1
 
 # steal these from raylib enum
 global RL_KEY_SPACE = 32
+global RL_KEY_C = 67
 global RL_KEY_H = 72 
 global RL_KEY_P = 80
 global RL_KEY_RIGHT = 262
@@ -163,8 +164,8 @@ def draw_text_widget(center_x, center_y, w, h, text) {
 	half_h = int(0.5 * h);
 	border_width = 2;
 
-	top_x= center_x - half_w;
-	top_y= center_y - half_h;
+	top_x = center_x - half_w;
+	top_y = center_y - half_h;
 
 	RlDrawRectangle(top_x, top_y, w, h, 250, 220, 220, 220);
 	#render borders
@@ -175,6 +176,49 @@ def draw_text_widget(center_x, center_y, w, h, text) {
 
 	# render text
 	RlDrawText(text, top_x + 5, top_y + 5, 21, 230,30,30);
+}
+
+def draw_border_box(center_x, center_y, w, h, r, g, b, a, border_width) {
+	half_w = int(0.5 * w);
+	half_h = int(0.5 * h);
+
+	top_x = center_x - half_w;
+	top_y = center_y - half_h;
+
+	RlDrawRectangle(top_x, top_y, w, h, r, g, b, a);
+	#render borders
+	RlDrawRectangle(top_x-border_width, top_y-border_width, border_width, h+border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x+w-border_width, top_y-border_width, border_width, h+border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x-border_width, top_y-border_width, w+border_width, border_width, 2, 0, 0, 200);
+	RlDrawRectangle(top_x-border_width, top_y+h-border_width, w+border_width, border_width, 2, 0, 0, 200);
+}
+
+def draw_key_map(top_left_x, top_left_y, button_text, button_description, is_wide_button) {
+	button_width = 100 if is_wide_button else 30;
+	button_height = 30;
+	button_width_half = button_width * 0.5;
+	button_height_half = button_height * 0.5;
+	
+
+	button_center_x = top_left_x + button_width_half;
+	button_center_y = top_left_y + button_height_half;
+
+	draw_border_box(
+		button_center_x, 
+		button_center_y, 
+		button_width,
+		button_height,
+		220,
+		220,
+		220,
+		255,
+		2
+	);
+
+	button_text_x = button_center_x - len(button_text) * 0.5 * 15;
+	description_text_x = button_center_x + button_width_half + 10;
+	RlDrawText(button_text, button_text_x, top_left_y + 2, 28, 100,20,20);
+	RlDrawText(button_description, description_text_x, top_left_y + 2, 25, 255,100,100);
 }
 
 def draw_hud(score, health, double_speed_applied) {
@@ -1937,6 +1981,8 @@ def load_assets() {
 
 	RlLoadDefaultFont("stacking-trouble-game/assets/ThaleahFat.ttf");
 
+	asset_registry.splashscreen = RlLoadTexture("stacking-trouble-game/assets/splashscreen.png");
+
 	asset_registry.hardhat_dude_idle = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_idle/", "", 0, 31, ".png");
 	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
 
@@ -2008,6 +2054,7 @@ def unload_assets() {
 	texture_array_unload(asset_registry.explosion_1);
 	texture_array_unload(asset_registry.explosion_2);
 
+	RlUnloadTexture(asset_registry.splashscreen);
 	RlUnloadTexture(asset_registry.wall_pillar_left);
 	RlUnloadTexture(asset_registry.wall_pillar_right);
 	RlUnloadTexture(asset_registry.wall);
@@ -2574,8 +2621,12 @@ def _tutorial_stage_4_draw(self) {
 
 # Splash screen game state.
 def splashscreen_game_state_new() {
+	ar = global(ASSET_REGISTRY);
+
 	game_state = {};
 	game_state.run = &_splashscreen_game_state_run;
+	game_state.splashscreen = ar.splashscreen;
+	game_state.displaying_controls = False;
 	return game_state;
 }
 
@@ -2588,11 +2639,85 @@ def _splashscreen_game_state_run(self, game) {
 		game.set_tutorial_state(game);
 	}
 
-	RlDrawText("This is a splashscreen", 10, 10, 40, 255,0,0);
+	if RlIsKeyReleased(global(RL_KEY_C)) {
+		self.displaying_controls = not self.displaying_controls;
+	}
+
+
+	RlDrawTexture(self.splashscreen, 0, 0);
+
+	# display bottom button map, quit/view tutorial/controls etc.
+	draw_border_box(
+		global(SCREEN_WIDTH) * 0.5, 
+		global(SCREEN_HEIGHT) - 20,
+		800*2, #width
+		50,  #height
+		40,  #red
+		40,  #green,
+		40,  #blue
+		210, #alpha
+		3    #border_width,
+	);
+
+	draw_key_map(20, global(SCREEN_HEIGHT) - 36, "Esc", "Quit", True);
+	draw_key_map(250, global(SCREEN_HEIGHT) - 36, "H", "View Tutorial", False);
+	draw_key_map(520, global(SCREEN_HEIGHT) - 36, "C", "View Controls", False);
+
+	
+	if self.displaying_controls {
+		_splashscreen_game_draw_controls();
+	}
+	else {
+		# display press enter to start 
+		press_enter_box_y =  global(SCREEN_HEIGHT)* 0.5 + 150;
+		draw_border_box(
+			global(SCREEN_WIDTH) * 0.5, 
+			press_enter_box_y,
+			400,
+			50,  #height
+			40,  #red
+			40,  #green,
+			40,  #blue
+			210, #alpha
+			3    #border_width,
+		);
+
+		draw_key_map(global(SCREEN_WIDTH) * 0.5 - 120, press_enter_box_y-15, "Enter", "Start Game", True);
+	}
 }
+
+def _splashscreen_game_draw_controls() {
+		controls_box_x = global(SCREEN_WIDTH) * 0.5;
+		controls_box_y = global(SCREEN_HEIGHT)* 0.5 + 50;
+		controls_box_width = 600;
+
+		draw_border_box(
+			controls_box_x,
+			controls_box_y,
+			controls_box_width,
+			140,  #height
+			40,  #red
+			40,  #green,
+			40,  #blue
+			210, #alpha
+			3    #border_width,
+		);
+
+		draw_key_map(controls_box_x - 200, controls_box_y-50, "<", "Move Left", False);
+		draw_key_map(controls_box_x      , controls_box_y-50, ">", "Move Left", False);
+		draw_key_map(controls_box_x - 200, controls_box_y-10, "P", "Pause", False);
+		draw_key_map(controls_box_x, controls_box_y-10, "Space", "Jump", True);
+		draw_key_map(controls_box_x - 100, controls_box_y+30, "Enter", "Restart", True);
+
+}
+
 
 # Game object. Exposes methods for game state switching.
 def game_new() {
+	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
+	RlSetTargetFPS(60);
+	load_assets();
+
 	game = {};
 	game.game_state = splashscreen_game_state_new();
 	game.set_splashscreen_state = &_game_set_splashscreen_state;
@@ -2600,6 +2725,7 @@ def game_new() {
 	game.set_tutorial_state = &_game_set_tutorial_state;
 	return game;
 }
+
 
 def _game_set_splashscreen_state(self) {
 	self.game_state = splashscreen_game_state_new();
@@ -2614,25 +2740,21 @@ def _game_set_tutorial_state(self) {
 }
 
 def game_run(self) {
-	RlInitWindow(global(SCREEN_WIDTH), global(SCREEN_HEIGHT));
-	RlSetTargetFPS(60);
-
-	# init Raylib first so that we can call RlLoadTexture
-	load_assets();
-
 	while not RlWindowShouldClose() {
 		RlBeginDrawing();
 		RlClearBackground(230, 230, 230);
 		self.game_state.run(self.game_state, self);
 		RlEndDrawing();
 	}
+}
 
+def game_shutdown(self) {
 	unload_assets();
-
 	RlCloseWindow();
 }
 
 def main() {
 	game = game_new();
 	game_run(game);
+	game_shutdown(game);
 }
