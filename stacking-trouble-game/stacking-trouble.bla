@@ -675,35 +675,30 @@ def player_tick(self, dt, world) {
 	ar = global(ASSET_REGISTRY);
 	animation = ar.hardhat_dude_idle;
 
-	if self.horizontal_movement_kind == None {
+	if self.horizontal_movement_kind == None and self.desired_horizontal_movement_kind != None {
 		player_interval = player_get_y_span_scaled(self);
 		can_move_in_direction = False;
 		can_push_in_direction = False;
-		if self.desired_horizontal_movement_kind != None {
-			print("PLAYER TARGET X " + self.previous_goal_x);
-			target_x = self.previous_goal_x + self.desired_horizontal_movement_kind;
-			if board_x_coordinate_in_bounds(target_x) {
-				overlapping_crates = world.interval_overlaps_any_in_column(world, player_interval, target_x);
-				if len(overlapping_crates) == 0 {
+
+		target_x = self.previous_goal_x + self.desired_horizontal_movement_kind;
+		if board_x_coordinate_in_bounds(target_x) {
+			overlapping_crates = world.interval_overlaps_any_in_column(world, player_interval, target_x);
+			if len(overlapping_crates) == 0 {
+				can_move_in_direction = True;
+			}
+
+			if len(overlapping_crates) > 0 {
+				overlap_info = overlapping_crates[0];
+				can_push_crate = player_can_push_crate(self, overlap_info.crate);
+				crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
+
+				if can_push_crate and crate_moveable {
 					can_move_in_direction = True;
-					print("NO CRATES");
+					can_push_in_direction = True;
 				}
 
-				if len(overlapping_crates) > 0 {
-					overlap_info = overlapping_crates[0];
-					can_push_crate = player_can_push_crate(self, overlap_info.crate);
-					crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
-
-					print("CRATE MOVEABLE " + crate_moveable + " CAN PUSH CRATE " + can_push_crate);
-					if can_push_crate and crate_moveable {
-						can_move_in_direction = True;
-						can_push_in_direction = True;
-					}
-
-				}
 			}
 		}
-
 
 		# Select animation based on continuous movement first.
 		if self.desired_horizontal_movement_kind == global(HORIZONTAL_MOVEMENT_LEFT) and can_move_in_direction  {
@@ -1948,33 +1943,9 @@ def load_assets() {
 	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
 	asset_registry.hardhat_dude_push_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_left/", "", 0, 15, ".png");
 
-	## TODO should load these as well using _load_animation_From_directory
-	asset_registry.explosion_1 = [] 
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f0.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f2.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f3.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f4.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f5.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f6.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f7.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f8.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f9.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_1/f10.png");
 
-
-	asset_registry.explosion_2 = [] 
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f0.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f2.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f3.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f4.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f5.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f6.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f7.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f8.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f9.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/explosion_2/f10.png");
+	asset_registry.explosion_1 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_1/", "f", 0, 10, ".png");
+	asset_registry.explosion_2 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_2/", "f", 0, 10, ".png");
 
 	asset_registry.crates = [] 
 		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_c_1.png")
