@@ -34,7 +34,6 @@ func NewCodegenVisitor() *CodegenVisitor {
 			"RlBeginMode2D":       vm.RlBeginMode2D,
 			"RlEndMode2D":         vm.RlEndMode2D,
 			"RlLoadTexture":       vm.RlLoadTexture,
-			"RlLoadTextureList":   vm.RlLoadTextureList,
 			"RlUnloadTexture":     vm.RlUnloadTexture,
 			"RlLoadDefaultFont":   vm.RlLoadDefaultFont,
 			"RlUnloadDefaultFont": vm.RlUnloadDefaultFont,

@@ -7,6 +7,7 @@ import (
 	"compiler/vm"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -34,6 +35,13 @@ func main() {
 	debugArg := ""
 	if len(args) > 2 {
 		debugArg = args[2]
+	}
+
+	// get full path to the directory our file.bla is in. To be used for constructing paths
+	// for RlLoadTexture, etc.
+	fileLocation, err := filepath.Abs(filename)
+	if err != nil {
+		panic("unable to get absolute path for filename")
 	}
 
 	tokenizer, err := tokenizer.NewTokenizer(filename)
@@ -75,19 +83,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := os.Chdir(filepath.Dir(fileLocation)); err != nil {
+		panic("unable to change working directory")
+	}
+
 	interpreter := vm.NewInterpreter(visitor.Program)
 	interpreter.Run()
-
-	/*
-		rl.InitWindow(800, 600, "blah")
-		for !rl.WindowShouldClose() {
-
-			rl.BeginDrawing()
-			rl.ClearBackground(rl.RayWhite)
-			rl.EndDrawing()
-		}
-
-		rl.CloseWindow()
-	*/
-
 }

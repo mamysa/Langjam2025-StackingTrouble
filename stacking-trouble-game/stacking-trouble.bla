@@ -1964,42 +1964,41 @@ def texture_array_unload(arr) {
 def load_assets() {
 	asset_registry = global(ASSET_REGISTRY);
 
-	RlLoadDefaultFont("stacking-trouble-game/assets/ThaleahFat.ttf");
+	RlLoadDefaultFont("assets/ThaleahFat.ttf");
 
-	asset_registry.splashscreen = RlLoadTexture("stacking-trouble-game/assets/splashscreen.png");
+	asset_registry.splashscreen = RlLoadTexture("assets/splashscreen.png");
 
-	asset_registry.hardhat_dude_idle = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_idle/", "", 0, 31, ".png");
-	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_idle = _load_animation_from_directory("assets/hardhat_dude_idle/", "", 0, 31, ".png");
+	asset_registry.hardhat_dude_walk_right = _load_animation_from_directory("assets/hardhat_dude_walk_right/", "", 0, 15, ".png");
 
-	asset_registry.hardhat_dude_push_right = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_right/", "", 0, 15, ".png");
-	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
-	asset_registry.hardhat_dude_push_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_left/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_push_right = _load_animation_from_directory("assets/hardhat_dude_push_right/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
+	asset_registry.hardhat_dude_push_left = _load_animation_from_directory("assets/hardhat_dude_push_left/", "", 0, 15, ".png");
 
-	asset_registry.hardhat_dude_incapacitated = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_incapacitated/", "", 0, 31, ".png");
+	asset_registry.hardhat_dude_incapacitated = _load_animation_from_directory("assets/hardhat_dude_incapacitated/", "", 0, 31, ".png");
 
 
-	asset_registry.explosion_1 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_1/", "f", 0, 10, ".png");
-	asset_registry.explosion_2 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_2/", "f", 0, 10, ".png");
+	asset_registry.explosion_1 = _load_animation_from_directory("assets/explosion_1/", "f", 0, 10, ".png");
+	asset_registry.explosion_2 = _load_animation_from_directory("assets/explosion_2/", "f", 0, 10, ".png");
 
 	asset_registry.crates = [] 
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_c_1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_c_2.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_g_1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_g_2.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_y_1.png")
-		+ RlLoadTexture("stacking-trouble-game/assets/common_crates/crate_y_2.png");
+		+ RlLoadTexture("assets/common_crates/crate_c_1.png")
+		+ RlLoadTexture("assets/common_crates/crate_c_2.png")
+		+ RlLoadTexture("assets/common_crates/crate_g_1.png")
+		+ RlLoadTexture("assets/common_crates/crate_g_2.png")
+		+ RlLoadTexture("assets/common_crates/crate_y_1.png")
+		+ RlLoadTexture("assets/common_crates/crate_y_2.png");
 
-	asset_registry.crane = RlLoadTexture("stacking-trouble-game/assets/crane.png");
-	asset_registry.exploder_crate = RlLoadTexture("stacking-trouble-game/assets/crate_exploder.png");
-	asset_registry.health_crate = RlLoadTexture("stacking-trouble-game/assets/crate_health.png");
-	asset_registry.double_speed_crate = RlLoadTexture("stacking-trouble-game/assets/crate_double_speed.png");
-	asset_registry.wall_pillar_left = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_left.png");
-	asset_registry.wall_pillar_right = RlLoadTexture("stacking-trouble-game/assets/wall_pillar_right.png");
-	asset_registry.wall = RlLoadTexture("stacking-trouble-game/assets/wall.png");
-	asset_registry.floor = RlLoadTexture("stacking-trouble-game/assets/floor.png");
-	asset_registry.icon_heart = RlLoadTexture("stacking-trouble-game/assets/icon_heart.png");
-	asset_registry.icon_double_speed = RlLoadTexture("stacking-trouble-game/assets/icon_double_speed.png");
-
+	asset_registry.crane = RlLoadTexture("assets/crane.png");
+	asset_registry.exploder_crate = RlLoadTexture("assets/crate_exploder.png");
+	asset_registry.health_crate = RlLoadTexture("assets/crate_health.png");
+	asset_registry.double_speed_crate = RlLoadTexture("assets/crate_double_speed.png");
+	asset_registry.wall_pillar_left = RlLoadTexture("assets/wall_pillar_left.png");
+	asset_registry.wall_pillar_right = RlLoadTexture("assets/wall_pillar_right.png");
+	asset_registry.wall = RlLoadTexture("assets/wall.png");
+	asset_registry.floor = RlLoadTexture("assets/floor.png");
+	asset_registry.icon_heart = RlLoadTexture("assets/icon_heart.png");
+	asset_registry.icon_double_speed = RlLoadTexture("assets/icon_double_speed.png");
 }
 
 # loads animation frames from some directory.

@@ -7,11 +7,9 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type Interpreter struct {
@@ -21,6 +19,7 @@ type Interpreter struct {
 	program         *Program
 	randomGenerator *rand.Rand
 	defaultFont     *rl.Font
+	fsPathBase      string
 }
 
 func NewInterpreter(program *Program) Interpreter {
@@ -136,8 +135,6 @@ func (interpreter *Interpreter) Run() {
 				interpreter.rlLoadTexture()
 			case RlUnloadTexture:
 				interpreter.rlUnloadTexture()
-			case RlLoadTextureList:
-				interpreter.rlLoadTextureList()
 			case RlLoadDefaultFont:
 				interpreter.rlLoadFont()
 			case RlUnloadDefaultFont:
@@ -1175,45 +1172,6 @@ func (interpreter *Interpreter) rlUnloadFont() {
 	}
 
 	interpreter.evaluationStack.pushNone()
-	interpreter.programCounter++
-}
-
-// loads textures from directory, skipping subdirectories and invalid textures.
-func (interpreter *Interpreter) rlLoadTextureList() {
-	if err := unwrapArgCount(1, interpreter.evaluationStack.pop()); err != nil {
-		exitWithContext("rlLoadTextureArray", err)
-	}
-
-	v := interpreter.evaluationStack.pop()
-	if v.kind() != value_String {
-		exitWithContext("rlLoadTextureArray", newUnexpectedValueError(v, value_String))
-	}
-
-	path := filepath.Clean(v.(stringValue).Str)
-
-	files, err := os.ReadDir(path)
-	if err != nil {
-		exitWithContext("RlLoadTextureArray", err)
-	}
-
-	textureList := newListValue()
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-
-		filePath := fmt.Sprintf("%s/%s", path, f.Name())
-		texture := rl.LoadTexture(filePath)
-		if texture.ID <= 0 {
-			continue
-		}
-
-		rl.SetTextureFilter(texture, rl.FilterBilinear)
-		rl.SetTextureWrap(texture, rl.WrapClamp)
-		textureList = textureList.append(newTextureValue(texture))
-	}
-
-	interpreter.evaluationStack.pushValue(textureList)
 	interpreter.programCounter++
 }
 

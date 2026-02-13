@@ -52,7 +52,6 @@ const (
 	RlBeginMode2D
 	RlEndMode2D
 	RlLoadTexture
-	RlLoadTextureList
 	RlUnloadTexture
 	RlLoadDefaultFont   // loads font and sets it as a global font.
 	RlUnloadDefaultFont // unloads default font if present.
@@ -148,8 +147,6 @@ func (o OpCode_NoArgs) String() string {
 		return "RlLoadTexture"
 	case RlUnloadTexture:
 		return "RlUnloadTexture"
-	case RlLoadTextureList:
-		return "RlLoadTextureList"
 	case RlIsKeyDown:
 		return "RlIsKeyDown"
 	case RlDrawText:
