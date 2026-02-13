@@ -504,10 +504,10 @@ def player_new(x, y) {
 def _player_lose_life(self) {
 	self.health = max(0, self.health - 1);
 	self.liveness = global(PLAYER_LIVENESS_DEAD);
+	timer_arm(self.incapacitation_cooldown_timer);
 	
 	if self.health > 0 {
 		self.liveness = global(PLAYER_LIVENESS_INCAPACITATED);
-		timer_arm(self.incapacitation_cooldown_timer);
 		timer_arm(self.respawn_invulnerability_cooldown_timer);
 	}
 }
@@ -875,19 +875,34 @@ def player_draw(self) {
 	width = global(CELL_SIZE);
 	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
 
+
+	if self.incapacitation_cooldown_timer.is_applied {
+		frames = ar.hardhat_dude_incapacitated;
+		frames_length = len(frames);
+		duration = self.incapacitation_cooldown_timer.default_duration;
+		counter_clamped = clamp(0.0, duration, self.incapacitation_cooldown_timer.counter); # clamp between [0, duration] just in case.
+		counter_normalized = 1.0 - counter_clamped / duration; # normalize to [0,1] range and subtract from 1 to ensure.
+		frame_index = clamp(0, frames_length-1, int(counter_normalized * frames_length)); # clamp with index of the last frame
+		draw_1x2_texture(self.x, self.y, frames[frame_index]);
+		return;
+	}
+
 	if self.respawn_invulnerability_cooldown_timer.is_applied {
 		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
 		return;
 	}
 
-	if self.liveness != None{
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 0, 255);
-	} else {
-		#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
-		tex = animator_get_frame(self.animator);
-		draw_1x2_texture(self.x, self.y, tex);
+	if self.liveness == global(PLAYER_LIVENESS_DEAD) {
+		# display last frame of the incapacitated animation.
+		frames = ar.hardhat_dude_incapacitated;
+		last_frame = frames[len(frames) - 1];
+		draw_1x2_texture(self.x, self.y, last_frame);
+		return;
 	}
 
+	#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
+	tex = animator_get_frame(self.animator);
+	draw_1x2_texture(self.x, self.y, tex);
 }
 
 # This should be unused, right?
@@ -1990,6 +2005,8 @@ def load_assets() {
 	asset_registry.hardhat_dude_walk_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_walk_left/", "", 0, 15, ".png");
 	asset_registry.hardhat_dude_push_left = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_push_left/", "", 0, 15, ".png");
 
+	asset_registry.hardhat_dude_incapacitated = _load_animation_from_directory("stacking-trouble-game/assets/hardhat_dude_incapacitated/", "", 0, 31, ".png");
+
 
 	asset_registry.explosion_1 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_1/", "f", 0, 10, ".png");
 	asset_registry.explosion_2 = _load_animation_from_directory("stacking-trouble-game/assets/explosion_2/", "f", 0, 10, ".png");
@@ -2049,6 +2066,7 @@ def unload_assets() {
 	texture_array_unload(asset_registry.hardhat_dude_push_right);
 	texture_array_unload(asset_registry.hardhat_dude_walk_left);
 	texture_array_unload(asset_registry.hardhat_dude_push_left);
+	texture_array_unload(asset_registry.hardhat_dude_incapacitated);
 
 	texture_array_unload(asset_registry.crates);
 	texture_array_unload(asset_registry.explosion_1);
