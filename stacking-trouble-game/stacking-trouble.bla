@@ -136,15 +136,19 @@ def draw_1x1_texture(x, y, texture) {
 	cell_start_x = global(CELL_SIZE) * x;
 	cell_start_y = board_height - (global(CELL_SIZE) * y);
 
-	RlDrawTexture(texture, cell_start_x, cell_start_y);
+	RlDrawTexture(texture, cell_start_x, cell_start_y, 255, 255, 255, 255);
 }
 
-def draw_1x2_texture(x, y, texture) {
+def draw_1x2_texture_with_tint(x, y, texture, tint_r, tint_g, tint_b, tint_a) {
 	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
 	cell_start_x = global(CELL_SIZE) *  x;
 	#subtract additional CELL_SIZE so that we account for player's height which is twice as large as other objects on scene.
 	cell_start_y = board_height - (global(CELL_SIZE) * y) - global(CELL_SIZE);
-	RlDrawTexture(texture, cell_start_x, cell_start_y);
+	RlDrawTexture(texture, cell_start_x, cell_start_y, tint_r, tint_g, tint_b, tint_a);
+}
+
+def draw_1x2_texture(x, y, texture) {
+	draw_1x2_texture_with_tint(x, y, texture, 255, 255, 255, 255);
 }
 
 # accepts board coordinates, transforms that do the screen coordinates and draws the texture.
@@ -239,13 +243,13 @@ def draw_hud(score, health, double_speed_applied) {
 	i = 0;
 	while i < health {
 		offset = heart_start + i * 36;
-		RlDrawTexture(asset_registry.icon_heart, offset, bg_height*0.5-16);
+		RlDrawTexture(asset_registry.icon_heart, offset, bg_height*0.5-16, 255, 255, 255, 255);
 		i = i + 1;
 	}
 
 	if double_speed_applied {
 		double_speed_offset = heart_start + 4 * 36;
-		RlDrawTexture(asset_registry.icon_double_speed, double_speed_offset, bg_height*0.5-16);
+		RlDrawTexture(asset_registry.icon_double_speed, double_speed_offset, bg_height*0.5-16, 255, 255, 255, 255);
 	}
 }
 
@@ -809,11 +813,6 @@ def player_tick_horizontal_movement(self, dt, world) {
 # Once destination has been reached, player goes into FALLING state in which case we simulate gravity until player
 # reaches the ground.
 def player_tick_vertical_movement(self, dt, world) {
-
-	if self.liveness != None {
-		return;
-	}
-
 	if self.vertical_movement_kind == global(VERTICAL_MOVEMENT_JUMPING){
 		# we are jumping
 		self.y = self.y + dt * global(VELOCITY);
@@ -887,10 +886,6 @@ def player_draw(self) {
 		return;
 	}
 
-	if self.respawn_invulnerability_cooldown_timer.is_applied {
-		RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
-		return;
-	}
 
 	if self.liveness == global(PLAYER_LIVENESS_DEAD) {
 		# display last frame of the incapacitated animation.
@@ -900,9 +895,16 @@ def player_draw(self) {
 		return;
 	}
 
-	#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 255, 0, 255);
+
+	player_tint = 255;
+	player_tint_alpha = 255;
+	if self.respawn_invulnerability_cooldown_timer.is_applied {
+		player_tint = 130;
+		player_tint_alpha = 230;
+	}
+
 	tex = animator_get_frame(self.animator);
-	draw_1x2_texture(self.x, self.y, tex);
+	draw_1x2_texture_with_tint(self.x, self.y, tex, player_tint, player_tint, player_tint, player_tint_alpha);
 }
 
 # This should be unused, right?
@@ -1367,10 +1369,7 @@ def crane_draw(self) {
 	width = global(CELL_SIZE);
 
 	asset_registry = global(ASSET_REGISTRY);
-
-	RlDrawTexture(asset_registry.crane, cell_start_x, cell_start_y-width*1.55);
-
-	#RlDrawRectangle(cell_start_x, cell_start_y, width, height, 0, 0, 255, 255);
+	RlDrawTexture(asset_registry.crane, cell_start_x, cell_start_y-width*1.55, 255, 255, 255, 255);
 }
 
 
@@ -2675,7 +2674,7 @@ def _splashscreen_game_state_run(self, game) {
 	}
 
 
-	RlDrawTexture(self.splashscreen, 0, 0);
+	RlDrawTexture(self.splashscreen, 0, 0, 255, 255, 255, 255);
 
 	# display bottom button map, quit/view tutorial/controls etc.
 	draw_border_box(

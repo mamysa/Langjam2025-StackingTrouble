@@ -812,8 +812,28 @@ func (interpreter *Interpreter) rlDrawRectangle() {
 }
 
 func (interpreter *Interpreter) rlDrawTexture() {
-	if err := unwrapArgCount(3, interpreter.evaluationStack.pop()); err != nil {
+	if err := unwrapArgCount(7, interpreter.evaluationStack.pop()); err != nil {
 		exitWithContext("rlDrawTexture", err)
+	}
+
+	a, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	b, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	g, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
+	}
+
+	r, err := uint8FromNumeric(interpreter.evaluationStack.pop())
+	if err != nil {
+		exitWithContext("rlDrawRectangle", err)
 	}
 
 	y, err := int32FromNumeric(interpreter.evaluationStack.pop())
@@ -832,10 +852,10 @@ func (interpreter *Interpreter) rlDrawTexture() {
 	}
 
 	rl.DrawTexture(v.(textureValue).Texture, x, y, color.RGBA{
-		R: 255,
-		G: 255,
-		B: 255,
-		A: 255,
+		R: r,
+		G: g,
+		B: b,
+		A: a,
 	})
 
 	interpreter.evaluationStack.pushNone()
