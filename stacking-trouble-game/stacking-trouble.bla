@@ -863,18 +863,6 @@ def player_tick_vertical_movement(self, dt, world) {
 def player_draw(self) {
 	ar = global(ASSET_REGISTRY);
 
-
-	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
-
-	cell_start_x = global(CELL_SIZE) *  self.x;
-
-	#subtract additional CELL_SIZE so that we account for player's height which is twice as large as other objects on scene.
-	cell_start_y = board_height - (global(CELL_SIZE) * self.y) - global(CELL_SIZE);
-
-	width = global(CELL_SIZE);
-	height = global(CELL_SIZE) * 2; # player occupying two cells vertically.
-
-
 	if self.incapacitation_cooldown_timer.is_applied {
 		frames = ar.hardhat_dude_incapacitated;
 		frames_length = len(frames);
@@ -972,12 +960,6 @@ def crate_get_player_gravity_behavior() {
 }
 
 def crate_draw(self) {
-
-	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
-
-	cellStartX = global(CELL_SIZE) *  self.x;
-	cellStartY = board_height - (global(CELL_SIZE) * self.y);
-
 	if not self.has_exploded {
 		draw_1x1_texture(self.x, self.y, self.texture);
 		return;
@@ -990,10 +972,7 @@ def crate_draw(self) {
 	counter_clamped = clamp(0.0, duration, self.explosion_timer.counter); # clamp between [0, duration] just in case.
 	counter_normalized = 1.0 - counter_clamped / duration; # normalize to [0,1] range and subtract from 1 to ensure.
 	explosion_frame_index = clamp(0, num_explosion_frame_indices-1, int(counter_normalized * num_explosion_frame_indices)); # clamp with index of the last frame
-	print("Current explosion frame: " + explosion_frame_index + " counter normalized: " + counter_normalized);
-
 	draw_1x1_texture(self.x, self.y, explosion_frames[explosion_frame_index]);
-	#RlDrawRectangle(cellStartX, cellStartY, global(CELL_SIZE), global(CELL_SIZE), explosion_frames[explosion_frame_index], 0, 0, 255);
 }
 
 # again, row_index is passed here because object comparisons by reference is borked atm.
@@ -1362,17 +1341,9 @@ def crane_draw(self) {
 		self.crate.draw(self.crate);
 	}
 
-	board_height = global(CELL_SIZE) * global(BOARD_CELLS_ALONG_Y);
-	cell_start_x = global(CELL_SIZE) *  self.x;
-	cell_start_y = board_height - (global(CELL_SIZE) * self.y); 
-
-	width = global(CELL_SIZE);
-
 	asset_registry = global(ASSET_REGISTRY);
-	RlDrawTexture(asset_registry.crane, cell_start_x, cell_start_y-width*1.55, 255, 255, 255, 255);
+	draw_1x1_texture(self.x, self.y + 1.55, asset_registry.crane);
 }
-
-
 
 # WORLD object.
 # Is a collection of columns containing crates.
