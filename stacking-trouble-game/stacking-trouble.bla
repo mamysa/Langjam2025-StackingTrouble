@@ -12,6 +12,7 @@ global VERTICAL_MOVEMENT_JUMPING = 1
 # steal these from raylib enum
 global RL_KEY_SPACE = 32
 global RL_KEY_C = 67
+global RL_KEY_D = 68
 global RL_KEY_H = 72 
 global RL_KEY_P = 80
 global RL_KEY_RIGHT = 262
@@ -63,6 +64,9 @@ global BOARD_CAMERA = make_2d_camera()
 global ASSET_REGISTRY = {}
 
 global MAX_CRATE_SPAWN_REQUESTS = 14
+
+global GAME_DIFFICULTY_NORMAL_OFFSET = 0
+global GAME_DIFFICULTY_HARD_OFFSET = 5
 
 # defines what happens when a player and crate interact along the y axis (due to gravity and what not).
 # Normal behaviour would be to crush the player, but for pickups (such as health) crate should be despawned.
@@ -289,7 +293,7 @@ def make_2d_camera() {
 }
 
 ### == Game diffuculty manager
-def game_difficulty_manager_new() {
+def game_difficulty_manager_new(difficulty_offset) {
 	self = {};
 
 	# resposible for spawning crates randomly (i.e. not on timer)
@@ -341,6 +345,7 @@ def game_difficulty_manager_new() {
 	assert(len(random_crate_chance) == self.num_difficulty_levels, "unexpected random_crate_chance list size");
 	assert(len(crate_spawn_timer) == self.num_difficulty_levels, "unexpected crate_spawn_timer list size");
 	assert(len(special_crate_spawn_chance) == self.num_difficulty_levels, "unexpected special_crate_chance list size");
+	self.difficulty_offset = difficulty_offset;
 	self.random_crate_chance = random_crate_chance;
 	self.crate_spawn_timer = crate_spawn_timer;
 	self.special_crate_spawn_chance = special_crate_spawn_chance;
@@ -350,14 +355,16 @@ def game_difficulty_manager_new() {
 }
 
 def game_difficulty_manager_get_difficulty_level(self, score) {
-	i = 0;
-	if score >= 12  {i = 1; }
-	if score >= 24  {i = 2; }
-	if score >= 48  {i = 3; }
-	if score >= 72  {i = 4; }
-	if score >= 96  {i = 5; }
-	if score >= 108 {i = 6; }
-	if score >= 180 {i = 7; }
+	i = self.difficulty_offset;
+	if score >= 12  {i = i + 1; }
+	if score >= 24  {i = i + 2; }
+	if score >= 48  {i = i + 3; }
+	if score >= 72  {i = i + 4; }
+	if score >= 96  {i = i + 5; }
+	if score >= 108 {i = i + 6; }
+	if score >= 180 {i = i + 7; }
+
+	i = clamp(0, self.num_difficulty_levels - 1, i);
 
 	difficulty = {};
 	difficulty.random_crate_chance = self.random_crate_chance[i];
@@ -1421,7 +1428,7 @@ def crane_draw(self) {
 # Is a collection of columns containing crates.
 # Also contains player instance.
 # All crates in columns are sorted by y coordinate.
-def world_new(player_x, player_y, enable_crate_spawning) {
+def world_new(player_x, player_y, enable_crate_spawning, difficulty_offset) {
 	columns = [];
 	x = 0;
 	while x < global(BOARD_CELLS_ALONG_X) {
@@ -1434,7 +1441,7 @@ def world_new(player_x, player_y, enable_crate_spawning) {
 	world.enable_crate_spawning = enable_crate_spawning;
 	world.crate_spawn_requests = 0; # number of crates that are queued to spawn.
 	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
-	world.difficulty_manager =  game_difficulty_manager_new();
+	world.difficulty_manager =  game_difficulty_manager_new(difficulty_offset);
 
 	world.columns = columns;
 	world.cranes_left = [];
@@ -2129,9 +2136,10 @@ def physics_ticker_tick(self, obj) {
 
 # Game state object.
 # What state is the game in? E.g. splash-screen / tutorial / actual game.
-def main_game_state_new() {
+def main_game_state_new(difficulty_offset) {
 	game_state = {};
-	game_state.world =	world_new(5, 0, True); 
+	game_state.difficulty_offset = difficulty_offset;
+	game_state.world =	world_new(5, 0, True, difficulty_offset); 
 	game_state.run = &_main_game_state_run;
 	game_state.physics_ticker = physics_ticker_new(); 
 	game_state.is_paused = False;
@@ -2174,7 +2182,7 @@ def _main_game_state_handle_input(self) {
 
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
 		self.physics_ticker = physics_ticker_new();
-		self.world = world_new(5, 0, True);
+		self.world = world_new(5, 0, True, self.difficulty_offset);
 	}
 
 
@@ -2308,7 +2316,7 @@ def tutorial_stage_1() {
 	lx = clamp(0, cells_x, int(cells_x * 0.45));
 	rx = clamp(0, cells_x, lx + 1);
 
-	world = world_new(lx-2, 2, False);
+	world = world_new(lx-2, 2, False, 0);
 	
 	x = 0;
 	while x < lx {
@@ -2384,7 +2392,7 @@ def _tutorial_stage_1_draw(self) {
 
 # Stage 2 - jumping.
 def tutorial_stage_2() {
-	world = world_new(2, 0, False);
+	world = world_new(2, 0, False, 0);
 	t = {};
 	t.tick = &_tutorial_stage_2_tick;
 	t.draw = &_tutorial_stage_2_draw;
@@ -2521,7 +2529,7 @@ def _tutorial_stage_2_draw(self) {
 
 def tutorial_stage_3() {
 	player_x = 1;
-	world = world_new(player_x, 1, False);
+	world = world_new(player_x, 1, False, 0);
 	
 
 	ar = global(ASSET_REGISTRY);
@@ -2601,7 +2609,7 @@ def tutorial_stage_4() {
 	cells_x = global(BOARD_CELLS_ALONG_X);
 
 	
-	world = world_new(8, 0, False);
+	world = world_new(8, 0, False, 0);
 	
 	x = 0;
 	while x < 6 {
@@ -2672,16 +2680,24 @@ def splashscreen_game_state_new() {
 	game_state.run = &_splashscreen_game_state_run;
 	game_state.splashscreen = ar.splashscreen;
 	game_state.displaying_controls = False;
+	game_state.is_hard_difficulty = False; 
 	return game_state;
 }
 
 def _splashscreen_game_state_run(self, game) {
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
-		game.set_main_state(game);
+		game.set_main_state(
+			game, 
+			global(GAME_DIFFICULTY_HARD_OFFSET) if self.is_hard_difficulty else global(GAME_DIFFICULTY_NORMAL_OFFSET)
+		);
 	}
 
 	if RlIsKeyReleased(global(RL_KEY_H)) {
 		game.set_tutorial_state(game);
+	}
+
+	if RlIsKeyReleased(global(RL_KEY_D)) {
+		self.is_hard_difficulty = not self.is_hard_difficulty;
 	}
 
 	if RlIsKeyReleased(global(RL_KEY_C)) {
@@ -2714,12 +2730,12 @@ def _splashscreen_game_state_run(self, game) {
 	}
 	else {
 		# display press enter to start 
-		press_enter_box_y =  global(SCREEN_HEIGHT)* 0.5 + 150;
+		press_enter_box_y =  global(SCREEN_HEIGHT)* 0.5 + 160;
 		draw_border_box(
 			global(SCREEN_WIDTH) * 0.5, 
 			press_enter_box_y,
 			400,
-			50,  #height
+			80,  #height
 			40,  #red
 			40,  #green,
 			40,  #blue
@@ -2727,7 +2743,10 @@ def _splashscreen_game_state_run(self, game) {
 			3    #border_width,
 		);
 
-		draw_key_map(global(SCREEN_WIDTH) * 0.5 - 120, press_enter_box_y-15, "Enter", "Start Game", True);
+		difficulty_text = "Hard" if self.is_hard_difficulty else "Normal";
+
+		draw_key_map(global(SCREEN_WIDTH) * 0.5 - 120, press_enter_box_y-33, "Enter", "Start Game", True);
+		draw_key_map(global(SCREEN_WIDTH) * 0.5 - 120, press_enter_box_y+2, "D", "Difficulty: " + difficulty_text, False);
 	}
 }
 
@@ -2776,8 +2795,8 @@ def _game_set_splashscreen_state(self) {
 	self.game_state = splashscreen_game_state_new();
 }
 
-def _game_set_main_state(self) {
-	self.game_state = main_game_state_new();
+def _game_set_main_state(self, difficulty_offset) {
+	self.game_state = main_game_state_new(difficulty_offset);
 }
 
 def _game_set_tutorial_state(self) {
