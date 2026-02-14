@@ -19,7 +19,6 @@ global RL_KEY_RIGHT = 262
 global RL_KEY_LEFT = 263
 global RL_KEY_ENTER = 257
 
-
 global MOVEMENT_EPS = 0.01
 global VELOCITY = 1.75
 
@@ -51,7 +50,7 @@ global PLAYER_JUMP_COOLDOWN = 0.56
 global INITIAL_CRATE_SPAWN_TIMER = 5.5
 global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0002
 
-global DOUBLE_SPEED_DURATION =8 
+global DOUBLE_SPEED_DURATION = 10 
 global DOUBLE_SPEED_VELOCITY_MULTIPLIER = 1.5
 
 global SCREEN_WIDTH = 800
@@ -581,7 +580,7 @@ def player_new(x, y) {
 	player.movement_cooldown_timer = timer_new(global(PLAYER_MOVEMENT_COOLDOWN));
 	player.jump_cooldown_timer = timer_new(global(PLAYER_JUMP_COOLDOWN));
 	player.incapacitation_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN));
-	player.respawn_invulnerability_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN) + 2);
+	player.respawn_invulnerability_cooldown_timer = timer_new(global(PLAYER_INCAPACITATION_COOLDOWN) + 4);
 	player.is_pushing = False;
 	player.liveness = None; # none if player is alive and okay.
 	player.health = 3; # number of lives the player has
@@ -2314,7 +2313,7 @@ def tutorial_stage_1() {
 	lx = clamp(0, cells_x, int(cells_x * 0.45));
 	rx = clamp(0, cells_x, lx + 1);
 
-	world = world_new(lx-2, 2, False, 0);
+	world = world_new(lx-2, 1, False, 0);
 	
 	x = 0;
 	while x < lx {
