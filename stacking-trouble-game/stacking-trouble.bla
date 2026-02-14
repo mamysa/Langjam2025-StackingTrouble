@@ -819,7 +819,7 @@ def player_tick(self, dt, world) {
 				can_move_in_direction = True;
 			}
 
-			if len(overlapping_crates) > 0 {
+			if len(overlapping_crates) == 1 {
 				overlap_info = overlapping_crates[0];
 				can_push_crate = player_can_push_crate(self, overlap_info.crate);
 				crate_moveable = overlap_info.crate.can_be_moved(overlap_info.crate, world, self.desired_horizontal_movement_kind);
@@ -2159,7 +2159,7 @@ def _main_game_state_toggle_pause(self) {
 }
 
 def _main_game_state_run(self, game) {
-	_main_game_state_handle_input(self);
+	_main_game_state_handle_input(self, game);
 
 	if not self.is_paused {
 		_main_game_state_do_physics(self);
@@ -2168,7 +2168,7 @@ def _main_game_state_run(self, game) {
 	_main_game_state_draw(self);
 }
 
-def _main_game_state_handle_input(self) {
+def _main_game_state_handle_input(self, game) {
 
 	if RlIsKeyReleased(global(RL_KEY_P)) {
 		_main_game_state_toggle_pause(self);
@@ -2179,12 +2179,11 @@ def _main_game_state_handle_input(self) {
 		return;
 	}
 
-
 	if RlIsKeyReleased(global(RL_KEY_ENTER)) {
-		self.physics_ticker = physics_ticker_new();
-		self.world = world_new(5, 0, True, self.difficulty_offset);
+		if self.world.player.liveness == global(PLAYER_LIVENESS_DEAD){
+			game.set_splashscreen_state(game);
+		}
 	}
-
 
 	p = self.world.player;
 	p.move(p, None, self.world);
@@ -2232,13 +2231,12 @@ def _main_game_state_draw(self) {
 			3    #border width
 		);
 		RlDrawText("Game Over", half_screen_x - 80, half_screen_y - 35, 32, 255,100,100);
-		draw_key_map(half_screen_x - 110, half_screen_y  , "Enter", "Restart", True);
+		draw_key_map(half_screen_x - 165, half_screen_y  , "Enter", "Exit to main menu", True);
 	}
 
 	if self.is_paused {
 		RlDrawRectangle(0, 0, global(SCREEN_WIDTH), global(SCREEN_HEIGHT), 0, 0, 0, 170);
 		RlDrawText("Paused" , 320, 270, 40, 255,100,100);
-
 	}
 }
 
@@ -2752,14 +2750,14 @@ def _splashscreen_game_state_run(self, game) {
 
 def _splashscreen_game_draw_controls() {
 		controls_box_x = global(SCREEN_WIDTH) * 0.5;
-		controls_box_y = global(SCREEN_HEIGHT)* 0.5 + 50;
-		controls_box_width = 600;
+		controls_box_y = global(SCREEN_HEIGHT)* 0.5 + 160;
+		controls_box_width = 500;
 
 		draw_border_box(
 			controls_box_x,
 			controls_box_y,
 			controls_box_width,
-			140,  #height
+			80,  #height
 			40,  #red
 			40,  #green,
 			40,  #blue
@@ -2767,12 +2765,10 @@ def _splashscreen_game_draw_controls() {
 			3    #border_width,
 		);
 
-		draw_key_map(controls_box_x - 200, controls_box_y-50, "<", "Move Left", False);
-		draw_key_map(controls_box_x      , controls_box_y-50, ">", "Move Left", False);
-		draw_key_map(controls_box_x - 200, controls_box_y-10, "P", "Pause", False);
-		draw_key_map(controls_box_x, controls_box_y-10, "Space", "Jump", True);
-		draw_key_map(controls_box_x - 100, controls_box_y+30, "Enter", "Restart", True);
-
+		draw_key_map(controls_box_x - 200, controls_box_y-33, "<", "Move Left", False);
+		draw_key_map(controls_box_x      , controls_box_y-33, ">", "Move Left", False);
+		draw_key_map(controls_box_x - 200, controls_box_y+2, "P", "Pause", False);
+		draw_key_map(controls_box_x, controls_box_y+1, "Space", "Jump", True);
 }
 
 
