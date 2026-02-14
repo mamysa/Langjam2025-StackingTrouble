@@ -48,7 +48,7 @@ global PLAYER_LIVENESS_INCAPACITATED = 2 # player dead but has lives remaining.
 global PLAYER_JUMP_COOLDOWN = 0.56
 
 global INITIAL_CRATE_SPAWN_TIMER = 5.5
-global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0008
+global INITIAL_CRATE_RANDOM_SPAWN_CHANCE = 0.0002
 
 global DOUBLE_SPEED_DURATION =8 
 global DOUBLE_SPEED_VELOCITY_MULTIPLIER = 1.5
@@ -61,6 +61,8 @@ global BOARD_CRATE_EXIT_MARGIN = 2
 global BOARD_CAMERA = make_2d_camera()
 
 global ASSET_REGISTRY = {}
+
+global MAX_CRATE_SPAWN_REQUESTS = 14
 
 # defines what happens when a player and crate interact along the y axis (due to gravity and what not).
 # Normal behaviour would be to crush the player, but for pickups (such as health) crate should be despawned.
@@ -286,10 +288,88 @@ def make_2d_camera() {
 	return camera;
 }
 
+### == Game diffuculty manager
+def game_difficulty_manager_new() {
+	self = {};
+
+	# resposible for spawning crates randomly (i.e. not on timer)
+	random_crate_chance = [] 
+		+ 0.0 
+		+ 0.00040
+		+ 0.00050
+		+ 0.00075
+		+ 0.00100
+		+ 0.00150
+		+ 0.0022
+		+ 0.0028;
+	
+	i = 0;
+	while i < len(random_crate_chance) {
+		random_crate_chance[i] = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + random_crate_chance[i];
+		i = i + 1;
+	}
+
+	# timer-based crate spawning interval. (i.e. every n seconds spawn a crate)
+	crate_spawn_timer = [] 
+		+ 0.0
+		+ 1.0
+		+ 1.5
+		+ 2.0
+		+ 2.5
+		+ 3.0
+		+ 3.5
+		+ 4.0;
+
+	i = 0;
+	while i < len(crate_spawn_timer) {
+		crate_spawn_timer[i] = max(0.1, global(INITIAL_CRATE_SPAWN_TIMER) - crate_spawn_timer[i]);
+		i = i + 1;
+	}
+
+	# special crate spawn probabilites
+	special_crate_spawn_chance = []
+		+ 0.0
+		+ 0.0
+		+ 0.005
+		+ 0.010
+		+ 0.015
+		+ 0.025
+		+ 0.035
+		+ 0.035;
+
+	self.num_difficulty_levels = 8;
+	assert(len(random_crate_chance) == self.num_difficulty_levels, "unexpected random_crate_chance list size");
+	assert(len(crate_spawn_timer) == self.num_difficulty_levels, "unexpected crate_spawn_timer list size");
+	assert(len(special_crate_spawn_chance) == self.num_difficulty_levels, "unexpected special_crate_chance list size");
+	self.random_crate_chance = random_crate_chance;
+	self.crate_spawn_timer = crate_spawn_timer;
+	self.special_crate_spawn_chance = special_crate_spawn_chance;
+
+	print(self);
+	return self;
+}
+
+def game_difficulty_manager_get_difficulty_level(self, score) {
+	i = 0;
+	if score >= 12  {i = 1; }
+	if score >= 24  {i = 2; }
+	if score >= 48  {i = 3; }
+	if score >= 72  {i = 4; }
+	if score >= 96  {i = 5; }
+	if score >= 108 {i = 6; }
+	if score >= 180 {i = 7; }
+
+	difficulty = {};
+	difficulty.random_crate_chance = self.random_crate_chance[i];
+	difficulty.crate_spawn_timer_value = self.crate_spawn_timer[i];
+	difficulty.special_crate_spawn_chance = self.special_crate_spawn_chance[i];
+	return difficulty;
+}
+### == End Game difficulty manager.
+
 
 ### == Animator 
 # This class is responsible for simulating player animations and picking a the correct frame.
-# Reli
 def animator_new(frame_duration, animation) {
 	self = {};
 	self.frame_duration = frame_duration;
@@ -506,6 +586,10 @@ def player_new(x, y) {
 
 
 def _player_lose_life(self) {
+	if self.liveness == global(PLAYER_LIVENESS_DEAD) {
+		return;
+	}
+
 	self.health = max(0, self.health - 1);
 	self.liveness = global(PLAYER_LIVENESS_DEAD);
 	timer_arm(self.incapacitation_cooldown_timer);
@@ -617,12 +701,6 @@ def player_move(self, desired_horizontal_movement_kind, world) {
 		
 		overlapping_crates_in_target_column = world.interval_overlaps_any_in_column(world, player_interval, new_target_x);
 		if len(overlapping_crates_in_target_column) > 0 {
-
-			#print(len(overlapping_crates_in_target_column));
-			#print(overlapping_crates_in_target_column);
-			#print(1337);
-
-
 
 			if len(overlapping_crates_in_target_column) != 1 {
 				return False;
@@ -1030,8 +1108,6 @@ def crate_explode(self) {
 
 	self.has_exploded = True;
 	timer_arm(self.explosion_timer);
-	# timer applied 
-	print("timer applied " + self.explosion_timer.counter);
 }
 
 def crate_tick(self, dt, world, crate_index) {
@@ -1109,7 +1185,6 @@ def crate_get_y_span_scaled(self) {
 
 
 def pick_up_crate_behavior_double_speed(world) {
-	print("DOUBLE SPEED ACTIVE");
 	world_on_double_speed_activated(world);
 }
 
@@ -1231,8 +1306,6 @@ def exploder_crate_draw(self) {
 def exploder_crate_tick(self, dt, world, crate_index) {
 	timer_tick(self.exploder_timer, dt);
 	if not self.exploder_timer.is_applied and not self.has_exploded {
-		print("Exploder crate exploded! boom!");
-		
 		r = global(EXPLODER_CRATE_EXPLOSION_RADIUS);
 		x_span = interval_new(self.x - r, self.x + r);
 		y_span = interval_new(self.y - r, self.y + r);
@@ -1308,7 +1381,6 @@ def crane_tick(self, dt, world) {
 				crate_interval = interval_new(self.y, self.y + global(CRATE_HEIGHT));
 				player_interval = world.player.get_y_axis_span(world.player);
 				if intervals_overlap(crate_interval, player_interval) {
-					print("" + crate_interval + " " + player_interval);
 					able_to_spawn = able_to_spawn and False;
 				}
 		}
@@ -1358,25 +1430,25 @@ def world_new(player_x, player_y, enable_crate_spawning) {
 	}
 
 	world = {};
+	# crate spawning mechanics
 	world.enable_crate_spawning = enable_crate_spawning;
-	world.queue = 0; # number of crates that are queued to spawn.
+	world.crate_spawn_requests = 0; # number of crates that are queued to spawn.
+	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
+	world.difficulty_manager =  game_difficulty_manager_new();
+
 	world.columns = columns;
-	world.cranes_left= [];
+	world.cranes_left = [];
 	world.cranes_right = [];
 	world.player = player_new(player_x, player_y);
 	world.pushed_crate = None;
 	world.interval_overlaps_any_in_column = &world_interval_overlaps_any_in_column;
 	world.get_highest_in_column_below = &world_get_highest_in_column_below;
 	world.score = 0;
-	world.crate_spawn_timer = timer_new(global(INITIAL_CRATE_SPAWN_TIMER));
 	world.double_speed_timer = timer_new(global(DOUBLE_SPEED_DURATION));
 	world.tick = &world_tick;
 	return world;
 }
 
-def world_enqueue_crate_spawn(self) {
-	self.queue = min(self.queue + 1, 14);
-}
 
 def world_try_destroy_bottom_row(self) {
 	target_row_y = 0;
@@ -1441,9 +1513,6 @@ def world_tick(self, dt) {
 	timer_tick(self.crate_spawn_timer, dt);
 	timer_tick(self.double_speed_timer, dt);
 
-	if self.enable_crate_spawning {
-		world_spawn_crate_2(self);
-	}
 
 	self.cranes_left = _world_tick_cranes(self, self.cranes_left, dt);
 	self.cranes_right = _world_tick_cranes(self, self.cranes_right, dt);
@@ -1485,41 +1554,18 @@ def world_tick(self, dt) {
 		return;
 	}
 
-	# crate spawning, this is pretty bad though, but not much time left.
-	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE);
+	# get current difficulty level
+	difficulty = game_difficulty_manager_get_difficulty_level(self.difficulty_manager, self.score);
 
-	if self.score >= 12 {
-		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER ) - 1.0;
-		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.0002;
-	}
+	# set crate spawn timer value based on difficulty.
+	self.crate_spawn_timer.default_duration = difficulty.crate_spawn_timer_value;
 
-	if self.score >= 24 {
-		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 2.0;
-		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.0005;
-	}
-
-	if self.score >= 48 {
-		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 2.5;
-		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.001;
-	}
-
-	if self.score >=72 {
-	self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.0;
-	initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.002;
-	}
-
-	if self.score > 96 {
-		self.crate_spawn_timer.default_duration = global(INITIAL_CRATE_SPAWN_TIMER) - 3.5;
-		initial_crate_spawn_chance = global(INITIAL_CRATE_RANDOM_SPAWN_CHANCE) + 0.006;
-	}
-
-	crate_spawn_chance = random_float();
-	if not self.crate_spawn_timer.is_applied or crate_spawn_chance < initial_crate_spawn_chance {
-		world_enqueue_crate_spawn(self);
-		timer_arm(self.crate_spawn_timer);
+	if self.enable_crate_spawning {
+		_world_spawn_crate(self, difficulty);
 	}
 }
 
+# checks if a crane can be spawned (without overlapping any existing cranes in the array.)
 def _world_can_spawn_crane(self, arr, new_crane_span) {
 	i = 0;	
 	while i < len(arr) {
@@ -1534,9 +1580,9 @@ def _world_can_spawn_crane(self, arr, new_crane_span) {
 	return True;
 }
 
-def _world_pick_crate_kind_to_spawn(x, y) {
+def _world_pick_crate_kind_to_spawn(x, y, difficulty) {
 	ar = global(ASSET_REGISTRY);
-	if random_float() < 0.025 {
+	if random_float() < difficulty.special_crate_spawn_chance {
 		c = random_float();
 
 		if 0 <= c and c < 0.25 {
@@ -1555,8 +1601,14 @@ def _world_pick_crate_kind_to_spawn(x, y) {
 	return crate_new(x, y, ar.crates[crate_tex]);
 }
 
-def world_spawn_crate_2(self) {
-	if self.queue == 0 {
+def _world_spawn_crate(self, difficulty) {
+	crate_spawn_chance = random_float();
+	if not self.crate_spawn_timer.is_applied or crate_spawn_chance < difficulty.random_crate_chance {
+		self.crate_spawn_requests = clamp(0, global(MAX_CRATE_SPAWN_REQUESTS), self.crate_spawn_requests + 1);
+		timer_arm(self.crate_spawn_timer);
+	}
+
+	if self.crate_spawn_requests == 0 {
 		return;
 	}
 
@@ -1565,15 +1617,13 @@ def world_spawn_crate_2(self) {
 		return;
 	}
 
-
 	x = -global(BOARD_CRATE_EXIT_MARGIN);
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
-
-	crane_left  = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_RIGHT), _world_pick_crate_kind_to_spawn(x, y));
+	crane_left  = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_RIGHT), _world_pick_crate_kind_to_spawn(x, y, difficulty));
 
 	x = global(BOARD_CELLS_ALONG_X) + global(BOARD_CRATE_EXIT_MARGIN);
 	y = global(BOARD_CELLS_ALONG_Y) + 2;
-	crane_right = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_LEFT), _world_pick_crate_kind_to_spawn(x, y));
+	crane_right = crane_new(x, y, goal_column, global(HORIZONTAL_MOVEMENT_LEFT), _world_pick_crate_kind_to_spawn(x, y, difficulty));
 
 
 	a = _world_can_spawn_crane(self, self.cranes_left, crane_left.get_x_axis_span(crane_left));
@@ -1583,24 +1633,24 @@ def world_spawn_crate_2(self) {
 
 	if (a and b) {
 		r = random_float();
+		self.crate_spawn_requests = max(self.crate_spawn_requests - 1, 0);
+
 		if r < 0.5 {
-			self.queue = max(self.queue - 1, 0);
 			self.cranes_left = self.cranes_left + crane_left;
 		} else {
-			self.queue = max(self.queue - 1, 0);
 			self.cranes_right =  self.cranes_right + crane_right;
 		}
 		return;
 	}
 
 	if (a) {
-		self.queue = max(self.queue - 1, 0);
+		self.crate_spawn_requests = max(self.crate_spawn_requests - 1, 0);
 		self.cranes_left = self.cranes_left + crane_left;
 		return;
 	}
 
 	if (b) {
-		self.queue = max(self.queue - 1, 0);
+		self.crate_spawn_requests = max(self.crate_spawn_requests - 1, 0);
 		self.cranes_right = self.cranes_right + crane_right;
 		return;
 	}
@@ -1727,11 +1777,8 @@ def world_insert_crate_sorted(self, crate, column_index) {
 # TODO this name is confusing AF.
 def world_get_highest_in_column_below(self, below_y, column_index) {
 	assert(board_x_coordinate_in_bounds(column_index), "out of bounds board access"); # TODO we should really have messages here.
-	#print(below_y);
-	#print(column_index);
 
 	column = self.columns[column_index];
-
 	highest = 0;
 	highest_index = -1;
 	highest_crate = None;
@@ -1861,7 +1908,6 @@ def world_get_floor_level(self, x, crate_index)  {
 def world_explode_all_in_bounding_box(self, x_span, y_span) {
 	xmin = max(floor(x_span.min), 0);
 	xmax = min(ceil(x_span.max), global(BOARD_CELLS_ALONG_X) - 1);
-	print("Exploding stuff in columns " + xmin + " " + xmax);
 
 	x = xmin;
 	while x <= xmax {
@@ -1871,7 +1917,6 @@ def world_explode_all_in_bounding_box(self, x_span, y_span) {
 		while y < len(column) {
 			crate = column[y];
 			crate_center = crate.get_center(crate);
-			print("Interval " + y_span + " " + crate_center.y);
 			if interval_contains_point(y_span, crate_center.y) {
 				crate.explode(crate);
 			}
