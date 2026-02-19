@@ -24,7 +24,7 @@ Bug reports are welcome!
 
 # Building/Running
 
-This project is using Go 1.23.5 (not tested with newer versions) and `raylib-go`. Binaries for macOS and Windows are provided on the Releases page. The Windows version includes `run-stacking-trouble` batch file for convenience, and MacOs version includes `run-stacking-trouble.sh`.
+This project is using Go 1.23.5 (not tested with newer versions) and `raylib-go`. Binaries for macOS and Windows are provided on the Releases page. The Windows version includes `run-stacking-trouble` batch file for convenience, and MacOs version includes `run-stacking-trouble.command` which can be run from Finder.
 
 The game can be run `bla-run stacking-trouble.bla`. Additionally, there are a few other command line arguments.
 
@@ -42,7 +42,7 @@ MacOs:
 go build -o bla-run
 
 # RUN
-bla-run stacking-trouble-game/stacking-trouble.bla
+./bla-run stacking-trouble-game/stacking-trouble.bla
 ```
 
 Windows: 
