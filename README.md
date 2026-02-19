@@ -24,7 +24,7 @@ Bug reports are welcome!
 
 # Building/Running
 
-This project is using Go 1.23.5 (not tested with newer versions) and `raylib-go. Binaries for macOS and Windows are provided on the Releases page. The Windows binary includes `start` batch file for convenience.
+This project is using Go 1.23.5 (not tested with newer versions) and `raylib-go`. Binaries for macOS and Windows are provided on the Releases page. The Windows version includes `run-stacking-trouble` batch file for convenience, and MacOs version includes `run-stacking-trouble.sh`.
 
 The game can be run `bla-run stacking-trouble.bla`. Additionally, there are a few other command line arguments.
 
@@ -33,21 +33,27 @@ The game can be run `bla-run stacking-trouble.bla`. Additionally, there are a fe
 * `DEBUG=bytecode` - displays results of compilation that will be fed into VM. 
 
 ## Building
-
 If you want to build from source:
 
 MacOs:
 
 ```
-go build
+# BUILD 
+go build -o bla-run
+
+# RUN
+bla-run stacking-trouble-game/stacking-trouble.bla
 ```
 
 Windows: 
-See [raylib-go](https://github.com/gen2brain/raylib-go) installation instructions.
+Building on Windows requires `gcc`, which can be acquired through Msys2, for example. See [raylib-go](https://github.com/gen2brain/raylib-go) installation instructions.
 
 ```
-CGO_ENABLED=1 go build
-./compiler.exe stacking-trouble.bla
+# BUILD
+CGO_ENABLED=1 CGO_LDFLAGS="-static-libgcc -static -lpthread" go build -a -ldflags "-H=windowsgui" -o bla-run
+
+# RUN
+./bla-run.exe stacking-trouble-game/stacking-trouble.bla
 ```
 
 # License
