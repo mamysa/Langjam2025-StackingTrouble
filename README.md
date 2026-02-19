@@ -9,6 +9,17 @@ The language supports:
 * Loop/If statements.
 * Global constants.
 
+Version 2 of the game adds the following features:
+
+* Power-up crates - health crate, double speed crate and explosive crate. 
+* Difficulty mode selector.
+* Ability to pause the game without exiting.
+* Proper graphics and animations.
+* A menu displaying controls as well as in-game "how to play" tutorial.
+
+Bug reports are welcome!
+
+
 ![screenshot](https://github.com/mamysa/Langjam2025-StackingTrouble/blob/main/stacking-trouble-screenshot.png?raw=true)
 
 # Building/Running
@@ -39,12 +50,10 @@ CGO_ENABLED=1 go build
 ./compiler.exe stacking-trouble.bla
 ```
 
+# License
 
-# Known Bugs, etc
+Code is licensed under MIT. Art assets are licensed under CC-BY 4.0.
 
-* Doesn't implement Stack Attack fully - there were different crate power-ups (such as extra-health, TNT crate, etc) that I ran out of time to implement.
-* Missing game art. It is all just randomly coloured-boxes.
-* Compiler codebase is a bit of a mess and needs cleanup. 
+`ThaleahFat.ttf` font is created by Rick Hoppmann and is licensed under CC-BY 4.0. It can be acquired on [Itch.io](https://tinyworlds.itch.io/free-pixel-font-thaleah).
 
-Bug reports are welcome!
 
